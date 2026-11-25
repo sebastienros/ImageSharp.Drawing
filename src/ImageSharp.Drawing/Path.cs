@@ -4,6 +4,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using SixLabors.ImageSharp.Drawing.Svg;
 
 namespace SixLabors.ImageSharp.Drawing;
 
@@ -344,10 +345,51 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
     /// <returns><see langword="true"/> if the input value can be parsed and converted; otherwise, <see langword="false"/>.</returns>
     public static bool TryParseSvgPath(ReadOnlySpan<char> svgPath, [NotNullWhen(true)] out IPath? value)
     {
-        value = null;
-
         PathBuilder builder = new();
+        if (!TryAppendSvgPath(svgPath, builder))
+        {
+            value = null;
+            return false;
+        }
 
+        value = builder.Build();
+        return true;
+    }
+
+    /// <summary>
+    /// Converts SVG path data into an <see cref="IPath"/> and keeps the commands before the first error.
+    /// </summary>
+    /// <remarks>
+    /// SVG requires a renderer to draw path data up to, but not including, the command that contains the first error.
+    /// The public <see cref="TryParseSvgPath(ReadOnlySpan{char}, out IPath?)"/> rejects the whole path instead, so the
+    /// SVG reader uses this method.
+    /// </remarks>
+    /// <param name="svgPath">The SVG path data.</param>
+    /// <param name="value">
+    /// When this method returns, contains the path built from every command before the first error. The path is empty when
+    /// the first command is in error.
+    /// </param>
+    /// <returns><see langword="true"/> if the whole path data parsed without error; otherwise, <see langword="false"/>.</returns>
+    internal static bool TryParseSvgPathPrefix(ReadOnlySpan<char> svgPath, out IPath value)
+    {
+        PathBuilder builder = new();
+        bool complete = TryAppendSvgPath(svgPath, builder);
+        value = builder.Build();
+        return complete;
+    }
+
+    /// <summary>
+    /// Appends the commands of SVG path data to <paramref name="builder"/>.
+    /// </summary>
+    /// <remarks>
+    /// Each command reads all of its operands before it appends geometry, so on failure the builder holds exactly the
+    /// commands before the one in error.
+    /// </remarks>
+    /// <param name="svgPath">The SVG path data.</param>
+    /// <param name="builder">The builder that receives the path commands.</param>
+    /// <returns><see langword="true"/> if the whole path data parsed without error; otherwise, <see langword="false"/>.</returns>
+    private static bool TryAppendSvgPath(ReadOnlySpan<char> svgPath, PathBuilder builder)
+    {
         PointF first = PointF.Empty;
         PointF c = PointF.Empty;
         PointF lastc = PointF.Empty;
@@ -564,7 +606,6 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
             previousOp = op;
         }
 
-        value = builder.Build();
         return true;
     }
 
@@ -620,7 +661,9 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
     private static bool TryFindScaler(ref ReadOnlySpan<char> str, out float value)
     {
         ReadOnlySpan<char> source = TrimSeparator(str);
-        if (TryReadScalar(source, out value, out int length))
+
+        // Path data allows a trailing decimal point, as in "5.", in its number grammar.
+        if (SvgNumberParser.TryReadNumber(source, true, out value, out int length))
         {
             str = source[length..];
             return true;
@@ -666,62 +709,6 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
     }
 
     /// <summary>
-    /// Scans the length of the leading number token and parses it.
-    /// </summary>
-    /// <param name="str">The character data starting at the number.</param>
-    /// <param name="scaler">When this method returns, contains the parsed number.</param>
-    /// <param name="length">When this method returns, contains the number of characters consumed.</param>
-    /// <returns><see langword="true"/> if a finite number was parsed; otherwise, <see langword="false"/>.</returns>
-    private static bool TryReadScalar(ReadOnlySpan<char> str, out float scaler, out int length)
-    {
-        // SVG path numbers can be tightly packed: "10-20" is two numbers, as is
-        // "0.5.6". Stop at the first character that belongs to the next token.
-        bool hasDot = false;
-        for (int i = 0; i < str.Length; i++)
-        {
-            char ch = str[i];
-
-            if (IsSeparator(ch))
-            {
-                length = i;
-                return TryParseFloat(str[..length], out scaler);
-            }
-
-            if (ch == '.')
-            {
-                if (hasDot)
-                {
-                    // Second decimal point starts a new number.
-                    length = i;
-                    return TryParseFloat(str[..length], out scaler);
-                }
-
-                hasDot = true;
-            }
-            else if ((ch is '-' or '+') && i > 0)
-            {
-                // A sign character mid-number starts a new number,
-                // unless it follows an exponent indicator.
-                char prev = str[i - 1];
-                if (prev is not 'e' and not 'E')
-                {
-                    length = i;
-                    return TryParseFloat(str[..length], out scaler);
-                }
-            }
-            else if (char.IsLetter(ch))
-            {
-                // Hit a command letter; end this number.
-                length = i;
-                return TryParseFloat(str[..length], out scaler);
-            }
-        }
-
-        length = str.Length;
-        return TryParseFloat(str, out scaler);
-    }
-
-    /// <summary>
     /// Returns whether the character is an SVG token separator (whitespace or comma).
     /// </summary>
     /// <param name="ch">The character to test.</param>
@@ -752,13 +739,4 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
 
         return data[idx..];
     }
-
-    /// <summary>
-    /// Parses a culture-invariant float, rejecting non-finite values.
-    /// </summary>
-    /// <param name="str">The character data to parse.</param>
-    /// <param name="value">When this method returns, contains the parsed value.</param>
-    /// <returns><see langword="true"/> if a finite value was parsed; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseFloat(ReadOnlySpan<char> str, out float value)
-        => float.TryParse(str, CultureInfo.InvariantCulture, out value) && float.IsFinite(value);
 }
