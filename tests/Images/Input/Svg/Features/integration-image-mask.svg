@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <image id="img" width="16" height="12" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAMCAYAAABr5z2BAAABI0lEQVR42hXQoXEDMQBE0WshyPxQkIlakEsIC1YDBmpBM65A1FAdeNRAgIAbOGymFpR34JEFH+y2bd/ri51A3P7WD4lMsVUanWE7mCy27SLATiBeBEhkiq3S6AzbwWRdzsBVgJ1AvAqQyBRbpdEZtoPJup6BmwA7gXgTIJEptkqjM2wHk3U7A79/64udQPz9Xj8kMsVWaXSG7WCy2La7ADuBeBcgkSm2SqMzbAeTdT8DDwF2AvEhQCJTbJVGZ9gOJutxBp4C7ATiU4BEptgqjc6wHUzW8wy8nMhOIL6cSCJTbJVGZ9gOJut1nvgWYCcQ3wIkMsVWaXSG7WCy3mfgI8BOIH4ESGSKrdLoDNvBZH3OwBJgJxCXAIlMsVUanWE7mCz+AYlX2EAgS/7zAAAAAElFTkSuQmCC"/>
+    <mask id="imageMask"><use xlink:href="#img" transform="translate(5 5) scale(5.625 7.5)"/></mask>
+    <linearGradient id="fade" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></linearGradient>
+    <mask id="fadeMask"><rect width="16" height="12" fill="url(#fade)"/></mask>
+    <clipPath id="circle"><circle cx="50" cy="150" r="40"/></clipPath>
+    <mask id="alphaImage" mask-type="alpha"><use xlink:href="#img" transform="translate(110 110) scale(5 6.667)" opacity="0.5"/></mask>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <rect x="5" y="5" width="90" height="90" fill="#000000" mask="url(#imageMask)"/>
+  <use xlink:href="#img" transform="translate(105 5) scale(5.625 7.5)" mask="url(#fadeMask)"/>
+  <g clip-path="url(#circle)">
+    <use xlink:href="#img" transform="translate(5 105) scale(7.5)"/>
+  </g>
+  <rect x="105" y="105" width="90" height="90" fill="#d62728" mask="url(#alphaImage)"/>
+</svg>

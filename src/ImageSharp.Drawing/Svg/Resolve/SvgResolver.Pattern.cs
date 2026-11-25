@@ -12,6 +12,12 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 internal sealed partial class SvgResolver
 {
     /// <summary>
+    /// The number of nesting levels whose tiles get the full pixel budget of <see cref="SvgLimits.MaxPatternTilePixels"/>.
+    /// Each deeper level halves the budget.
+    /// </summary>
+    private const int FullBudgetPatternNesting = 3;
+
+    /// <summary>
     /// The resolved tiles, shared by every shape that paints the same pattern content with the same tile geometry.
     /// Created on first use, so documents without the feature allocate nothing for it.
     /// </summary>
@@ -27,6 +33,12 @@ internal sealed partial class SvgResolver
     /// reference chain at the time it was resolved, so it is not shared.
     /// </summary>
     private int patternCycles;
+
+    /// <summary>
+    /// The number of pattern tiles whose content is resolving: 0 for a pattern that the document paints directly, 1 for a
+    /// pattern that the content of such a tile paints, and so on.
+    /// </summary>
+    private int patternNesting;
 
     /// <summary>
     /// Resolves a computed <c>fill</c> or <c>stroke</c> value of a shape to a brush. A reference to a <c>pattern</c> and
@@ -242,7 +254,13 @@ internal sealed partial class SvgResolver
     /// <returns>The tile, or <see langword="null"/> when the content renders nothing.</returns>
     private SvgPatternTile? GetPatternTile(int element, int content, Matrix3x2 contentTransform, SizeF size, SizeF viewport, int depth)
     {
-        SvgPatternTileKey key = new(content, contentTransform, size, viewport);
+        // A tile renders while the tile that paints it renders, and every level can reach the pixel limit, so nested
+        // patterns would multiply the work and the memory that one render needs by the nesting depth, up to
+        // SvgLimits.MaxNestingDepth. Halving the budget at each level past the first few bounds the pixels of a whole
+        // chain to a few times the limit. Tiles below the limit, which are most tiles, keep their full resolution.
+        int halvings = Math.Min(Math.Max(this.patternNesting - FullBudgetPatternNesting, 0), 30);
+        int maxPixels = Math.Max(this.MaxPatternTilePixels >> halvings, 1);
+        SvgPatternTileKey key = new(content, contentTransform, size, viewport, maxPixels);
         this.patternTiles ??= [];
         if (this.patternTiles.TryGetValue(key, out SvgPatternTile? tile))
         {
@@ -257,7 +275,9 @@ internal sealed partial class SvgResolver
         bool entered = element != content && this.TryEnterReference(element);
         SvgComputedStyle style = this.ComputeDocumentStyle(content);
         SvgResolveContext contentContext = new(in style, contentTransform, viewport, depth + 1);
+        this.patternNesting++;
         bool resolved = this.ResolveContent(content, in contentContext);
+        this.patternNesting--;
         if (entered)
         {
             this.ExitReference();
@@ -265,7 +285,7 @@ internal sealed partial class SvgResolver
 
         SvgRenderNode[] nodes = this.TakeNodes(start, out int maxScopeDepth);
         tile = resolved && nodes.Length > 0
-            ? new SvgPatternTile(this.CreateContentDocument(nodes, new RectangleF(PointF.Empty, size), maxScopeDepth), this.MaxPatternTilePixels)
+            ? new SvgPatternTile(this.CreateContentDocument(nodes, new RectangleF(PointF.Empty, size), maxScopeDepth), maxPixels)
             : null;
 
         if (resolved && cycles == this.patternCycles)
@@ -328,12 +348,14 @@ internal sealed partial class SvgResolver
         /// <param name="contentTransform">The transform from the content coordinate system to tile space.</param>
         /// <param name="size">The tile size.</param>
         /// <param name="viewport">The viewport that percentages in the content refer to.</param>
-        public SvgPatternTileKey(int content, Matrix3x2 contentTransform, SizeF size, SizeF viewport)
+        /// <param name="maxPixels">The pixel budget of one render of the tile, which depends on the pattern nesting.</param>
+        public SvgPatternTileKey(int content, Matrix3x2 contentTransform, SizeF size, SizeF viewport, int maxPixels)
         {
             this.Content = content;
             this.ContentTransform = contentTransform;
             this.Size = size;
             this.Viewport = viewport;
+            this.MaxPixels = maxPixels;
         }
 
         /// <summary>
@@ -356,17 +378,23 @@ internal sealed partial class SvgResolver
         /// </summary>
         public SizeF Viewport { get; }
 
+        /// <summary>
+        /// Gets the pixel budget of one render.
+        /// </summary>
+        public int MaxPixels { get; }
+
         /// <inheritdoc/>
         public bool Equals(SvgPatternTileKey other)
             => this.Content == other.Content
             && this.ContentTransform == other.ContentTransform
             && this.Size == other.Size
-            && this.Viewport == other.Viewport;
+            && this.Viewport == other.Viewport
+            && this.MaxPixels == other.MaxPixels;
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is SvgPatternTileKey other && this.Equals(other);
 
         /// <inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(this.Content, this.ContentTransform, this.Size, this.Viewport);
+        public override int GetHashCode() => HashCode.Combine(this.Content, this.ContentTransform, this.Size, this.Viewport, this.MaxPixels);
     }
 }

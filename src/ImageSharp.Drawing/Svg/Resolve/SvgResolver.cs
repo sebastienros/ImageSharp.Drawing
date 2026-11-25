@@ -1070,7 +1070,8 @@ internal sealed partial class SvgResolver
     /// </summary>
     /// <remarks>
     /// A missing <c>rx</c> takes the value of <c>ry</c> and the other way round, then each radius is clamped to half the
-    /// size on its axis, as SVG 2 defines. The rounded corners are elliptical arcs with separate radii.
+    /// size on its axis, as SVG 2 defines. The rounded corners are quarter ellipses with separate radii, each a cubic
+    /// Bézier curve.
     /// </remarks>
     /// <param name="index">The element index.</param>
     /// <param name="context">The context of the element.</param>
@@ -1105,9 +1106,43 @@ internal sealed partial class SvgResolver
         rx = MathF.Min(rx, width / 2F);
         ry = MathF.Min(ry, height / 2F);
 
-        return rx > 0F && ry > 0F
-            ? new RoundedRectanglePolygon(x, y, width, height, new SizeF(rx, ry))
-            : new RectanglePolygon(x, y, width, height);
+        if (!(rx > 0F && ry > 0F))
+        {
+            return new RectanglePolygon(x, y, width, height);
+        }
+
+        // Each corner is a quarter ellipse as one cubic Bézier curve, built like the quarters of CreateEllipse. Curves
+        // flatten at the resolution of each draw, as Skia and cairo flatten theirs, so a rectangle that is small in user
+        // space and scaled up keeps smooth corners; an arc segment would flatten once, in user space. The outline starts
+        // after the top-left corner and runs clockwise, as the SVG path equivalent of the shape does, so dash patterns
+        // start where SVG starts them. Edges of zero length, where a radius is half the size, are left out.
+        float right = x + width;
+        float bottom = y + height;
+        float kx = rx * Kappa;
+        float ky = ry * Kappa;
+        List<ILineSegment> segments = new(8);
+        AddEdge(segments, new PointF(x + rx, y), new PointF(right - rx, y));
+        segments.Add(new CubicBezierLineSegment(
+            new PointF(right - rx, y), new PointF(right - rx + kx, y), new PointF(right, y + ry - ky), new PointF(right, y + ry)));
+        AddEdge(segments, new PointF(right, y + ry), new PointF(right, bottom - ry));
+        segments.Add(new CubicBezierLineSegment(
+            new PointF(right, bottom - ry), new PointF(right, bottom - ry + ky), new PointF(right - rx + kx, bottom), new PointF(right - rx, bottom)));
+        AddEdge(segments, new PointF(right - rx, bottom), new PointF(x + rx, bottom));
+        segments.Add(new CubicBezierLineSegment(
+            new PointF(x + rx, bottom), new PointF(x + rx - kx, bottom), new PointF(x, bottom - ry + ky), new PointF(x, bottom - ry)));
+        AddEdge(segments, new PointF(x, bottom - ry), new PointF(x, y + ry));
+        segments.Add(new CubicBezierLineSegment(
+            new PointF(x, y + ry), new PointF(x, y + ry - ky), new PointF(x + rx - kx, y), new PointF(x + rx, y)));
+
+        return new Polygon(segments.ToArray());
+
+        static void AddEdge(List<ILineSegment> segments, PointF start, PointF end)
+        {
+            if (start != end)
+            {
+                segments.Add(new LinearLineSegment(start, end));
+            }
+        }
     }
 
     /// <summary>

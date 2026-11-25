@@ -114,26 +114,26 @@ filters/feConvolveMatrix/bias=-0.5.svg skip undefined behavior: results.csv mark
 filters/feConvolveMatrix/bias=0.5.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/bias=9999.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/custom-divisor.svg fail filters: phase 4
-filters/feConvolveMatrix/divisor=0.svg pass
+filters/feConvolveMatrix/divisor=0.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/edgeMode=none.svg fail filters: phase 4
 filters/feConvolveMatrix/edgeMode=wrap-with-matrix-larger-than-target.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/edgeMode=wrap.svg fail filters: phase 4
-filters/feConvolveMatrix/empty-kernelMatrix.svg pass
-filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg pass
-filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg pass
+filters/feConvolveMatrix/empty-kernelMatrix.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/kernelMatrix-with-zero-sum-and-no-divisor.svg fail filters: phase 4
-filters/feConvolveMatrix/no-kernelMatrix.svg pass
-filters/feConvolveMatrix/order-with-a-negative-value-1.svg pass
-filters/feConvolveMatrix/order-with-a-negative-value-2.svg pass
-filters/feConvolveMatrix/order=0.svg pass
+filters/feConvolveMatrix/no-kernelMatrix.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order-with-a-negative-value-1.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order-with-a-negative-value-2.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order=0.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/order=4-2.svg fail filters: phase 4
 filters/feConvolveMatrix/order=4-4.svg fail filters: phase 4
 filters/feConvolveMatrix/order=4.svg fail filters: phase 4
 filters/feConvolveMatrix/preserveAlpha=true.svg fail filters: phase 4
-filters/feConvolveMatrix/targetX=-1.svg pass
+filters/feConvolveMatrix/targetX=-1.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/targetX=0.svg fail filters: phase 4
 filters/feConvolveMatrix/targetX=2.svg fail filters: phase 4
-filters/feConvolveMatrix/targetX=3.svg pass
+filters/feConvolveMatrix/targetX=3.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/unset-order.svg fail filters: phase 4
 filters/feDiffuseLighting/complex-transform.svg fail filters: phase 4
 filters/feDiffuseLighting/diffuseConstant=-1.svg fail filters: phase 4
@@ -421,7 +421,7 @@ filters/flood-color/simple-case.svg fail filters: phase 4
 filters/flood-opacity/50percent.svg fail filters: phase 4
 filters/flood-opacity/simple-case.svg fail filters: phase 4
 masking/clip-rule/clip-rule=evenodd.svg pass
-masking/clip/simple-case.svg fail image: phase 2 package F; the CSS clip property on image is not implemented
+masking/clip/simple-case.svg fail image: the deprecated CSS clip property (rect()) on image is not implemented
 masking/clipPath/circle-shorthand-with-stroke-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
 masking/clipPath/circle-shorthand-with-view-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
 masking/clipPath/circle-shorthand.svg fail clipPath: CSS basic shapes in clip-path are not supported
@@ -474,7 +474,7 @@ masking/clipPath/transform-on-clipPath.svg pass
 masking/clipPath/with-invalid-child-via-use.svg pass
 masking/clipPath/with-marker-on-clip.svg pass
 masking/clipPath/with-use-child.svg pass
-masking/mask/color-interpolation=linearRGB.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/color-interpolation=linearRGB.svg pass
 masking/mask/half-width-region-with-rotation.svg pass
 masking/mask/invalid-FuncIRI.svg pass
 masking/mask/invalid-child.svg pass
@@ -486,32 +486,32 @@ masking/mask/mask-on-self-with-mixed-mask-type.svg pass
 masking/mask/mask-on-self.svg pass
 masking/mask/mask-type-in-style.svg pass
 masking/mask/mask-type=alpha.svg pass
-masking/mask/mask-type=invalid.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/mask-type=luminance.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/mask-type=invalid.svg pass
+masking/mask/mask-type=luminance.svg pass
 masking/mask/maskContentUnits=objectBoundingBox.svg pass
-masking/mask/maskUnits=objectBoundingBox-with-percent.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/maskUnits=userSpaceOnUse-with-percent.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/maskUnits=userSpaceOnUse-with-rect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/maskUnits=userSpaceOnUse-with-width-only.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/maskUnits=userSpaceOnUse-without-rect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/nested-objectBoundingBox.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskUnits=objectBoundingBox-with-percent.svg pass
+masking/mask/maskUnits=userSpaceOnUse-with-percent.svg pass
+masking/mask/maskUnits=userSpaceOnUse-with-rect.svg pass
+masking/mask/maskUnits=userSpaceOnUse-with-width-only.svg pass
+masking/mask/maskUnits=userSpaceOnUse-without-rect.svg pass
+masking/mask/nested-objectBoundingBox.svg pass
 masking/mask/no-children.svg pass
 masking/mask/none.svg pass
 masking/mask/on-a-horizontal-line.svg pass
 masking/mask/on-a-small-object.svg pass
 masking/mask/on-group-with-transform.svg pass
 masking/mask/recursive-on-child.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-masking/mask/recursive-on-self.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/recursive.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/self-recursive.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/simple-case.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/transform-has-no-effect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/transform-on-shape.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/recursive-on-self.svg pass
+masking/mask/recursive.svg pass
+masking/mask/self-recursive.svg pass
+masking/mask/simple-case.svg pass
+masking/mask/transform-has-no-effect.svg pass
+masking/mask/transform-on-shape.svg pass
 masking/mask/with-clip-path.svg pass
 masking/mask/with-grayscale-image.svg pass
 masking/mask/with-image.svg pass
-masking/mask/with-opacity-1.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-masking/mask/with-opacity-2.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/with-opacity-1.svg pass
+masking/mask/with-opacity-2.svg pass
 masking/mask/with-opacity-3.svg pass
 paint-servers/linearGradient/attributes-via-xlink-href-complex-order.svg pass
 paint-servers/linearGradient/attributes-via-xlink-href-from-radialGradient.svg pass
@@ -560,7 +560,7 @@ paint-servers/pattern/invalid-patternTransform.svg skip undefined behavior: resu
 paint-servers/pattern/invalid-patternUnits-and-patternContentUnits.svg pass
 paint-servers/pattern/missing-height.svg pass
 paint-servers/pattern/missing-width.svg pass
-paint-servers/pattern/nested-objectBoundingBox.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied (a gradient with a transparent stop inside the pattern)
+paint-servers/pattern/nested-objectBoundingBox.svg pass
 paint-servers/pattern/no-children.svg pass
 paint-servers/pattern/out-of-order-referencing.svg fail pattern: a nested 3.75 x 7.5 px tile and tile edges at fractional device pixels resample differently from the reference
 paint-servers/pattern/overflow=visible.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
@@ -628,10 +628,10 @@ paint-servers/radialGradient/zero-r-with-stop-opacity-1.svg pass
 paint-servers/radialGradient/zero-r-with-stop-opacity-2.svg pass
 paint-servers/radialGradient/zero-r.svg pass
 paint-servers/stop-color/simple-case.svg pass
-paint-servers/stop-opacity/50percent.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied
-paint-servers/stop-opacity/simple-case.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied
+paint-servers/stop-opacity/50percent.svg pass
+paint-servers/stop-opacity/simple-case.svg pass
 paint-servers/stop/equal-stop-color.svg pass
-paint-servers/stop/hsla-color.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied
+paint-servers/stop/hsla-color.svg pass
 paint-servers/stop/invalid-offset-1.svg pass
 paint-servers/stop/invalid-offset-2.svg pass
 paint-servers/stop/missing-offset-1.svg pass
@@ -760,11 +760,11 @@ painting/fill/rgba-0percent-50percent-0percent-0.5.svg pass
 painting/fill/transparent.svg pass
 painting/fill/uppercase-rgb-color.svg pass
 painting/fill/valid-FuncIRI-with-a-fallback-ICC-color.svg fail icc-color: ICC colors in paint fallbacks are not supported; Chromium fails the same way
-painting/image-rendering/on-feImage.svg fail image: phase 2
+painting/image-rendering/on-feImage.svg fail filters: phase 4; image-rendering here applies to an feImage filter primitive
 painting/image-rendering/optimizeSpeed-on-SVG.svg fail image: an SVG image renders as vector content, so image-rendering does not pixelate it, as in Chromium; the reference rasterizes it first
 painting/image-rendering/optimizeSpeed.svg fail image: nearest-neighbour texel edges fall on pixel centers at this scale and round to the other side than in the reference, which shifts single rows and columns
-painting/isolation/as-property.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/isolation/isolate.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/isolation/as-property.svg pass
+painting/isolation/isolate.svg pass
 painting/marker/default-clip.svg pass
 painting/marker/empty.svg pass
 painting/marker/inheritance-1.svg pass
@@ -828,26 +828,26 @@ painting/marker/zero-length-path-1.svg pass
 painting/marker/zero-length-path-2.svg pass
 painting/marker/zero-sized-stroke.svg pass
 painting/marker/zero-sized.svg pass
-painting/mix-blend-mode/as-property.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/color-burn.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/color-dodge.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/color.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/darken.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/difference.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/exclusion.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/hard-light.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/hue.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/lighten.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/luminosity.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/multiply.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/normal.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/opacity-on-element.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/opacity-on-group.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/overlay.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/saturation.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/screen.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/soft-light.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
-painting/mix-blend-mode/xor.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/as-property.svg pass
+painting/mix-blend-mode/color-burn.svg pass
+painting/mix-blend-mode/color-dodge.svg pass
+painting/mix-blend-mode/color.svg pass
+painting/mix-blend-mode/darken.svg pass
+painting/mix-blend-mode/difference.svg pass
+painting/mix-blend-mode/exclusion.svg pass
+painting/mix-blend-mode/hard-light.svg pass
+painting/mix-blend-mode/hue.svg pass
+painting/mix-blend-mode/lighten.svg pass
+painting/mix-blend-mode/luminosity.svg pass
+painting/mix-blend-mode/multiply.svg pass
+painting/mix-blend-mode/normal.svg pass
+painting/mix-blend-mode/opacity-on-element.svg pass
+painting/mix-blend-mode/opacity-on-group.svg pass
+painting/mix-blend-mode/overlay.svg pass
+painting/mix-blend-mode/saturation.svg pass
+painting/mix-blend-mode/screen.svg pass
+painting/mix-blend-mode/soft-light.svg pass
+painting/mix-blend-mode/xor.svg pass
 painting/opacity/50percent.svg pass
 painting/opacity/bBox-impact.svg pass
 painting/opacity/clamp-value-1.svg pass
@@ -1270,7 +1270,7 @@ structure/transform-origin/left.svg pass
 structure/transform-origin/length-percent.svg pass
 structure/transform-origin/length-px.svg pass
 structure/transform-origin/no-transform.svg pass
-structure/transform-origin/on-clippath-objectBoundingBox.svg fail known gap: rounded rectangle corners are arcs that flatten once in user space, so a rounded rectangle in objectBoundingBox units has coarse corners
+structure/transform-origin/on-clippath-objectBoundingBox.svg pass
 structure/transform-origin/on-clippath.svg pass
 structure/transform-origin/on-gradient-object-bounding-box.svg pass
 structure/transform-origin/on-gradient-user-space-on-use.svg pass

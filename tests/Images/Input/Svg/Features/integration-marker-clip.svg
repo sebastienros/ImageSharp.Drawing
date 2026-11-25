@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <marker id="dot" refX="5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="5" fill="#d62728"/>
+    </marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#2ca02c"/>
+    </marker>
+    <clipPath id="half"><rect x="0" y="0" width="60" height="200"/></clipPath>
+    <clipPath id="withMarkers">
+      <path d="M110 20 L190 20 L190 90 Z" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)" stroke="#000000" stroke-width="20"/>
+    </clipPath>
+    <clipPath id="small"><circle cx="5" cy="5" r="3"/></clipPath>
+    <marker id="clippedContent" refX="5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#9467bd" clip-path="url(#small)"/>
+    </marker>
+    <mask id="markerMask"><rect width="10" height="5" fill="#ffffff"/></mask>
+    <marker id="maskedContent" refX="5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#17becf" mask="url(#markerMask)"/>
+    </marker>
+    <clipPath id="band"><rect x="0" y="135" width="200" height="40"/></clipPath>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <path d="M15 20 L50 60 L85 20" fill="none" stroke="#000000" stroke-width="2" clip-path="url(#half)"
+        marker-start="url(#dot)" marker-mid="url(#arrow)" marker-end="url(#dot)"/>
+  <rect x="100" y="10" width="95" height="90" fill="#1f77b4" clip-path="url(#withMarkers)"/>
+  <polyline points="15,120 45,100 75,120 105,100 135,120 165,100" fill="none" stroke="#7f7f7f" stroke-width="2"
+            marker-start="url(#clippedContent)" marker-mid="url(#clippedContent)" marker-end="url(#maskedContent)"/>
+  <g clip-path="url(#band)">
+    <path d="M15 140 L60 190 L105 140 L150 190 L185 140" fill="none" stroke="#000000" stroke-width="3"
+          marker-start="url(#arrow)" marker-mid="url(#dot)" marker-end="url(#arrow)"/>
+  </g>
+</svg>

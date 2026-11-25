@@ -381,6 +381,9 @@ internal sealed partial class SvgResolver
             return false;
         }
 
+        // The clip region is the fill region, which closes every open subpath. A canvas clip does not close an open path
+        // itself, so the geometry clip takes the closed form; the coverage fill closes it too.
+        path = path.AsClosedPath();
         bool evenOdd = shapeStyle.ClipRule == SvgFillRule.EvenOdd;
         result = new ClipChild
         {

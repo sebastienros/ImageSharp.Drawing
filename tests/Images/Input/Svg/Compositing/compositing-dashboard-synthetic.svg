@@ -1,0 +1,300 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<defs>
+<linearGradient id="fade" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+<linearGradient id="sweep"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="fadeMask" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#fade)"/></mask>
+<mask id="sweepMask" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#sweep)"/></mask>
+<clipPath id="card" clipPathUnits="objectBoundingBox"><rect width="1" height="1" rx="0.08" ry="0.1"/></clipPath>
+<clipPath id="twin" clipPathUnits="objectBoundingBox"><circle cx="0.3" cy="0.5" r="0.3"/><circle cx="0.7" cy="0.5" r="0.3"/></clipPath>
+<linearGradient id="g0" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f77b4"/><stop offset="1" stop-color="#d62728"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7f0e"/><stop offset="1" stop-color="#9467bd"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ca02c"/><stop offset="1" stop-color="#8c564b"/></linearGradient>
+<linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d62728"/><stop offset="1" stop-color="#e377c2"/></linearGradient>
+<linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9467bd"/><stop offset="1" stop-color="#7f7f7f"/></linearGradient>
+<linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8c564b"/><stop offset="1" stop-color="#bcbd22"/></linearGradient>
+<linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e377c2"/><stop offset="1" stop-color="#17becf"/></linearGradient>
+<linearGradient id="g7" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7f7f7f"/><stop offset="1" stop-color="#1f77b4"/></linearGradient>
+<linearGradient id="g8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bcbd22"/><stop offset="1" stop-color="#ff7f0e"/></linearGradient>
+<linearGradient id="g9" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#17becf"/><stop offset="1" stop-color="#2ca02c"/></linearGradient>
+</defs><rect width="800" height="600" fill="#f4f4f4"/>
+<g transform="translate(15 15)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g0)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#d62728" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#8c564b" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 100.0 L9 83.1 L18 72.0 L27 70.8 L36 79.7 L45 95.8 L54 113.3 L63 126.1 L72 129.9 L81 123.2 L90 108.4 L99 90.7 L108 76.2 L117 70.0 L126 74.4 L135 87.6 L144 105.2 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#8c564b" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(172 15)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g1)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#9467bd" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#e377c2" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 83.1 L9 72.0 L18 70.8 L27 79.7 L36 95.8 L45 113.3 L54 126.1 L63 129.9 L72 123.2 L81 108.4 L90 90.7 L99 76.2 L108 70.0 L117 74.4 L126 87.6 L135 105.2 L144 121.0 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#e377c2" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(329 15)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g2)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#d62728" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#8c564b" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 72.0 L9 70.8 L18 79.7 L27 95.8 L36 113.3 L45 126.1 L54 129.9 L63 123.2 L72 108.4 L81 90.7 L90 76.2 L99 70.0 L108 74.4 L117 87.6 L126 105.2 L135 121.0 L144 129.4 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#7f7f7f" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(486 15)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g3)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#9467bd" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#e377c2" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 70.8 L9 79.7 L18 95.8 L27 113.3 L36 126.1 L45 129.9 L54 123.2 L63 108.4 L72 90.7 L81 76.2 L90 70.0 L99 74.4 L108 87.6 L117 105.2 L126 121.0 L135 129.4 L144 127.6 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#bcbd22" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(643 15)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g4)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#8c564b" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#17becf" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 79.7 L9 95.8 L18 113.3 L27 126.1 L36 129.9 L45 123.2 L54 108.4 L63 90.7 L72 76.2 L81 70.0 L90 74.4 L99 87.6 L108 105.2 L117 121.0 L126 129.4 L135 127.6 L144 116.1 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#17becf" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(15 160)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g5)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#e377c2" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 95.8 L9 113.3 L18 126.1 L27 129.9 L36 123.2 L45 108.4 L54 90.7 L63 76.2 L72 70.0 L81 74.4 L90 87.6 L99 105.2 L108 121.0 L117 129.4 L126 127.6 L135 116.1 L144 99.0 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#1f77b4" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(172 160)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g6)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#17becf" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 113.3 L9 126.1 L18 129.9 L27 123.2 L36 108.4 L45 90.7 L54 76.2 L63 70.0 L72 74.4 L81 87.6 L90 105.2 L99 121.0 L108 129.4 L117 127.6 L126 116.1 L135 99.0 L144 82.2 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#ff7f0e" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(329 160)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g7)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 126.1 L9 129.9 L18 123.2 L27 108.4 L36 90.7 L45 76.2 L54 70.0 L63 74.4 L72 87.6 L81 105.2 L90 121.0 L99 129.4 L108 127.6 L117 116.1 L126 99.0 L135 82.2 L144 71.7 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#2ca02c" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(486 160)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g8)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#17becf" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#d62728" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 129.9 L9 123.2 L18 108.4 L27 90.7 L36 76.2 L45 70.0 L54 74.4 L63 87.6 L72 105.2 L81 121.0 L90 129.4 L99 127.6 L108 116.1 L117 99.0 L126 82.2 L135 71.7 L144 71.0 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#d62728" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(643 160)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g9)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#9467bd" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 123.2 L9 108.4 L18 90.7 L27 76.2 L36 70.0 L45 74.4 L54 87.6 L63 105.2 L72 121.0 L81 129.4 L90 127.6 L99 116.1 L108 99.0 L117 82.2 L126 71.7 L135 71.0 L144 80.5 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#9467bd" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(15 305)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g0)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#d62728" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#8c564b" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 108.4 L9 90.7 L18 76.2 L27 70.0 L36 74.4 L45 87.6 L54 105.2 L63 121.0 L72 129.4 L81 127.6 L90 116.1 L99 99.0 L108 82.2 L117 71.7 L126 71.0 L135 80.5 L144 96.8 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#8c564b" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(172 305)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g1)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#9467bd" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#e377c2" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 90.7 L9 76.2 L18 70.0 L27 74.4 L36 87.6 L45 105.2 L54 121.0 L63 129.4 L72 127.6 L81 116.1 L90 99.0 L99 82.2 L108 71.7 L117 71.0 L126 80.5 L135 96.8 L144 114.2 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#e377c2" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(329 305)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g2)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#d62728" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#8c564b" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 76.2 L9 70.0 L18 74.4 L27 87.6 L36 105.2 L45 121.0 L54 129.4 L63 127.6 L72 116.1 L81 99.0 L90 82.2 L99 71.7 L108 71.0 L117 80.5 L126 96.8 L135 114.2 L144 126.6 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#7f7f7f" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(486 305)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g3)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#9467bd" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#e377c2" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 70.0 L9 74.4 L18 87.6 L27 105.2 L36 121.0 L45 129.4 L54 127.6 L63 116.1 L72 99.0 L81 82.2 L90 71.7 L99 71.0 L108 80.5 L117 96.8 L126 114.2 L135 126.6 L144 129.8 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#bcbd22" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(643 305)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g4)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#9467bd" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#8c564b" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#17becf" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 74.4 L9 87.6 L18 105.2 L27 121.0 L36 129.4 L45 127.6 L54 116.1 L63 99.0 L72 82.2 L81 71.7 L90 71.0 L99 80.5 L108 96.8 L117 114.2 L126 126.6 L135 129.8 L144 122.5 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#17becf" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(15 450)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g5)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#8c564b" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#e377c2" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 87.6 L9 105.2 L18 121.0 L27 129.4 L36 127.6 L45 116.1 L54 99.0 L63 82.2 L72 71.7 L81 71.0 L90 80.5 L99 96.8 L108 114.2 L117 126.6 L126 129.8 L135 122.5 L144 107.4 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#1f77b4" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(172 450)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g6)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#e377c2" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#7f7f7f" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#17becf" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 105.2 L9 121.0 L18 129.4 L27 127.6 L36 116.1 L45 99.0 L54 82.2 L63 71.7 L72 71.0 L81 80.5 L90 96.8 L99 114.2 L108 126.6 L117 129.8 L126 122.5 L135 107.4 L144 89.7 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#ff7f0e" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(329 450)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g7)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#7f7f7f" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#bcbd22" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 121.0 L9 129.4 L18 127.6 L27 116.1 L36 99.0 L45 82.2 L54 71.7 L63 71.0 L72 80.5 L81 96.8 L90 114.2 L99 126.6 L108 129.8 L117 122.5 L126 107.4 L135 89.7 L144 75.6 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#2ca02c" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(486 450)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g8)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#bcbd22" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#17becf" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#1f77b4" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#ff7f0e" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#2ca02c" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#d62728" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 129.4 L9 127.6 L18 116.1 L27 99.0 L36 82.2 L45 71.7 L54 71.0 L63 80.5 L72 96.8 L81 114.2 L90 126.6 L99 129.8 L108 122.5 L117 107.4 L126 89.7 L135 75.6 L144 70.0 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#d62728" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+<g transform="translate(643 450)">
+<g clip-path="url(#card)"><rect width="145" height="132" fill="url(#g9)"/>
+<g mask="url(#fadeMask)">
+<circle cx="20" cy="40" r="14" fill="#17becf" style="mix-blend-mode: screen"/>
+<circle cx="42" cy="58" r="17" fill="#1f77b4" style="mix-blend-mode: multiply"/>
+<circle cx="64" cy="76" r="20" fill="#ff7f0e" style="mix-blend-mode: screen"/>
+<circle cx="86" cy="40" r="23" fill="#2ca02c" style="mix-blend-mode: multiply"/>
+<circle cx="108" cy="58" r="14" fill="#d62728" style="mix-blend-mode: screen"/>
+<circle cx="130" cy="76" r="17" fill="#9467bd" style="mix-blend-mode: multiply"/>
+</g>
+<path d="M0 132 L0 127.6 L9 116.1 L18 99.0 L27 82.2 L36 71.7 L45 71.0 L54 80.5 L63 96.8 L72 114.2 L81 126.6 L90 129.8 L99 122.5 L108 107.4 L117 89.7 L126 75.6 L135 70.0 L144 74.9 L145 132 Z" fill="#ffffff" fill-opacity="0.6" mask="url(#sweepMask)"/>
+</g>
+<rect x="20" y="96" width="105" height="26" fill="#9467bd" clip-path="url(#twin)" opacity="0.85"/>
+</g>
+</svg>

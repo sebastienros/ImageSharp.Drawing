@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <style>
+    rect[data-clip="circle"] { clip-path: url(#circle); }
+    g.masked > circle:nth-child(2) { mask: url(#fadeMask); }
+    path[class~="arrowed"] { marker-end: url(#arrow); marker-start: url(#dot); }
+    .all-markers { marker: url(#dot); }
+    polyline:not(.plain) { marker-mid: url(#square); }
+    [id^="clip-"] { clip-path: url(#band) }
+    @media screen { .screen-only { mask: url(#fadeMask); } }
+    @media print { .print-only { clip-path: url(#band); } }
+  </style>
+  <defs>
+    <clipPath id="circle"><circle cx="50" cy="50" r="40"/></clipPath>
+    <clipPath id="band"><rect x="0" y="120" width="200" height="25"/></clipPath>
+    <linearGradient id="fade"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></linearGradient>
+    <mask id="fadeMask" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#fade)"/></mask>
+    <marker id="dot" refX="3" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="3" fill="#d62728"/>
+    </marker>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#2ca02c"/>
+    </marker>
+    <marker id="square" refX="3" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#9467bd"/>
+    </marker>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <rect x="5" y="5" width="90" height="90" fill="#1f77b4" data-clip="circle"/>
+  <g class="masked">
+    <circle cx="125" cy="30" r="20" fill="#ff7f0e"/>
+    <circle cx="175" cy="30" r="20" fill="#ff7f0e"/>
+  </g>
+  <path class="line arrowed" d="M110 70 L150 90 L190 70" fill="none" stroke="#000000" stroke-width="2"/>
+  <path class="all-markers" d="M10 110 L50 100 L90 110" fill="none" stroke="#000000"/>
+  <polyline points="110,100 130,90 150,100 170,90 190,100" fill="none" stroke="#7f7f7f"/>
+  <polyline class="plain" points="110,110 130,100 150,110 170,100 190,110" fill="none" stroke="#bbbbbb"/>
+  <rect id="clip-me" x="10" y="115" width="180" height="35" fill="#2ca02c" fill-opacity="0.5"/>
+  <rect class="screen-only" x="10" y="155" width="85" height="40" fill="#8c564b"/>
+  <rect class="print-only" x="105" y="155" width="85" height="40" fill="#e377c2"/>
+</svg>
