@@ -149,6 +149,8 @@ internal sealed class SvgPaintCache
         {
             case SolidBrush solid:
                 return this.GetSolidBrush(MultiplyAlpha(solid.Color, opacity));
+            case SvgDeferredPaint deferred:
+                return deferred.MultiplyOpacity(opacity);
             case LinearGradientBrush linear:
                 return new LinearGradientBrush(
                     linear.StartPoint,
@@ -543,8 +545,9 @@ internal sealed class SvgPaintCache
         {
             // The root element computes with the root basis, as the resolver computes it.
             int index = ancestors[i];
-            SvgUnitBasis units = index == 0 ? SvgUnitBasis.ForRoot(this.units.Dpi) : this.units;
-            style = SvgComputedStyle.Compute(in this.tree.GetStyle(index), in style, in this.initialStyle, units, this.tree[index].Kind);
+            style = index == 0
+                ? SvgComputedStyle.ComputeRoot(in this.tree.GetStyle(0), in this.initialStyle, SvgUnitBasis.ForRoot(this.units.Dpi))
+                : SvgComputedStyle.Compute(in this.tree.GetStyle(index), in style, in this.initialStyle, this.units, this.tree[index].Kind);
         }
 
         return style;

@@ -322,13 +322,22 @@ internal static class SvgEmitter
         public void DrawNode(in SvgRenderNode node)
         {
             int key = this.GetKey(node.TransformIndex, node.FillRule);
-            if (node.Fill is not null)
+            Brush? fill = node.Fill;
+            Pen? stroke = node.Stroke;
+            if (fill is SvgDeferredPaint || stroke?.StrokeFill is SvgDeferredPaint)
             {
-                this.SetState(key);
-                this.canvas.Fill(node.Fill, node.Path!);
+                // Pattern and image paints build their brush for the device transform of this render.
+                Matrix4x4 transform = this.GetOptions(key).Transform;
+                fill = SvgDeferredPaint.Resolve(fill, in transform);
+                stroke = SvgDeferredPaint.Resolve(stroke, in transform);
             }
 
-            Pen? stroke = node.Stroke;
+            if (fill is not null)
+            {
+                this.SetState(key);
+                this.canvas.Fill(fill, node.Path!);
+            }
+
             if (stroke is null)
             {
                 return;

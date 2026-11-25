@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#ffffff"/>
+  <g fill="none" stroke="#bbbbbb" stroke-width="1">
+    <rect x="10" y="10" width="60" height="40"/>
+    <rect x="80" y="10" width="40" height="40"/>
+    <rect x="130" y="10" width="60" height="30"/>
+    <rect x="130" y="150" width="60" height="40"/>
+    <rect x="70" y="150" width="50" height="40"/>
+  </g>
+  <image x="10" y="10" width="60" height="40" preserveAspectRatio="none" image-rendering="pixelated" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="80" y="10" width="40" height="40" image-rendering="pixelated" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="130" y="10" width="60" height="30" preserveAspectRatio="xMinYMin slice" image-rendering="optimizeSpeed" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="20" y="70" width="48" image-rendering="pixelated" transform="rotate(25 44 86)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="80" y="70" width="48" height="32" image-rendering="crisp-edges" transform="skewX(-20) translate(30 0)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="140" y="70" width="48" height="32" image-rendering="pixelated" opacity="0.5" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="10" y="120" width="36" height="24" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAVElEQVR42mMQERH5f01dA45hfPnyLRgYCBoYkBUha8KrgVhNKBrQNYEUoGsCa9BZoPMfGYMUgej/uxnAGMSHsbFqgGmCK0LWhEsDTk34NGA4B8oHAK4zz9cETL0KAAAAAElFTkSuQmCC"/>
+  <image x="130" y="150" width="60" height="40" xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCAyMCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZTdiYTUyIi8+PGNpcmNsZSBjeD0iMjAiIGN5PSIxMCIgcj0iOSIgZmlsbD0iIzM5M2I3OSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSItMTAiIHk9Ii0xMCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjE1IiBmaWxsPSIjZDYyNzI4Ii8+PC9zdmc+"/>
+  <image x="70" y="150" width="50" height="40" preserveAspectRatio="xMaxYMax slice" xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCAyMCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZTdiYTUyIi8+PGNpcmNsZSBjeD0iMjAiIGN5PSIxMCIgcj0iOSIgZmlsbD0iIzM5M2I3OSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSItMTAiIHk9Ii0xMCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjE1IiBmaWxsPSIjZDYyNzI4Ii8+PC9zdmc+"/>
+  <image x="10" y="155" width="50" height="30" preserveAspectRatio="none" transform="rotate(-10 35 170)" xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCAyMCI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZTdiYTUyIi8+PGNpcmNsZSBjeD0iMjAiIGN5PSIxMCIgcj0iOSIgZmlsbD0iIzM5M2I3OSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSItMTAiIHk9Ii0xMCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjE1IiBmaWxsPSIjZDYyNzI4Ii8+PC9zdmc+"/>
+</svg>

@@ -551,37 +551,37 @@ paint-servers/linearGradient/stops-via-xlink-href-from-radialGradient.svg pass
 paint-servers/linearGradient/stops-via-xlink-href-from-rect.svg pass
 paint-servers/linearGradient/stops-via-xlink-href.svg pass
 paint-servers/linearGradient/unresolved-xlink-href.svg pass
-paint-servers/pattern/attributes-via-xlink-href.svg fail pattern: phase 2
+paint-servers/pattern/attributes-via-xlink-href.svg pass
 paint-servers/pattern/child-with-invalid-FuncIRI.svg pass
-paint-servers/pattern/children-via-xlink-href.svg fail pattern: phase 2
-paint-servers/pattern/display=none-on-child.svg fail pattern: phase 2
-paint-servers/pattern/everything-via-xlink-href.svg fail pattern: phase 2
+paint-servers/pattern/children-via-xlink-href.svg pass
+paint-servers/pattern/display=none-on-child.svg pass
+paint-servers/pattern/everything-via-xlink-href.svg pass
 paint-servers/pattern/invalid-patternTransform.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-paint-servers/pattern/invalid-patternUnits-and-patternContentUnits.svg fail pattern: phase 2
+paint-servers/pattern/invalid-patternUnits-and-patternContentUnits.svg pass
 paint-servers/pattern/missing-height.svg pass
 paint-servers/pattern/missing-width.svg pass
-paint-servers/pattern/nested-objectBoundingBox.svg fail pattern: phase 2
+paint-servers/pattern/nested-objectBoundingBox.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied (a gradient with a transparent stop inside the pattern)
 paint-servers/pattern/no-children.svg pass
-paint-servers/pattern/out-of-order-referencing.svg fail pattern: phase 2
+paint-servers/pattern/out-of-order-referencing.svg fail pattern: a nested 3.75 x 7.5 px tile and tile edges at fractional device pixels resample differently from the reference
 paint-servers/pattern/overflow=visible.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-paint-servers/pattern/pattern-on-child.svg fail pattern: phase 2
-paint-servers/pattern/patternContentUnits-with-viewBox.svg fail pattern: phase 2
-paint-servers/pattern/patternContentUnits=objectBoundingBox.svg fail pattern: phase 2
-paint-servers/pattern/patternUnits=objectBoundingBox-with-percent.svg fail pattern: phase 2
-paint-servers/pattern/patternUnits=objectBoundingBox.svg fail pattern: phase 2
-paint-servers/pattern/patternUnits=userSpaceOnUse-with-percent.svg fail pattern: phase 2
-paint-servers/pattern/preserveAspectRatio.svg fail pattern: phase 2
-paint-servers/pattern/recursive-on-child.svg fail pattern: phase 2
-paint-servers/pattern/self-recursive-on-child.svg fail pattern: phase 2
-paint-servers/pattern/self-recursive.svg fail pattern: phase 2
-paint-servers/pattern/simple-case.svg fail pattern: phase 2
-paint-servers/pattern/text-child.svg fail pattern: phase 2
-paint-servers/pattern/tiny-pattern-upscaled.svg fail pattern: phase 2
-paint-servers/pattern/transform-and-patternTransform.svg fail pattern: phase 2
-paint-servers/pattern/viewBox-via-xlink-href.svg fail pattern: phase 2
-paint-servers/pattern/with-patternTransform.svg fail pattern: phase 2
-paint-servers/pattern/with-viewBox.svg fail pattern: phase 2
-paint-servers/pattern/with-x-and-y.svg fail pattern: phase 2
+paint-servers/pattern/pattern-on-child.svg pass
+paint-servers/pattern/patternContentUnits-with-viewBox.svg pass
+paint-servers/pattern/patternContentUnits=objectBoundingBox.svg pass
+paint-servers/pattern/patternUnits=objectBoundingBox-with-percent.svg pass
+paint-servers/pattern/patternUnits=objectBoundingBox.svg pass
+paint-servers/pattern/patternUnits=userSpaceOnUse-with-percent.svg pass
+paint-servers/pattern/preserveAspectRatio.svg pass
+paint-servers/pattern/recursive-on-child.svg pass
+paint-servers/pattern/self-recursive-on-child.svg pass
+paint-servers/pattern/self-recursive.svg pass
+paint-servers/pattern/simple-case.svg pass
+paint-servers/pattern/text-child.svg fail text: phase 3
+paint-servers/pattern/tiny-pattern-upscaled.svg pass
+paint-servers/pattern/transform-and-patternTransform.svg pass
+paint-servers/pattern/viewBox-via-xlink-href.svg pass
+paint-servers/pattern/with-patternTransform.svg pass
+paint-servers/pattern/with-viewBox.svg pass
+paint-servers/pattern/with-x-and-y.svg pass
 paint-servers/radialGradient/attributes-via-xlink-href-complex-order.svg pass
 paint-servers/radialGradient/attributes-via-xlink-href-from-linearGradient.svg pass
 paint-servers/radialGradient/attributes-via-xlink-href-from-rect.svg pass
@@ -664,22 +664,22 @@ paint-servers/stop/stops-with-equal-offset-6.svg pass
 paint-servers/stop/zero-offset-in-the-middle.svg pass
 painting/color/inherit.svg pass
 painting/color/recursive-nested-context-without-color.svg pass
-painting/color/recursive-nested-context.svg fail marker: context-fill and context-stroke come with markers in phase 2
+painting/color/recursive-nested-context.svg pass
 painting/color/simple-case.svg pass
-painting/context/in-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/in-nested-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/in-nested-use-and-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/in-nested-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/on-shape-with-zero-size-bbox.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-gradient-and-gradient-transform.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-gradient-in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-gradient-on-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-pattern-and-transform-in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-pattern-in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-pattern-objectBoundingBox-in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-pattern-on-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/with-text.svg fail marker: context-fill and context-stroke come with markers in phase 2
+painting/context/in-marker.svg pass
+painting/context/in-nested-marker.svg pass
+painting/context/in-nested-use-and-marker.svg pass
+painting/context/in-nested-use.svg pass
+painting/context/in-use.svg pass
+painting/context/on-shape-with-zero-size-bbox.svg pass
+painting/context/with-gradient-and-gradient-transform.svg pass
+painting/context/with-gradient-in-use.svg pass
+painting/context/with-gradient-on-marker.svg pass
+painting/context/with-pattern-and-transform-in-use.svg pass
+painting/context/with-pattern-in-use.svg pass
+painting/context/with-pattern-objectBoundingBox-in-use.svg fail marker: context-fill pattern tiles match Chromium; the reference places the tiles from another bounding box (results.csv: Chrome fails)
+painting/context/with-pattern-on-marker.svg pass
+painting/context/with-text.svg fail text: phase 3
 painting/context/without-context-element.svg pass
 painting/display/bBox-impact.svg fail clipPath: phase 2
 painting/display/none-on-clipPath.svg fail clipPath: phase 2
@@ -697,7 +697,7 @@ painting/fill-opacity/on-parent.svg pass
 painting/fill-opacity/on-text.svg fail text: phase 3
 painting/fill-opacity/with-linearGradient.svg pass
 painting/fill-opacity/with-opacity.svg pass
-painting/fill-opacity/with-pattern.svg fail pattern: phase 2
+painting/fill-opacity/with-pattern.svg pass
 painting/fill-rule/evenodd.svg pass
 painting/fill-rule/nonzero.svg pass
 painting/fill/#RGB-color.svg pass
@@ -735,7 +735,7 @@ painting/fill/named-color-in-uppercase.svg pass
 painting/fill/named-color.svg pass
 painting/fill/none.svg pass
 painting/fill/not-trimmed-attribute-value.svg pass
-painting/fill/pattern-on-shape.svg fail pattern: phase 2
+painting/fill/pattern-on-shape.svg pass
 painting/fill/pattern-on-text.svg fail text: phase 3
 painting/fill/radial-gradient-on-shape.svg pass
 painting/fill/radial-gradient-on-text.svg fail text: phase 3
@@ -761,71 +761,71 @@ painting/fill/transparent.svg pass
 painting/fill/uppercase-rgb-color.svg pass
 painting/fill/valid-FuncIRI-with-a-fallback-ICC-color.svg fail icc-color: ICC colors in paint fallbacks are not supported; Chromium fails the same way
 painting/image-rendering/on-feImage.svg fail image: phase 2
-painting/image-rendering/optimizeSpeed-on-SVG.svg fail image: phase 2
-painting/image-rendering/optimizeSpeed.svg fail image: phase 2
+painting/image-rendering/optimizeSpeed-on-SVG.svg fail image: an SVG image renders as vector content, so image-rendering does not pixelate it, as in Chromium; the reference rasterizes it first
+painting/image-rendering/optimizeSpeed.svg fail image: nearest-neighbour texel edges fall on pixel centers at this scale and round to the other side than in the reference, which shifts single rows and columns
 painting/isolation/as-property.svg fail isolation: phase 2 (blend modes)
 painting/isolation/isolate.svg fail isolation: phase 2 (blend modes)
-painting/marker/default-clip.svg fail marker: phase 2
+painting/marker/default-clip.svg pass
 painting/marker/empty.svg pass
-painting/marker/inheritance-1.svg fail marker: phase 2
-painting/marker/inheritance-2.svg fail marker: phase 2
+painting/marker/inheritance-1.svg pass
+painting/marker/inheritance-2.svg pass
 painting/marker/invalid-child.svg pass
-painting/marker/marker-on-circle.svg fail marker: phase 2
-painting/marker/marker-on-line.svg fail marker: phase 2
-painting/marker/marker-on-polygon.svg fail marker: phase 2
-painting/marker/marker-on-polyline.svg fail marker: phase 2
-painting/marker/marker-on-rect.svg fail marker: phase 2
-painting/marker/marker-on-rounded-rect.svg fail marker: phase 2
-painting/marker/marker-on-text.svg fail marker: phase 2
+painting/marker/marker-on-circle.svg fail marker: SVG 2 markers on every basic shape; markers apply to path, line, polyline, and polygon only, as in Chromium (results.csv: Chrome fails)
+painting/marker/marker-on-line.svg pass
+painting/marker/marker-on-polygon.svg pass
+painting/marker/marker-on-polyline.svg pass
+painting/marker/marker-on-rect.svg fail marker: SVG 2 markers on every basic shape; markers apply to path, line, polyline, and polygon only, as in Chromium (results.csv: Chrome fails)
+painting/marker/marker-on-rounded-rect.svg fail marker: SVG 2 markers on every basic shape; markers apply to path, line, polyline, and polygon only, as in Chromium (results.csv: Chrome fails)
+painting/marker/marker-on-text.svg fail text: phase 3
 painting/marker/marker-with-a-negative-size.svg pass
-painting/marker/nested.svg fail marker: phase 2
-painting/marker/no-stroke-on-target.svg fail marker: phase 2
-painting/marker/on-ArcTo.svg fail marker: phase 2
-painting/marker/only-marker-end.svg fail marker: phase 2
-painting/marker/only-marker-mid.svg fail marker: phase 2
-painting/marker/only-marker-start.svg fail marker: phase 2
-painting/marker/orient=-45.svg fail marker: phase 2
-painting/marker/orient=0.25turn.svg fail marker: phase 2
-painting/marker/orient=1.5rad.svg fail marker: phase 2
-painting/marker/orient=30.svg fail marker: phase 2
-painting/marker/orient=40grad.svg fail marker: phase 2
-painting/marker/orient=9999.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-1.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-2.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-3.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-4.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-5.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-6.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-7.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-C-8.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-L.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-C-M-L.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L-C.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L-L-Z-Z-Z.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L-L.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L-M-C.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L-Z.svg fail marker: phase 2
-painting/marker/orient=auto-on-M-L.svg fail marker: phase 2
-painting/marker/orient=auto-start-reverse.svg fail marker: phase 2
-painting/marker/percent-values.svg fail marker: phase 2
-painting/marker/recursive-1.svg fail marker: phase 2
-painting/marker/recursive-2.svg fail marker: phase 2
-painting/marker/recursive-3.svg fail marker: phase 2
-painting/marker/recursive-4.svg fail marker: phase 2
-painting/marker/recursive-5.svg fail marker: phase 2
-painting/marker/target-with-subpaths-1.svg fail marker: phase 2
+painting/marker/nested.svg pass
+painting/marker/no-stroke-on-target.svg pass
+painting/marker/on-ArcTo.svg pass
+painting/marker/only-marker-end.svg pass
+painting/marker/only-marker-mid.svg pass
+painting/marker/only-marker-start.svg pass
+painting/marker/orient=-45.svg pass
+painting/marker/orient=0.25turn.svg pass
+painting/marker/orient=1.5rad.svg pass
+painting/marker/orient=30.svg pass
+painting/marker/orient=40grad.svg pass
+painting/marker/orient=9999.svg pass
+painting/marker/orient=auto-on-M-C-C-1.svg pass
+painting/marker/orient=auto-on-M-C-C-2.svg pass
+painting/marker/orient=auto-on-M-C-C-3.svg pass
+painting/marker/orient=auto-on-M-C-C-4.svg pass
+painting/marker/orient=auto-on-M-C-C-5.svg pass
+painting/marker/orient=auto-on-M-C-C-6.svg pass
+painting/marker/orient=auto-on-M-C-C-7.svg pass
+painting/marker/orient=auto-on-M-C-C-8.svg pass
+painting/marker/orient=auto-on-M-C-L.svg pass
+painting/marker/orient=auto-on-M-C-M-L.svg pass
+painting/marker/orient=auto-on-M-L-C.svg pass
+painting/marker/orient=auto-on-M-L-L-Z-Z-Z.svg fail marker: the path parser drops empty subpaths, so repeated closepath commands add no marker vertices (results.csv: Chrome fails)
+painting/marker/orient=auto-on-M-L-L.svg pass
+painting/marker/orient=auto-on-M-L-M-C.svg pass
+painting/marker/orient=auto-on-M-L-Z.svg fail marker: the bisector of a 180 degree turn is ambiguous; this renderer and Chromium both differ from the reference (results.csv: Chrome fails)
+painting/marker/orient=auto-on-M-L.svg pass
+painting/marker/orient=auto-start-reverse.svg pass
+painting/marker/percent-values.svg pass
+painting/marker/recursive-1.svg pass
+painting/marker/recursive-2.svg pass
+painting/marker/recursive-3.svg pass
+painting/marker/recursive-4.svg pass
+painting/marker/recursive-5.svg fail marker: Chromium breaks a marker reference cycle once for the document; this renderer drops the closing reference per instance, so one nested marker more renders
+painting/marker/target-with-subpaths-1.svg pass
 painting/marker/target-with-subpaths-2.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-painting/marker/the-marker-property-in-CSS.svg fail marker: phase 2
+painting/marker/the-marker-property-in-CSS.svg pass
 painting/marker/the-marker-property.svg pass
-painting/marker/with-a-large-stroke.svg fail marker: phase 2
-painting/marker/with-a-text-child.svg fail marker: phase 2
-painting/marker/with-an-image-child.svg fail marker: phase 2
-painting/marker/with-invalid-markerUnits.svg fail marker: phase 2
-painting/marker/with-markerUnits=userSpaceOnUse.svg fail marker: phase 2
+painting/marker/with-a-large-stroke.svg pass
+painting/marker/with-a-text-child.svg fail text: phase 3
+painting/marker/with-an-image-child.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+painting/marker/with-invalid-markerUnits.svg pass
+painting/marker/with-markerUnits=userSpaceOnUse.svg pass
 painting/marker/with-viewBox-1.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-painting/marker/with-viewBox-2.svg fail marker: phase 2
-painting/marker/zero-length-path-1.svg fail marker: phase 2
-painting/marker/zero-length-path-2.svg fail marker: phase 2
+painting/marker/with-viewBox-2.svg pass
+painting/marker/zero-length-path-1.svg pass
+painting/marker/zero-length-path-2.svg pass
 painting/marker/zero-sized-stroke.svg pass
 painting/marker/zero-sized.svg pass
 painting/mix-blend-mode/as-property.svg fail mix-blend-mode: phase 2
@@ -857,25 +857,25 @@ painting/opacity/invalid-value-2.svg pass
 painting/opacity/mixed-group-opacity.svg pass
 painting/opacity/on-an-invalid-element.svg pass
 painting/opacity/on-the-root-svg.svg pass
-painting/overflow/auto-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/overflow/inherit-on-marker-without-parent.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/overflow/inherit-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/overflow/scroll-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/overflow/visible-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/paint-order/duplicates.svg fail paint-order: phase 2
-painting/paint-order/fill-markers-stroke.svg fail paint-order: phase 2
-painting/paint-order/fill.svg fail paint-order: phase 2
-painting/paint-order/invalid.svg fail paint-order: phase 2
-painting/paint-order/markers-stroke.svg fail paint-order: phase 2
-painting/paint-order/markers.svg fail paint-order: phase 2
-painting/paint-order/normal.svg fail paint-order: phase 2
+painting/overflow/auto-on-marker.svg pass
+painting/overflow/inherit-on-marker-without-parent.svg pass
+painting/overflow/inherit-on-marker.svg pass
+painting/overflow/scroll-on-marker.svg pass
+painting/overflow/visible-on-marker.svg pass
+painting/paint-order/duplicates.svg pass
+painting/paint-order/fill-markers-stroke.svg pass
+painting/paint-order/fill.svg pass
+painting/paint-order/invalid.svg pass
+painting/paint-order/markers-stroke.svg pass
+painting/paint-order/markers.svg pass
+painting/paint-order/normal.svg pass
 painting/paint-order/on-text.svg fail paint-order: phase 2
 painting/paint-order/on-tspan.svg fail paint-order: phase 2
-painting/paint-order/stroke-invalid.svg fail paint-order: phase 2
-painting/paint-order/stroke-markers-fill.svg fail paint-order: phase 2
-painting/paint-order/stroke-markers.svg fail paint-order: phase 2
-painting/paint-order/stroke.svg fail paint-order: phase 2
-painting/paint-order/trailing-data.svg fail paint-order: phase 2
+painting/paint-order/stroke-invalid.svg pass
+painting/paint-order/stroke-markers-fill.svg pass
+painting/paint-order/stroke-markers.svg pass
+painting/paint-order/stroke.svg pass
+painting/paint-order/trailing-data.svg pass
 painting/shape-rendering/auto-on-circle.svg pass
 painting/shape-rendering/crispEdges-on-circle.svg pass
 painting/shape-rendering/geometricPrecision-on-circle.svg pass
@@ -883,7 +883,7 @@ painting/shape-rendering/inheritance.svg pass
 painting/shape-rendering/on-horizontal-line.svg pass
 painting/shape-rendering/optimizeSpeed-on-circle.svg pass
 painting/shape-rendering/optimizeSpeed-on-text.svg fail text: phase 3
-painting/shape-rendering/path-with-marker.svg fail marker: phase 2
+painting/shape-rendering/path-with-marker.svg pass
 painting/stroke-dasharray/0-n-with-butt-caps.svg pass
 painting/stroke-dasharray/0-n-with-round-caps.svg fail core stroker: the dash expansion drops zero-length dashes, so round caps draw no dots
 painting/stroke-dasharray/0-n-with-square-caps.svg fail core stroker: the dash expansion drops zero-length dashes, so square caps draw no dots
@@ -933,7 +933,7 @@ painting/stroke-opacity/on-parent.svg pass
 painting/stroke-opacity/on-text.svg fail text: phase 3
 painting/stroke-opacity/with-linearGradient.svg pass
 painting/stroke-opacity/with-opacity.svg pass
-painting/stroke-opacity/with-pattern.svg fail pattern: phase 2
+painting/stroke-opacity/with-pattern.svg pass
 painting/stroke-width/bold.svg pass
 painting/stroke-width/default.svg pass
 painting/stroke-width/negative.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
@@ -956,7 +956,7 @@ painting/stroke/none.svg pass
 painting/stroke/pattern-on-text.svg fail text: phase 3
 painting/stroke/pattern-with-objectBoundingBox-fallback-on-zero-bbox-shape.svg pass
 painting/stroke/pattern-with-objectBoundingBox-on-zero-bbox-shape.svg pass
-painting/stroke/pattern.svg fail pattern: phase 2
+painting/stroke/pattern.svg pass
 painting/stroke/radial-gradient-on-text.svg fail text: phase 3
 painting/stroke/radial-gradient.svg pass
 painting/visibility/bbox-impact-1.svg fail clipPath: phase 2
@@ -1113,52 +1113,52 @@ structure/defs/style-inheritance-on-text.svg fail text: phase 3
 structure/defs/style-inheritance.svg pass
 structure/g/deeply-nested-groups.svg pass
 structure/g/recursive-inheritance.svg pass
-structure/image/embedded-16bit-png.svg fail image: phase 2
-structure/image/embedded-gif.svg fail image: phase 2
-structure/image/embedded-jpeg-as-image-jpeg.svg fail image: phase 2
-structure/image/embedded-jpeg-as-image-jpg.svg fail image: phase 2
-structure/image/embedded-jpeg-without-mime.svg fail image: phase 2
-structure/image/embedded-png.svg fail image: phase 2
-structure/image/embedded-svg-with-text.svg fail image: phase 2
-structure/image/embedded-svg-without-mime.svg fail image: phase 2
-structure/image/embedded-svg.svg fail image: phase 2
-structure/image/embedded-svgz.svg fail image: phase 2
-structure/image/external-gif.svg fail image: phase 2
-structure/image/external-jpeg.svg fail image: phase 2
-structure/image/external-png.svg fail image: phase 2
-structure/image/external-svg-with-transform.svg fail image: phase 2
-structure/image/external-svg.svg fail image: phase 2
-structure/image/external-svgz.svg fail image: phase 2
+structure/image/embedded-16bit-png.svg pass
+structure/image/embedded-gif.svg pass
+structure/image/embedded-jpeg-as-image-jpeg.svg pass
+structure/image/embedded-jpeg-as-image-jpg.svg pass
+structure/image/embedded-jpeg-without-mime.svg pass
+structure/image/embedded-png.svg pass
+structure/image/embedded-svg-with-text.svg pass
+structure/image/embedded-svg-without-mime.svg pass
+structure/image/embedded-svg.svg pass
+structure/image/embedded-svgz.svg pass
+structure/image/external-gif.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/external-jpeg.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/external-png.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/external-svg-with-transform.svg pass
+structure/image/external-svg.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/external-svgz.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
 structure/image/float-size.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-structure/image/image-with-float-size-scaling.svg fail image: phase 2
-structure/image/no-height-non-square.svg fail image: phase 2
+structure/image/image-with-float-size-scaling.svg pass
+structure/image/no-height-non-square.svg pass
 structure/image/no-height-on-svg.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-structure/image/no-height.svg fail image: phase 2
+structure/image/no-height.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
 structure/image/no-width-and-height-on-svg.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-structure/image/no-width-and-height.svg fail image: phase 2
+structure/image/no-width-and-height.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
 structure/image/no-width-on-svg.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-structure/image/no-width.svg fail image: phase 2
-structure/image/preserveAspectRatio=none-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=none.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMaxYMax-meet-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMaxYMax-meet.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMaxYMax-slice-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMaxYMax-slice.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMidYMid-meet-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMidYMid-meet.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMidYMid-slice-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMidYMid-slice.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMinYMin-meet-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMinYMin-meet.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMinYMin-slice-on-svg.svg fail image: phase 2
-structure/image/preserveAspectRatio=xMinYMin-slice.svg fail image: phase 2
-structure/image/raster-image-and-size-with-odd-numbers.svg fail image: phase 2
+structure/image/no-width.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/preserveAspectRatio=none-on-svg.svg pass
+structure/image/preserveAspectRatio=none.svg pass
+structure/image/preserveAspectRatio=xMaxYMax-meet-on-svg.svg pass
+structure/image/preserveAspectRatio=xMaxYMax-meet.svg pass
+structure/image/preserveAspectRatio=xMaxYMax-slice-on-svg.svg pass
+structure/image/preserveAspectRatio=xMaxYMax-slice.svg pass
+structure/image/preserveAspectRatio=xMidYMid-meet-on-svg.svg pass
+structure/image/preserveAspectRatio=xMidYMid-meet.svg pass
+structure/image/preserveAspectRatio=xMidYMid-slice-on-svg.svg pass
+structure/image/preserveAspectRatio=xMidYMid-slice.svg pass
+structure/image/preserveAspectRatio=xMinYMin-meet-on-svg.svg pass
+structure/image/preserveAspectRatio=xMinYMin-meet.svg pass
+structure/image/preserveAspectRatio=xMinYMin-slice-on-svg.svg pass
+structure/image/preserveAspectRatio=xMinYMin-slice.svg pass
+structure/image/raster-image-and-size-with-odd-numbers.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
 structure/image/recursive-1.svg pass
-structure/image/recursive-2.svg fail image: phase 2
-structure/image/url-to-png.svg fail image: phase 2
-structure/image/url-to-svg.svg fail image: phase 2
-structure/image/width-and-height-set-to-auto.svg fail image: phase 2
-structure/image/with-transform.svg fail image: phase 2
+structure/image/recursive-2.svg pass
+structure/image/url-to-png.svg fail image: network references never load, by design
+structure/image/url-to-svg.svg fail image: network references never load, by design
+structure/image/width-and-height-set-to-auto.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+structure/image/with-transform.svg pass
 structure/image/with-zero-width-and-height.svg pass
 structure/image/zero-height.svg pass
 structure/image/zero-width.svg pass
@@ -1275,9 +1275,9 @@ structure/transform-origin/on-clippath.svg fail clipPath: transform-origin is pa
 structure/transform-origin/on-gradient-object-bounding-box.svg pass
 structure/transform-origin/on-gradient-user-space-on-use.svg pass
 structure/transform-origin/on-group.svg pass
-structure/transform-origin/on-image.svg fail image: transform-origin is parsed; image renders in phase 2 package F
-structure/transform-origin/on-pattern-object-bounding-box.svg fail pattern: transform-origin is parsed; pattern renders in phase 2 package F
-structure/transform-origin/on-pattern-user-space-on-use.svg fail pattern: transform-origin is parsed; pattern renders in phase 2 package F
+structure/transform-origin/on-image.svg pass
+structure/transform-origin/on-pattern-object-bounding-box.svg pass
+structure/transform-origin/on-pattern-user-space-on-use.svg pass
 structure/transform-origin/on-shape.svg pass
 structure/transform-origin/on-text-path.svg fail text: phase 3
 structure/transform-origin/on-text.svg fail text: phase 3

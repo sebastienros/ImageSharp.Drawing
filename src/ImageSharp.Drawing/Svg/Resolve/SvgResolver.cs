@@ -37,7 +37,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="TakeNodes(int, out int)"/> takes resolved nodes out of the main paint order.
 /// </para>
 /// </remarks>
-internal sealed class SvgResolver
+internal sealed partial class SvgResolver
 {
     /// <summary>
     /// The control point distance of a cubic Bézier quarter circle, as a fraction of the radius.
@@ -75,6 +75,7 @@ internal sealed class SvgResolver
     internal SvgResolver(SvgElementTree tree, SvgLoadOptions options)
     {
         this.tree = tree;
+        this.loadOptions = options;
         this.maxNodes = options.Limits.MaxNodes;
         this.maxDepth = options.Limits.MaxNestingDepth;
         this.MaxImagePixels = options.Limits.MaxImagePixels;
@@ -86,12 +87,7 @@ internal sealed class SvgResolver
         // rem in the font size of the root refers to the initial font size; the other root lengths refer to the root
         // font size. Viewport units refer to the intrinsic size, which the root size defines, so the root itself uses
         // the default size.
-        this.rootStyle = SvgComputedStyle.Compute(
-            in tree.GetStyle(0),
-            in this.initialStyle,
-            in this.initialStyle,
-            SvgUnitBasis.ForRoot(options.Dpi),
-            SvgElementKind.Svg);
+        this.rootStyle = SvgComputedStyle.ComputeRoot(in tree.GetStyle(0), in this.initialStyle, SvgUnitBasis.ForRoot(options.Dpi));
 
         SvgUnitBasis rootUnits = new(options.Dpi, this.rootStyle.FontSize, SvgUnitBasis.DefaultViewportSize);
         this.intrinsicSize = this.ComputeIntrinsicSize(rootUnits, out this.rootViewBox, out this.viewBoxDisablesRendering);
@@ -277,6 +273,7 @@ internal sealed class SvgResolver
             case SvgElementKind.Line:
             case SvgElementKind.Polyline:
             case SvgElementKind.Polygon:
+            case SvgElementKind.Image:
                 break;
             case SvgElementKind.Symbol when viaUse:
                 break;
@@ -326,6 +323,10 @@ internal sealed class SvgResolver
 
             case SvgElementKind.Use:
                 this.ResolveUse(index, in context);
+                break;
+
+            case SvgElementKind.Image:
+                this.ResolveImage(index, in context);
                 break;
 
             default:
@@ -482,7 +483,9 @@ internal sealed class SvgResolver
 
         float opacity = context.Style.Opacity;
         int group = this.BeginGroup(opacity);
+        this.EnterUseContext(index, in context);
         this.ResolveElement(target, in instance, use.Width, use.Height, true);
+        this.ExitContextElement();
         this.ExitReference();
         this.EndGroup(group, opacity);
     }
@@ -619,8 +622,8 @@ internal sealed class SvgResolver
     /// An element that draws nothing contributes nothing: <c>display: none</c>, invalid or empty geometry, a missing or
     /// cyclic <c>use</c> reference, and elements that do not render (definitions, paint servers, unknown elements).
     /// <c>visibility: hidden</c> and <c>opacity: 0</c> elements still contribute, because SVG excludes neither from the
-    /// box. A line contributes a box with a zero side. Kinds that render from phase 2 (<c>image</c>, <c>switch</c>) are
-    /// not handled yet and contribute nothing; the packages that render them extend the switch in
+    /// box. A line contributes a box with a zero side. An <c>image</c> contributes its viewport. Kinds that render from
+    /// phase 2 and are not handled yet (<c>switch</c>) contribute nothing; the packages that render them extend the switch in
     /// <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/>.
     /// </para>
     /// <para>
@@ -666,6 +669,9 @@ internal sealed class SvgResolver
             case SvgElementKind.G:
             case SvgElementKind.A:
                 return this.TryGetChildrenBoundingBox(element, in context, Matrix3x2.Identity, context.Viewport, out bounds);
+
+            case SvgElementKind.Image:
+                return this.TryGetImageBoundingBox(element, in context, out bounds);
 
             case SvgElementKind.Svg:
             case SvgElementKind.Symbol:
@@ -777,6 +783,11 @@ internal sealed class SvgResolver
     /// <param name="context">The context of the element.</param>
     private void ResolveShape(int index, SvgElementKind kind, in SvgResolveContext context)
     {
+        if (this.TryResolveMarkedShape(index, kind, in context))
+        {
+            return;
+        }
+
         SvgComputedStyle style = context.Style;
 
         // visibility hides the shape itself; children of hidden groups can still render, so this is checked per shape.
@@ -793,13 +804,12 @@ internal sealed class SvgResolver
 
         RectangleF bounds = path.Bounds;
         SizeF viewport = context.Viewport;
-        float fontSize = style.FontSize;
         float opacity = style.Opacity;
 
         // A line has no interior, so it is never filled.
         Brush? fill = kind == SvgElementKind.Line
             ? null
-            : this.paints.ResolvePaint(style.Fill, style.Color, style.FillOpacity, bounds, viewport, fontSize);
+            : this.ResolvePaint(style.Fill, style.FillOpacity, bounds, in context);
 
         Pen? stroke = null;
         float strokeWidth = style.StrokeWidth.Unit == SvgLengthUnit.Percent
@@ -808,7 +818,7 @@ internal sealed class SvgResolver
 
         if (strokeWidth > 0F)
         {
-            Brush? strokeBrush = this.paints.ResolvePaint(style.Stroke, style.Color, style.StrokeOpacity, bounds, viewport, fontSize);
+            Brush? strokeBrush = this.ResolvePaint(style.Stroke, style.StrokeOpacity, bounds, in context);
             if (strokeBrush is not null)
             {
                 stroke = this.CreatePen(strokeBrush, strokeWidth, in style, viewport);

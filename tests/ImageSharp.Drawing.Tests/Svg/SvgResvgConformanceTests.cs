@@ -257,7 +257,10 @@ public class SvgResvgConformanceTests
     {
         try
         {
-            SvgDocument document = SvgDocument.Load(svgPath);
+            // Image files load from the directory of the test, as a caller that trusts that directory would set it.
+            // References that leave it, such as ../../../resources, are refused by the security rules of the option.
+            SvgLoadOptions options = new() { ResourceBaseDirectory = IOPath.GetDirectoryName(svgPath) };
+            SvgDocument document = SvgDocument.Load(svgPath, options);
             image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, image.Width, image.Height))));
             return null;
         }

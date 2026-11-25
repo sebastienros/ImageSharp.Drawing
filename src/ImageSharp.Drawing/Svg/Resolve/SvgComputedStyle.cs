@@ -163,8 +163,8 @@ internal struct SvgComputedStyle
     /// <summary>
     /// Gets or sets <c>overflow</c>. Not inherited. The value includes the SVG 2 user agent style sheet rule that sets
     /// <see cref="SvgOverflow.Hidden"/> on <c>svg</c>, <c>symbol</c>, <c>image</c>, <c>marker</c>, and <c>pattern</c>
-    /// elements that do not specify the property. The rule excludes the root element, but the root element always clips
-    /// its viewport, so the value of the root does not matter.
+    /// elements that do not specify the property. The rule excludes the root element, which computes through
+    /// <see cref="ComputeRoot"/>; the root element always clips its viewport, but its value is what <c>inherit</c> takes.
     /// </summary>
     public SvgOverflow Overflow { readonly get; set; }
 
@@ -395,6 +395,28 @@ internal struct SvgComputedStyle
                     ComputeExtended(property, extended!, ref style, units);
                     break;
             }
+        }
+
+        return style;
+    }
+
+    /// <summary>
+    /// Computes the style of the root element. It is <see cref="Compute"/> with the initial style as the parent, except
+    /// that the user agent style sheet rule for <see cref="Overflow"/> does not apply: the rule selects
+    /// <c>svg:not(:root)</c>. The root clips its viewport whatever its value, but a child that inherits
+    /// <c>overflow</c> from the root, such as a <c>marker</c> with <c>overflow="inherit"</c>, gets
+    /// <see cref="SvgOverflow.Visible"/>.
+    /// </summary>
+    /// <param name="specified">The cascaded specified style of the root element.</param>
+    /// <param name="initial">The initial style.</param>
+    /// <param name="units">The unit basis of the root element.</param>
+    /// <returns>The computed style.</returns>
+    public static SvgComputedStyle ComputeRoot(in SvgSpecifiedStyle specified, in SvgComputedStyle initial, SvgUnitBasis units)
+    {
+        SvgComputedStyle style = Compute(in specified, in initial, in initial, units, SvgElementKind.Svg);
+        if (!specified.IsSpecified(SvgPropertyId.Overflow))
+        {
+            style.Overflow = initial.Overflow;
         }
 
         return style;
