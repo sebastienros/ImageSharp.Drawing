@@ -110,6 +110,8 @@ Tests per category in `resvg-test-suite`:
 
 Per category in the resvg repository: filters 416, masking 100, paint-servers 163, painting 314, shapes 133, structure 267, text 387.
 
+The conformance runner is `SvgResvgConformanceTests` in the test project. It runs every test of `resvg-test-suite` and checks the outcome against `tests/ImageSharp.Drawing.Tests/Svg/ResvgExpectedResults.txt`, which also describes the pass criterion and its calibration. Without the suite the test returns early. It writes `results.tsv` (outcome and mismatched pixels per test), `summary.txt` (counts per category), and the render of every failing test to `tests/Images/ActualOutput/Svg/Resvg`.
+
 Licenses:
 
 - `resvg-test-suite`: MIT, Copyright (c) 2018 Reizner Evgeniy (`LICENSE`).
@@ -129,7 +131,8 @@ dotnet artifacts/bin/tests/ImageSharp.Drawing.Benchmarks/Release/net10.0/ImageSh
 ```
 
 - `--svg-info` prints the libvips version and configuration and renders the Tiger with both renderers, to prove that the native libraries load.
-- `--verify svg <long edge>` writes, for every corpus document, the exact input bytes (`<name>.svg`) and the output of each renderer (`<name>-svgskia.png`, `<name>-netvips.png`) to `svg-<long edge>-verify` next to the assembly. Render the `.svg` files with `render-svg.js --long-edge <long edge> --out-dir <dir>` and compare. Design section 9.3 asks for this check before benchmark numbers count.
+- `--verify svg <long edge>` writes, for every corpus document, the exact input bytes (`<name>.svg`) and the output of each renderer (`<name>-svgskia.png`, `<name>-netvips.png`, `<name>-imagesharp.png`) to `svg-<long edge>-verify` next to the assembly. It also checks that the ImageSharp.Drawing retained scene gives the same pixels as a fresh render. Render the `.svg` files with `render-svg.js --long-edge <long edge> --out-dir <dir>` and compare. Design section 9.3 asks for this check before benchmark numbers count.
+- `--profile svg <iterations> <corpus entry> <long edge> [single]` prints the mean time and the allocated bytes of each ImageSharp.Drawing stage: the XML read with the cascade, the resolve stage, the emit stage, the scene build, and the scene render. `single` uses one thread.
 - A `--job` argument replaces the default long job of the benchmark project.
 
 The corpus entries (`SvgBenchmarkCorpus`) are `Tiger`, `Paris30k`, `Icons` (all 40 icons in one operation), `SoftIceCream`, `Moose`, and `StyledLandscape`. The benchmarks give `paris-30k.svg` a 1096 x 1060 viewport in memory, because the file has none. The long-edge sizes are 100, 1000, and 4000 pixels.

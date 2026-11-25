@@ -2,6 +2,7 @@
 // Licensed under the Six Labors Split License.
 
 using BenchmarkDotNet.Attributes;
+using SixLabors.ImageSharp.Drawing.Svg;
 using SkiaSharp;
 using Svg.Skia;
 
@@ -13,12 +14,14 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// <remarks>
 /// <para>
 /// Svg.Skia parses the document, builds its model, and records an <see cref="SKPicture"/>.
+/// ImageSharp.Drawing parses the document, applies the cascade, and resolves it to its render model, the
+/// <see cref="SvgDocument"/>; recording canvas commands is part of a render, so it is measured in <see cref="RenderSvg"/>.
 /// NetVips does not take part: libvips renders lazily and cannot separate loading from rendering.
 /// It is measured in <see cref="LoadAndRenderSvg"/>.
 /// </para>
 /// <para>
 /// Loading does not depend on the output size, so this class has no size parameter.
-/// Svg.Skia loads on one thread, so there is no thread configuration.
+/// Both renderers load on one thread, so there is no thread configuration.
 /// </para>
 /// </remarks>
 [MemoryDiagnoser]
@@ -60,7 +63,20 @@ public class LoadSvg
         return width;
     }
 
-    // Package C: add the ImageSharp.Drawing method here. It loads every document with
-    // SvgDocument.Load(stream) from a MemoryStream over the same bytes and returns a value that
-    // depends on the result, for example the summed SvgDocument.Size.Width.
+    /// <summary>
+    /// Loads every document of the entry with <see cref="SvgDocument.Load(Stream)"/>: parse, cascade, and resolve to
+    /// the render model.
+    /// </summary>
+    /// <returns>The summed intrinsic width, so that the work cannot be removed.</returns>
+    [Benchmark]
+    public float ImageSharp()
+    {
+        float width = 0;
+        foreach (byte[] document in this.documents)
+        {
+            width += SvgImageSharpRenderer.Load(document).Size.Width;
+        }
+
+        return width;
+    }
 }

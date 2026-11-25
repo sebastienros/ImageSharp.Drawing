@@ -244,6 +244,27 @@ public class SvgDocumentTests
         Assert.Equal(Color.Lime.ToPixel<TPixel>(), image[45, 20]);
     }
 
+    // A gradient in bounding box units cannot map onto a bounding box without width or height, such as the box of a
+    // vertical line. SVG ignores the gradient: the paint uses its fallback, or paints nothing without one, as in browsers
+    // and resvg. resvg test suite: painting/stroke/gradient-with-objectBoundingBox-and-fallback-on-lines.svg.
+    [Theory]
+    [WithBlankImage(40, 40, PixelTypes.Rgba32)]
+    public void Paint_BoundingBoxGradientOnALineUsesTheFallback<TPixel>(TestImageProvider<TPixel> provider)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
+        SvgDocument document = SvgDocument.Parse(
+            SvgOpen + " width=\"40\" height=\"40\">"
+            + "<linearGradient id=\"g\"><stop offset=\"0\" stop-color=\"red\"/><stop offset=\"1\" stop-color=\"blue\"/></linearGradient>"
+            + "<line x1=\"10\" y1=\"0\" x2=\"10\" y2=\"40\" stroke=\"url(#g) #00ff00\" stroke-width=\"4\"/>"
+            + "<line x1=\"30\" y1=\"0\" x2=\"30\" y2=\"40\" stroke=\"url(#g)\" stroke-width=\"4\"/></svg>");
+
+        using Image<TPixel> image = provider.GetImage();
+        image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, PointF.Empty)));
+
+        Assert.Equal(Color.Lime.ToPixel<TPixel>(), image[10, 20]);
+        Assert.Equal(Color.Transparent.ToPixel<TPixel>(), image[30, 20]);
+    }
+
     [Theory]
     [WithBlankImage(300, 300, PixelTypes.Rgba32)]
     public void DrawSvg_ConcurrentRendersOfOneDocumentMatch<TPixel>(TestImageProvider<TPixel> provider)

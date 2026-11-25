@@ -74,10 +74,14 @@ internal sealed class SvgPaintCache
         if (kind == SvgPaintKind.Url)
         {
             // A reference that names a gradient paints the gradient, which can be nothing. Any other reference uses the
-            // fallback, and without one the paint is none.
+            // fallback, and without one the paint is none. A gradient in bounding box units maps the unit square to the
+            // bounding box, which a box without width or height (a horizontal or vertical line) cannot do; SVG ignores
+            // the gradient then, so the reference also uses the fallback, as in browsers and resvg.
             if (paint.Reference is not null
                 && this.tree.TryGetElementById(paint.Reference, out int element)
-                && this.tree[element].Kind is SvgElementKind.LinearGradient or SvgElementKind.RadialGradient)
+                && this.tree[element].Kind is SvgElementKind.LinearGradient or SvgElementKind.RadialGradient
+                && (this.GetGradient(element).Attributes.Units == SvgGradientUnits.UserSpaceOnUse
+                    || (bounds.Width > 0F && bounds.Height > 0F)))
             {
                 return this.GetGradientBrush(element, opacity, bounds, viewport, fontSize);
             }
@@ -259,13 +263,6 @@ internal sealed class SvgPaintCache
 
         // No stops paint nothing, as if the paint were none. One stop paints its color.
         if (stops.Length == 0)
-        {
-            return null;
-        }
-
-        // In bounding box units the geometry maps the unit square to the bounding box. A box without width or height
-        // has no such mapping, and the element is not painted.
-        if (!userSpace && (box.Width <= 0F || box.Height <= 0F))
         {
             return null;
         }

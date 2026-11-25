@@ -80,8 +80,15 @@ public class Program
                 case "paris-webgpu":
                     Drawing.FillParis.ProfileWebGpu(iterations);
                     break;
+                case "svg":
+                    // Usage: --profile svg <iterations> <corpus entry> <longEdge> [single]
+                    string entry = args.Length > 3 ? args[3] : "Tiger";
+                    int longEdge = args.Length > 4 && int.TryParse(args[4], out int parsedLongEdge) ? parsedLongEdge : 1000;
+                    bool singleThreaded = args.Length > 5 && args[5] == "single";
+                    Svg.SvgImageSharpRenderer.Profile(entry, longEdge, iterations, singleThreaded);
+                    break;
                 default:
-                    Console.WriteLine($"Unknown profile target: {target}. Use 'paris-cpu' or 'paris-webgpu'.");
+                    Console.WriteLine($"Unknown profile target: {target}. Use 'paris-cpu', 'paris-webgpu', or 'svg'.");
                     break;
             }
 

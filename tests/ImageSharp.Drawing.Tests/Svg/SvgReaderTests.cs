@@ -218,6 +218,36 @@ public class SvgReaderTests
         Assert.True(tree.GetPath(4).IsComplete);
     }
 
+    // SVG path data must start with a move command. Any other first command is the first error, so nothing renders.
+    // resvg test suite: shapes/path/A.svg.
+    [Fact]
+    public void Read_PathDataWithoutAnInitialMoveIsAnError()
+    {
+        SvgElementTree tree = Read("<path d=\"A 5 5 0 0 1 50 50\"/><path d=\" m 5 5 l 10 0\"/>");
+
+        ref readonly SvgPathAttributes withoutMove = ref tree.GetPath(1);
+        Assert.False(withoutMove.IsComplete);
+        Assert.Empty(withoutMove.Path!.Flatten());
+
+        Assert.True(tree.GetPath(2).IsComplete);
+    }
+
+    // A command after a close path starts a new subpath at the start point of the closed one, for absolute and relative
+    // commands. resvg test suite: shapes/path/M-L-Z-A.svg and M-L-Z-L-L.svg.
+    [Fact]
+    public void Read_CommandAfterClosePathStartsAtTheSubpathStart()
+    {
+        SvgElementTree tree = Read("<path d=\"M 10 50 L 10 10 L 50 10 z L 100 100\"/><path d=\"M 10 50 L 10 10 L 50 10 z l 0 50\"/>");
+
+        ISimplePath[] absolute = [.. tree.GetPath(1).Path!.Flatten()];
+        Assert.Equal(2, absolute.Length);
+        Assert.Equal([new PointF(10, 50), new PointF(100, 100)], absolute[1].Points.ToArray());
+
+        ISimplePath[] relative = [.. tree.GetPath(2).Path!.Flatten()];
+        Assert.Equal(2, relative.Length);
+        Assert.Equal([new PointF(10, 50), new PointF(10, 100)], relative[1].Points.ToArray());
+    }
+
     [Fact]
     public void Read_KeepsPointsUpToTheFirstError()
     {

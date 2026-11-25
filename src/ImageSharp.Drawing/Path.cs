@@ -372,8 +372,11 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
     /// <returns><see langword="true"/> if the whole path data parsed without error; otherwise, <see langword="false"/>.</returns>
     internal static bool TryParseSvgPathPrefix(ReadOnlySpan<char> svgPath, out IPath value)
     {
+        // SVG path data must start with a move command. Any other first command is the first error, so nothing renders.
+        // The public parser accepts such data and starts at the origin, and keeps that behavior.
+        ReadOnlySpan<char> trimmed = svgPath.TrimStart();
         PathBuilder builder = new();
-        bool complete = TryAppendSvgPath(svgPath, builder);
+        bool complete = (trimmed.Length == 0 || trimmed[0] is 'M' or 'm') && TryAppendSvgPath(svgPath, builder);
         value = builder.Build();
         return complete;
     }
@@ -582,7 +585,9 @@ public class Path : IPath, ISimplePath, IInternalPathOwner
                     c = point;
                     break;
                 case 'Z':
-                    _ = builder.CloseFigure();
+                    // A command after a close starts a new subpath at the start point of the closed one, so the builder
+                    // moves there; a following move command replaces that start point.
+                    _ = builder.CloseFigure().MoveTo(first);
                     c = first;
                     break;
                 case '~':
