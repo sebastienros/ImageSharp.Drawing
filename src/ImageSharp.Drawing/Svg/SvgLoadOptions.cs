@@ -63,9 +63,10 @@ public sealed class SvgLoadOptions
 
     /// <summary>
     /// Gets or sets the language tags that the <c>systemLanguage</c> attribute matches, most preferred first. A listed
-    /// language in the attribute matches a tag that is equal to it, or that starts with it followed by <c>-</c>, ignoring
-    /// case. The default is <c>en</c>; it does not follow the culture of the machine, so the output is the same
-    /// everywhere. An empty list matches no language.
+    /// language in the attribute matches a tag that is equal to it, ignoring case. It also matches when one of the two
+    /// starts with the other followed by <c>-</c>, so <c>en</c> matches <c>en-US</c> and <c>en-US</c> matches <c>en</c>.
+    /// The default is <c>en</c>; it does not follow the culture of the machine, so the output is the same everywhere.
+    /// An empty list matches no language.
     /// </summary>
     /// <remarks>
     /// Setting the property copies the list, so later changes to the source list have no effect.
