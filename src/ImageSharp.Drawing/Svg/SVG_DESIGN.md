@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: draft for discussion. Nothing in this document is implemented.
+Status: accepted. The implementation plan for phases 0 and 1 is in `SVG_IMPLEMENTATION.md`.
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -121,7 +121,7 @@ The resolve stage turns the element tree into a flat render model. After this st
 - Resolve units to user-space pixels against the viewport and DPI.
 - Convert every shape to an `IPath` one time. The path is in user space and does not depend on the output size.
 - Resolve `href` chains for gradients and patterns. Build each brush one time and share it. Deduplicate solid brushes and pens by value.
-- Resolve `use` and `symbol` by instancing. An instance references the shared subtree and adds a transform. It does not copy nodes.
+- Resolve `use` and `symbol` by instancing. Each instance gets its own render nodes, because referenced content inherits style from the `use` element. The instances share geometry and paint objects.
 - Expand markers into ordinary nodes.
 - Resolve `objectBoundingBox` units where the bounding box is static.
 - Remove nodes that cannot render: `display: none`, zero-size shapes, invalid references, and reference cycles.
@@ -329,12 +329,12 @@ Each phase ships with conformance results and benchmark numbers.
 
 ## 13. Open Questions
 
-1. **Location.** In the core package under `src/ImageSharp.Drawing/Svg/`, like `Barcodes/`, or a separate `SixLabors.ImageSharp.Drawing.Svg` package? The proposal assumes the core package: it adds no dependency and the assembly is trimmable. The maintainers decide.
-2. **Decoder integration.** Should an SVG `IImageDecoder` exist, and in which package?
+1. **Location.** Decided: the core package under `src/ImageSharp.Drawing/Svg/`, like `Barcodes/`. It adds no dependency and the assembly is trimmable.
+2. **Decoder integration.** Deferred to phase 5. Should an SVG `IImageDecoder` exist, and in which package?
 3. **Shared parser with Fonts.** Should the OpenType SVG glyph interpreter in SixLabors.Fonts and this feature share code?
 4. **CSS depth for phase 1.** Simple selectors cover most design-tool exports. A full selector engine is a larger piece of work.
 5. **Text fonts.** Which default font and fallback rules apply when the document names a font that is not installed?
-6. **Phase 1 cut.** Is the phase 1 list the right first release?
+6. **Phase 1 cut.** Decided: the phase 1 list in section 11 is the first release.
 
 ## Sources
 
