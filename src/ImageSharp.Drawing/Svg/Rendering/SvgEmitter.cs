@@ -16,12 +16,12 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// paths, brushes, and pens come from the document.
 /// </para>
 /// <para>
-/// Canvas state follows a fixed pattern. Each open scope (the root clip, a layer, a viewport clip) records the save count
-/// at which it starts, its base. A draw node needs the canvas transform <c>node transform × viewport transform × caller
-/// transform</c> and its fill rule. The emitter creates one <see cref="DrawingOptions"/> per distinct (transform, fill
-/// rule, inside a layer) key that the call uses, lazily, and switches the canvas to it with one restore to the scope base
-/// and one save, only when the key changes between consecutive draw nodes. Opening or closing a scope restores to the
-/// scope base, so a scope never leaks options into its parent.
+/// Canvas state follows a fixed pattern. Each open scope (the root clip, a layer, a mask layer, a viewport or clip-path
+/// clip) records the save count at which it starts, its base. A draw node needs the canvas transform <c>node transform ×
+/// viewport transform × caller transform</c> and its fill rule. The emitter creates one <see cref="DrawingOptions"/> per
+/// distinct (transform, fill rule, inside a layer) key that the call uses, lazily, and switches the canvas to it with one
+/// restore to the scope base and one save, only when the key changes between consecutive draw nodes. Opening or closing a
+/// scope restores to the scope base, so a scope never leaks options into its parent.
 /// </para>
 /// <para>
 /// Content inside a layer draws with normal source-over compositing at full blend percentage, because the layer is an
@@ -37,7 +37,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// and fills it under the node transform. This costs an outline per such stroke per render.
 /// </para>
 /// </remarks>
-internal static class SvgEmitter
+internal static partial class SvgEmitter
 {
     /// <summary>
     /// The scope stack depth that the emitter keeps on the stack. Deeper documents allocate an array.
@@ -110,7 +110,23 @@ internal static class SvgEmitter
 
                     canvas.RestoreTo(state.ScopeBase);
                     scopes[depth++] = (state.ScopeBase << 1) | 1;
-                    state.BeginLayer(bounds, node.Opacity);
+                    state.BeginLayer(bounds, node.Opacity, node.BlendMode);
+                    break;
+                }
+
+                case SvgRenderNodeKind.BeginMask:
+                {
+                    // A mask node has the bounds of the layer that it masks, so both resolve to the same rectangle.
+                    Rectangle bounds = ToLayerBounds(MapBounds(node.Bounds, viewport), destination);
+                    if (bounds.Width <= 0 || bounds.Height <= 0)
+                    {
+                        i = node.End;
+                        continue;
+                    }
+
+                    canvas.RestoreTo(state.ScopeBase);
+                    scopes[depth++] = (state.ScopeBase << 1) | 1;
+                    state.BeginMask(bounds, node.MaskMode);
                     break;
                 }
 
@@ -135,6 +151,7 @@ internal static class SvgEmitter
 
                 case SvgRenderNodeKind.EndLayer:
                 case SvgRenderNodeKind.EndClip:
+                case SvgRenderNodeKind.EndMask:
                 {
                     // Restoring to the base of the parent scope closes the scope and every state saved inside it.
                     int scope = scopes[--depth];
@@ -247,7 +264,7 @@ internal static class SvgEmitter
     /// The per-render state of the emitter: the canvas, the transforms, the drawing options created so far, and the
     /// state of the scope that receives the next command.
     /// </summary>
-    private ref struct EmitState
+    private ref partial struct EmitState
     {
         private readonly DrawingCanvas canvas;
         private readonly ReadOnlySpan<Matrix3x2> transforms;
@@ -256,9 +273,17 @@ internal static class SvgEmitter
         private readonly GraphicsOptions innerGraphics;
         private readonly float textContrast;
 
-        // One slot per key: ((transform * 2) + even-odd bit) * 2 + layer bit.
+        // One slot per key: ((transform * 2) + even-odd bit) * 2 + layer bit. Keys of aliased draws follow, offset by the
+        // length of this array; see GetAliasedKey.
         private readonly DrawingOptions?[] options;
         private DrawingOptions? layerContentOptions;
+
+        // Created on first use in a render, so a document without masks or aliased draws allocates none of them. The C#
+        // compiler requires all fields of a partial struct in one declaration.
+        private GraphicsOptions? maskGraphics;
+        private GraphicsOptions? outerAliasedGraphics;
+        private GraphicsOptions? innerAliasedGraphics;
+        private DrawingOptions?[]? aliasedOptions;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EmitState"/> struct.
@@ -281,6 +306,10 @@ internal static class SvgEmitter
             this.innerGraphics.AlphaCompositionMode = PixelAlphaCompositionMode.SrcOver;
             this.options = new DrawingOptions?[transforms.Length * 4];
             this.layerContentOptions = null;
+            this.maskGraphics = null;
+            this.outerAliasedGraphics = null;
+            this.innerAliasedGraphics = null;
+            this.aliasedOptions = null;
             this.ScopeBase = 0;
             this.LayerDepth = 0;
             this.CurrentKey = -1;
@@ -316,21 +345,58 @@ internal static class SvgEmitter
             => (((transformIndex * 2) + (rule == IntersectionRule.EvenOdd ? 1 : 0)) * 2) + (this.LayerDepth > 0 ? 1 : 0);
 
         /// <summary>
-        /// Records the fill and then the stroke of a draw node, as SVG paints them.
+        /// Records the fill and the stroke of a draw node, in the order of its <c>paint-order</c>.
         /// </summary>
         /// <param name="node">The draw node.</param>
         public void DrawNode(in SvgRenderNode node)
         {
             int key = this.GetKey(node.TransformIndex, node.FillRule);
+            if ((node.Flags & SvgDrawFlags.Aliased) != 0)
+            {
+                key = this.GetAliasedKey(key);
+            }
+
+            if ((node.Flags & SvgDrawFlags.StrokeFirst) != 0)
+            {
+                this.StrokeNode(in node, key);
+                this.FillNode(in node, key);
+                return;
+            }
+
+            this.FillNode(in node, key);
+            this.StrokeNode(in node, key);
+        }
+
+        /// <summary>
+        /// Records the fill of a draw node.
+        /// </summary>
+        /// <param name="node">The draw node.</param>
+        /// <param name="key">The options key of the node.</param>
+        private void FillNode(in SvgRenderNode node, int key)
+        {
             if (node.Fill is not null)
             {
                 this.SetState(key);
                 this.canvas.Fill(node.Fill, node.Path!);
             }
+        }
 
+        /// <summary>
+        /// Records the stroke of a draw node.
+        /// </summary>
+        /// <param name="node">The draw node.</param>
+        /// <param name="key">The options key of the node.</param>
+        private void StrokeNode(in SvgRenderNode node, int key)
+        {
             Pen? stroke = node.Stroke;
             if (stroke is null)
             {
+                return;
+            }
+
+            if ((node.Flags & SvgDrawFlags.NonScalingStroke) != 0)
+            {
+                this.StrokeNonScaling(in node, stroke, key);
                 return;
             }
 
@@ -357,7 +423,8 @@ internal static class SvgEmitter
             IPath outline = stroke.GeneratePath(scaled, stroke.StrokeWidth * scale)
                 .Transform(Matrix4x4.CreateScale(1F / scale, 1F / scale, 1F));
 
-            this.SetState(this.GetKey(node.TransformIndex, IntersectionRule.NonZero));
+            // The outline fills with the non-zero rule: clearing the even-odd bit of the key keeps the other state.
+            this.SetState(key & ~EvenOddKeyBit);
             this.canvas.Fill(stroke.StrokeFill, outline);
         }
 
@@ -366,12 +433,18 @@ internal static class SvgEmitter
         /// </summary>
         /// <param name="bounds">The layer bounds in canvas coordinates before the caller transform.</param>
         /// <param name="opacity">The layer opacity.</param>
-        public void BeginLayer(Rectangle bounds, float opacity)
+        /// <param name="blendMode">The blend mode of the layer.</param>
+        public void BeginLayer(Rectangle bounds, float opacity, SvgBlendMode blendMode)
         {
             // The outermost layer composites with the caller's graphics options; nested layers composite inside their
-            // isolated parent. The layer opacity scales the blend percentage.
+            // isolated parent. The layer opacity scales the blend percentage. A blend mode of the document replaces the
+            // color blending mode of the caller for this layer.
             GraphicsOptions layerGraphics = (this.LayerDepth == 0 ? this.outerGraphics : this.innerGraphics).DeepClone();
             layerGraphics.BlendPercentage *= opacity;
+            if (blendMode != SvgBlendMode.Normal)
+            {
+                layerGraphics.ColorBlendingMode = ToColorBlendingMode(blendMode);
+            }
 
             // The layer bounds are in canvas coordinates before the caller transform, so the layer state carries the
             // caller transform, which maps them to the target.
@@ -406,22 +479,31 @@ internal static class SvgEmitter
         /// <returns>The options.</returns>
         public DrawingOptions GetOptions(int key)
         {
-            DrawingOptions? result = this.options[key];
-            if (result is not null)
+            if (key >= this.options.Length)
             {
-                return result;
+                return this.GetAliasedOptions(key - this.options.Length);
             }
 
-            GraphicsOptions graphics = (key & 1) == 0 ? this.outerGraphics : this.innerGraphics;
-            IntersectionRule rule = ((key >> 1) & 1) == 0 ? IntersectionRule.NonZero : IntersectionRule.EvenOdd;
+            return this.options[key] ??= this.CreateOptions(key, this.outerGraphics, this.innerGraphics);
+        }
+
+        /// <summary>
+        /// Creates the drawing options of a key.
+        /// </summary>
+        /// <param name="key">The key, without the aliased offset.</param>
+        /// <param name="outer">The graphics options outside every layer.</param>
+        /// <param name="inner">The graphics options inside a layer.</param>
+        /// <returns>The options.</returns>
+        private readonly DrawingOptions CreateOptions(int key, GraphicsOptions outer, GraphicsOptions inner)
+        {
+            GraphicsOptions graphics = (key & 1) == 0 ? outer : inner;
+            IntersectionRule rule = (key & EvenOddKeyBit) == 0 ? IntersectionRule.NonZero : IntersectionRule.EvenOdd;
 
             // Compose in 2D first, then lift to the 4x4 canvas transform, so the caller can still use a projective
             // transform.
             Matrix4x4 transform = new Matrix4x4(this.transforms[key >> 2] * this.viewport) * this.CallerTransform;
 
-            result = new DrawingOptions(graphics, rule, transform, this.textContrast);
-            this.options[key] = result;
-            return result;
+            return new DrawingOptions(graphics, rule, transform, this.textContrast);
         }
     }
 }

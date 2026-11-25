@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using SixLabors.ImageSharp.PixelFormats;
+
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
@@ -36,5 +38,17 @@ internal enum SvgRenderNodeKind : byte
     /// <summary>
     /// Does nothing. The resolve stage removes these nodes before it builds the document.
     /// </summary>
-    None
+    None,
+
+    /// <summary>
+    /// Opens a mask layer inside a layer. Its content draws the mask; when the matching <see cref="EndMask"/> closes it,
+    /// <see cref="SvgRenderNode.MaskMode"/> turns the content into coverage and the layer below keeps only that coverage
+    /// (<see cref="PixelAlphaCompositionMode.DestIn"/>).
+    /// </summary>
+    BeginMask,
+
+    /// <summary>
+    /// Closes the mask layer of the matching <see cref="BeginMask"/>.
+    /// </summary>
+    EndMask
 }

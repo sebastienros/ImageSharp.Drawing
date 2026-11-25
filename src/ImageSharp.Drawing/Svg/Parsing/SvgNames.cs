@@ -240,9 +240,10 @@ internal static class SvgNames
         foreach (string name in SvgPropertyParser.PropertyNames)
         {
             // The transform attribute is read into the transform table of the element, so only the CSS property goes
-            // through the property parser.
+            // through the property parser. mix-blend-mode and isolation are CSS properties without a presentation
+            // attribute (Compositing and Blending Level 1), so only style sheets and the style attribute set them.
             _ = SvgPropertyParser.TryGetProperty(name, out SvgPropertyId property);
-            if (property != SvgPropertyId.Transform)
+            if (property is not SvgPropertyId.Transform and not SvgPropertyId.MixBlendMode and not SvgPropertyId.Isolation)
             {
                 map[name] = property;
             }

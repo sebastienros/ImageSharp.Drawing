@@ -113,8 +113,8 @@ public class SvgResolverTests
     public void ComputedStyle_InheritsAndResetsThePhase2Properties()
     {
         SvgElementTree tree = Read(
-            "<g id=\"parent\" clip-path=\"url(#c)\" clip-rule=\"evenodd\" mask=\"url(#m)\" mask-type=\"alpha\" mix-blend-mode=\"screen\""
-            + " isolation=\"isolate\" paint-order=\"stroke\" vector-effect=\"non-scaling-stroke\" overflow=\"scroll\""
+            "<g id=\"parent\" clip-path=\"url(#c)\" clip-rule=\"evenodd\" mask=\"url(#m)\" mask-type=\"alpha\""
+            + " style=\"mix-blend-mode: screen; isolation: isolate\" paint-order=\"stroke\" vector-effect=\"non-scaling-stroke\" overflow=\"scroll\""
             + " marker-start=\"url(#a)\" marker-mid=\"url(#b)\" marker-end=\"url(#d)\" image-rendering=\"pixelated\""
             + " shape-rendering=\"crispEdges\" color-interpolation=\"linearRGB\" transform-origin=\"center\">"
             + "<rect id=\"child\"/></g>");
@@ -148,7 +148,7 @@ public class SvgResolverTests
     public void ComputedStyle_InheritKeywordTakesTheParentValueOfAPropertyThatDoesNotInherit()
     {
         SvgElementTree tree = Read(
-            "<g clip-path=\"url(#c)\" mix-blend-mode=\"multiply\"><rect id=\"child\" clip-path=\"inherit\" mix-blend-mode=\"inherit\"/></g>");
+            "<g clip-path=\"url(#c)\" style=\"mix-blend-mode: multiply\"><rect id=\"child\" clip-path=\"inherit\" style=\"mix-blend-mode: inherit\"/></g>");
         SvgResolver resolver = new(tree, new SvgLoadOptions());
 
         SvgComputedStyle child = resolver.ComputeDocumentStyle(Index(tree, "child"));

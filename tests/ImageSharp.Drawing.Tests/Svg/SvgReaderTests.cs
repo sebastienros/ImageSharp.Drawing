@@ -667,7 +667,7 @@ public class SvgReaderTests
     public void Read_StoresPhase2PresentationAttributes()
     {
         SvgElementTree tree = Read(
-            "<path id=\"p\" clip-path=\"url(#c)\" clip-rule=\"evenodd\" mask=\"url(#m)\" mix-blend-mode=\"multiply\" isolation=\"isolate\""
+            "<path id=\"p\" clip-path=\"url(#c)\" clip-rule=\"evenodd\" mask=\"url(#m)\" style=\"mix-blend-mode: multiply; isolation: isolate\""
             + " paint-order=\"stroke\" vector-effect=\"non-scaling-stroke\" overflow=\"visible\" marker-start=\"url(#s)\""
             + " marker-mid=\"url(#d)\" marker-end=\"url(#e)\" image-rendering=\"pixelated\" shape-rendering=\"crispEdges\""
             + " color-interpolation=\"linearRGB\" transform-origin=\"center\"/><mask id=\"k\" mask-type=\"alpha\"/>");
@@ -689,6 +689,17 @@ public class SvgReaderTests
         Assert.Equal(SvgColorInterpolation.LinearRgb, style.ColorInterpolation);
         Assert.Equal(new SvgLength(50, SvgLengthUnit.Percent), style.TransformOriginX);
         Assert.Equal(SvgMaskType.Alpha, tree.GetStyle(Index(tree, "k")).Extended!.MaskType);
+    }
+
+    // Compositing and Blending Level 1 defines mix-blend-mode and isolation as CSS properties without presentation
+    // attributes; Chromium ignores the attributes (resvg tests painting/mix-blend-mode/as-property and
+    // painting/isolation/as-property).
+    [Fact]
+    public void Read_IgnoresTheMixBlendModeAndIsolationAttributes()
+    {
+        SvgElementTree tree = Read("<path id=\"p\" mix-blend-mode=\"multiply\" isolation=\"isolate\"/>");
+
+        Assert.True(tree.GetStyle(Index(tree, "p")).IsEmpty);
     }
 
     // SVG 2 defines no marker presentation attribute; the marker shorthand exists only in CSS.

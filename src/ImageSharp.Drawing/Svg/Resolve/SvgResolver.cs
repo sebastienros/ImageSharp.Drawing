@@ -37,7 +37,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="TakeNodes(int, out int)"/> takes resolved nodes out of the main paint order.
 /// </para>
 /// </remarks>
-internal sealed class SvgResolver
+internal sealed partial class SvgResolver
 {
     /// <summary>
     /// The control point distance of a cubic Bézier quarter circle, as a fraction of the radius.
@@ -168,15 +168,21 @@ internal sealed class SvgResolver
             && float.IsFinite(width)
             && float.IsFinite(height)
             && style.Display != SvgDisplay.None
-            && style.Opacity > 0F;
+            && style.Opacity > 0F
+            && this.PassesConditions(0);
 
         if (renders)
         {
             this.instanceCount = 1;
-            SvgResolveContext context = new(in style, Matrix3x2.Identity, mappedBox.Size, 1);
-            int group = this.BeginGroup(style.Opacity);
-            this.ResolveChildren(0, in context);
-            this.EndGroup(group, style.Opacity);
+            SvgResolveContext context = new(in style, this.GetRootTransform(in style, mappedBox), mappedBox.Size, 1);
+            if (this.TryBeginComposite(0, in style, ref context, out SvgCompositeScope composite))
+            {
+                float opacity = context.Style.Opacity;
+                int group = this.BeginGroup(opacity);
+                this.ResolveChildren(0, in context);
+                this.EndGroup(group, opacity);
+                this.EndComposite(in composite);
+            }
         }
 
         SvgRenderNode[] nodes = this.TakeNodes(0, out int maxScopeDepth);
@@ -268,6 +274,8 @@ internal sealed class SvgResolver
         switch (kind)
         {
             case SvgElementKind.G:
+            case SvgElementKind.A:
+            case SvgElementKind.Switch:
             case SvgElementKind.Svg:
             case SvgElementKind.Use:
             case SvgElementKind.Path:
@@ -282,6 +290,12 @@ internal sealed class SvgResolver
                 break;
             default:
                 return;
+        }
+
+        // Conditional processing attributes that fail remove the element, inside or outside switch.
+        if (this.tree[index].HasConditionalAttributes && !this.PassesConditions(index))
+        {
+            return;
         }
 
         if (++this.instanceCount > this.maxNodes)
@@ -309,15 +323,29 @@ internal sealed class SvgResolver
         Matrix3x2 transform = this.TryGetLocalTransform(index, in style, parent.Viewport, out Matrix3x2 local) ? local * parent.Transform : parent.Transform;
         SvgResolveContext context = new(in style, transform, parent.Viewport, depth);
 
+        // Clipping, masking, blending, and isolation wrap the content of the element. A composite that takes over the
+        // opacity of the element sets the opacity of the context to 1.
+        if (!this.TryBeginComposite(index, in style, ref context, out SvgCompositeScope composite))
+        {
+            return;
+        }
+
         switch (kind)
         {
             case SvgElementKind.G:
+            case SvgElementKind.A:
             {
-                int group = this.BeginGroup(style.Opacity);
+                // The a element renders as a group.
+                float opacity = context.Style.Opacity;
+                int group = this.BeginGroup(opacity);
                 this.ResolveChildren(index, in context);
-                this.EndGroup(group, style.Opacity);
+                this.EndGroup(group, opacity);
                 break;
             }
+
+            case SvgElementKind.Switch:
+                this.ResolveSwitch(index, in context);
+                break;
 
             case SvgElementKind.Svg:
             case SvgElementKind.Symbol:
@@ -332,6 +360,8 @@ internal sealed class SvgResolver
                 this.ResolveShape(index, kind, in context);
                 break;
         }
+
+        this.EndComposite(in composite);
     }
 
     /// <summary>
@@ -360,25 +390,30 @@ internal sealed class SvgResolver
         float opacity = context.Style.Opacity;
         int group = this.BeginGroup(opacity);
 
-        // The viewport clips its content. The clip rectangle is in the user space of the element, before the view box.
+        // The viewport clips its content unless overflow is visible. The clip rectangle is in the user space of the
+        // element, before the view box. overflow: auto does not clip, as in browsers.
         int clip = this.nodes.Count;
-        this.nodes.Add(new SvgRenderNode
+        bool clips = context.Style.Overflow is SvgOverflow.Hidden or SvgOverflow.Scroll;
+        if (clips)
         {
-            Kind = SvgRenderNodeKind.BeginClip,
-            TransformIndex = this.GetTransformIndex(context.Transform),
-            Clip = [new RectanglePolygon(viewportRectangle)],
-            Bounds = TransformBounds(viewportRectangle, context.Transform),
-        });
+            this.nodes.Add(new SvgRenderNode
+            {
+                Kind = SvgRenderNodeKind.BeginClip,
+                TransformIndex = this.GetTransformIndex(context.Transform),
+                Clip = [new RectanglePolygon(viewportRectangle)],
+                Bounds = TransformBounds(viewportRectangle, context.Transform),
+            });
+        }
 
         SvgResolveContext contentContext = new(context.Style, content, contentViewport, context.Depth);
         this.ResolveChildren(index, in contentContext);
 
-        if (this.nodes.Count == clip + 1)
+        if (clips && this.nodes.Count == clip + 1)
         {
             // Nothing rendered inside the viewport, so the clip is not needed.
             this.nodes.RemoveAt(clip);
         }
-        else
+        else if (clips)
         {
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.EndClip });
         }
@@ -619,8 +654,9 @@ internal sealed class SvgResolver
     /// An element that draws nothing contributes nothing: <c>display: none</c>, invalid or empty geometry, a missing or
     /// cyclic <c>use</c> reference, and elements that do not render (definitions, paint servers, unknown elements).
     /// <c>visibility: hidden</c> and <c>opacity: 0</c> elements still contribute, because SVG excludes neither from the
-    /// box. A line contributes a box with a zero side. Kinds that render from phase 2 (<c>image</c>, <c>switch</c>) are
-    /// not handled yet and contribute nothing; the packages that render them extend the switch in
+    /// box. A line contributes a box with a zero side. A <c>switch</c> contributes the box of the child that it renders,
+    /// and an element whose conditional processing attributes fail contributes nothing. Kinds that render from phase 2
+    /// and are not handled here (<c>image</c>) contribute nothing; the package that renders them extends the switch in
     /// <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/>.
     /// </para>
     /// <para>
@@ -666,6 +702,9 @@ internal sealed class SvgResolver
             case SvgElementKind.G:
             case SvgElementKind.A:
                 return this.TryGetChildrenBoundingBox(element, in context, Matrix3x2.Identity, context.Viewport, out bounds);
+
+            case SvgElementKind.Switch:
+                return this.TryGetSwitchBoundingBox(element, in context, out bounds);
 
             case SvgElementKind.Svg:
             case SvgElementKind.Symbol:
@@ -752,6 +791,11 @@ internal sealed class SvgResolver
 
         for (int child = this.tree.GetFirstChild(element); child >= 0; child = this.tree.GetNextSibling(child))
         {
+            if (this.tree[child].HasConditionalAttributes && !this.PassesConditions(child))
+            {
+                continue;
+            }
+
             SvgElementKind kind = this.tree[child].Kind;
             SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(child), context.Style, in this.initialStyle, this.units, kind);
             SvgResolveContext childContext = new(in style, Matrix3x2.Identity, viewport, depth);
@@ -836,6 +880,7 @@ internal sealed class SvgResolver
         }
 
         RectangleF paintBounds = stroke is null ? bounds : RectangleF.Inflate(bounds, stroke.GetOutlineRadius(1F), stroke.GetOutlineRadius(1F));
+        SvgDrawFlags flags = GetDrawFlags(in style, fill is not null, stroke is not null);
         SvgRenderNode draw = new()
         {
             Kind = SvgRenderNodeKind.Draw,
@@ -844,7 +889,8 @@ internal sealed class SvgResolver
             Stroke = stroke,
             FillRule = style.FillRule == SvgFillRule.EvenOdd ? IntersectionRule.EvenOdd : IntersectionRule.NonZero,
             TransformIndex = this.GetTransformIndex(context.Transform),
-            Bounds = TransformBounds(paintBounds, context.Transform),
+            Bounds = (flags & SvgDrawFlags.NonScalingStroke) != 0 ? UnboundedBounds : TransformBounds(paintBounds, context.Transform),
+            Flags = flags,
         };
 
         if (needsLayer)
@@ -1164,7 +1210,7 @@ internal sealed class SvgResolver
     /// <item>A group whose content is one path with only a fill or only a stroke multiplies the paint alpha. One path
     /// cannot overlap itself in paint, so the result is the same as with a layer. Viewport clips around the path do not
     /// change that.</item>
-    /// <item>A group whose content is exactly one layer multiplies the opacity of that layer.</item>
+    /// <item>A group whose content is exactly one layer without a blend mode multiplies the opacity of that layer.</item>
     /// <item>Any other group becomes a layer bounded to the union of the paint bounds of its content, which include the
     /// stroke extent.</item>
     /// </list>
@@ -1216,7 +1262,10 @@ internal sealed class SvgResolver
             return;
         }
 
-        if (nodes[first].Kind == SvgRenderNodeKind.BeginLayer && IsLayerSpanning(nodes, first, end))
+        // A layer that blends must blend inside the isolated group, so it cannot take the opacity of the group.
+        if (nodes[first].Kind == SvgRenderNodeKind.BeginLayer
+            && nodes[first].BlendMode == SvgBlendMode.Normal
+            && IsLayerSpanning(nodes, first, end))
         {
             nodes[first].Opacity *= opacity;
             this.hasEmptyNodes = true;
@@ -1289,7 +1338,7 @@ internal sealed class SvgResolver
     /// refer to the transform table of the document, which every node array of the document shares.
     /// </remarks>
     /// <param name="start">The first node to take, a value of <see cref="NodeCount"/> from before the nodes were added.</param>
-    /// <param name="maxScopeDepth">When this method returns, contains the deepest nesting of layer and clip scopes.</param>
+    /// <param name="maxScopeDepth">When this method returns, contains the deepest nesting of layer, mask, and clip scopes.</param>
     /// <returns>The nodes.</returns>
     internal SvgRenderNode[] TakeNodes(int start, out int maxScopeDepth)
     {
@@ -1333,11 +1382,13 @@ internal sealed class SvgResolver
                     continue;
                 case SvgRenderNodeKind.BeginLayer:
                 case SvgRenderNodeKind.BeginClip:
+                case SvgRenderNodeKind.BeginMask:
                     open[depth++] = written;
                     maxScopeDepth = Math.Max(maxScopeDepth, depth);
                     break;
                 case SvgRenderNodeKind.EndLayer:
                 case SvgRenderNodeKind.EndClip:
+                case SvgRenderNodeKind.EndMask:
                     result[open[--depth]].End = written;
                     break;
             }

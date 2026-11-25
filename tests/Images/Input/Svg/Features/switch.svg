@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <switch>
+    <rect x="10" y="10" width="80" height="80" fill="#d62728" systemLanguage="ru"/>
+    <rect x="10" y="10" width="80" height="80" fill="#d62728" requiredExtensions="http://example.org/unknown"/>
+    <rect x="10" y="10" width="80" height="80" fill="#2ca02c" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Shape"/>
+    <rect x="10" y="10" width="80" height="80" fill="#d62728"/>
+  </switch>
+  <switch transform="translate(100 0)" fill="#1f77b4">
+    <rect x="10" y="10" width="80" height="80" display="none"/>
+    <rect x="10" y="10" width="80" height="80" fill="#d62728"/>
+  </switch>
+  <rect x="10" y="110" width="80" height="80" fill="#9467bd"/>
+  <rect x="10" y="110" width="80" height="80" fill="#d62728" systemLanguage="de"/>
+  <rect x="20" y="120" width="60" height="60" fill="#ff7f0e" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Shape"/>
+  <a xlink:href="https://example.org/">
+    <circle cx="150" cy="150" r="40" fill="#17becf"/>
+    <rect x="130" y="130" width="40" height="40" fill="#2ca02c" opacity="0.5"/>
+  </a>
+</svg>

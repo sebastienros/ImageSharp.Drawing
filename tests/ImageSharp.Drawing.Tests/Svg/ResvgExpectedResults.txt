@@ -420,99 +420,99 @@ filters/flood-color/inheritance-5.svg fail filters: phase 4
 filters/flood-color/simple-case.svg fail filters: phase 4
 filters/flood-opacity/50percent.svg fail filters: phase 4
 filters/flood-opacity/simple-case.svg fail filters: phase 4
-masking/clip-rule/clip-rule=evenodd.svg fail clipPath: phase 2
-masking/clip/simple-case.svg fail clipPath: phase 2
-masking/clipPath/circle-shorthand-with-stroke-box.svg fail clipPath: phase 2
-masking/clipPath/circle-shorthand-with-view-box.svg fail clipPath: phase 2
-masking/clipPath/circle-shorthand.svg fail clipPath: phase 2
-masking/clipPath/clip-path-on-child-with-transform.svg fail clipPath: phase 2
-masking/clipPath/clip-path-on-child.svg fail clipPath: phase 2
-masking/clipPath/clip-path-on-children.svg fail clipPath: phase 2
-masking/clipPath/clip-path-on-self-2.svg fail clipPath: phase 2
-masking/clipPath/clip-path-on-self.svg fail clipPath: phase 2
-masking/clipPath/clip-path-with-transform-on-text.svg fail clipPath: phase 2
-masking/clipPath/clip-path-with-transform.svg fail clipPath: phase 2
-masking/clipPath/clip-rule-from-parent-node.svg fail clipPath: phase 2
-masking/clipPath/clip-rule=evenodd.svg fail clipPath: phase 2
-masking/clipPath/clipPathUnits=objectBoundingBox.svg fail clipPath: phase 2
-masking/clipPath/clipping-with-complex-text-1.svg fail clipPath: phase 2
-masking/clipPath/clipping-with-complex-text-2.svg fail clipPath: phase 2
-masking/clipPath/clipping-with-complex-text-and-clip-rule.svg fail clipPath: phase 2
-masking/clipPath/clipping-with-text.svg fail clipPath: phase 2
-masking/clipPath/fill-has-no-effect.svg fail clipPath: phase 2
-masking/clipPath/filter-has-no-effect.svg fail clipPath: phase 2
-masking/clipPath/g-is-not-a-valid-child.svg fail clipPath: phase 2
-masking/clipPath/image-is-not-a-valid-child.svg fail clipPath: phase 2
+masking/clip-rule/clip-rule=evenodd.svg pass
+masking/clip/simple-case.svg fail image: phase 2 package F; the CSS clip property on image is not implemented
+masking/clipPath/circle-shorthand-with-stroke-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
+masking/clipPath/circle-shorthand-with-view-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
+masking/clipPath/circle-shorthand.svg fail clipPath: CSS basic shapes in clip-path are not supported
+masking/clipPath/clip-path-on-child-with-transform.svg pass
+masking/clipPath/clip-path-on-child.svg pass
+masking/clipPath/clip-path-on-children.svg pass
+masking/clipPath/clip-path-on-self-2.svg pass
+masking/clipPath/clip-path-on-self.svg pass
+masking/clipPath/clip-path-with-transform-on-text.svg fail text: phase 3
+masking/clipPath/clip-path-with-transform.svg pass
+masking/clipPath/clip-rule-from-parent-node.svg pass
+masking/clipPath/clip-rule=evenodd.svg pass
+masking/clipPath/clipPathUnits=objectBoundingBox.svg pass
+masking/clipPath/clipping-with-complex-text-1.svg fail text: phase 3
+masking/clipPath/clipping-with-complex-text-2.svg fail text: phase 3
+masking/clipPath/clipping-with-complex-text-and-clip-rule.svg fail text: phase 3
+masking/clipPath/clipping-with-text.svg fail text: phase 3
+masking/clipPath/fill-has-no-effect.svg pass
+masking/clipPath/filter-has-no-effect.svg pass
+masking/clipPath/g-is-not-a-valid-child.svg pass
+masking/clipPath/image-is-not-a-valid-child.svg pass
 masking/clipPath/invalid-FuncIRI.svg pass
-masking/clipPath/invalid-clip-path-on-child.svg fail clipPath: phase 2
-masking/clipPath/invalid-clip-path-on-self.svg fail clipPath: phase 2
-masking/clipPath/invalid-transform-on-clipPath.svg fail clipPath: phase 2
-masking/clipPath/invisible-child-1.svg fail clipPath: phase 2
-masking/clipPath/invisible-child-2.svg fail clipPath: phase 2
-masking/clipPath/line-is-not-a-valid-child.svg fail clipPath: phase 2
-masking/clipPath/malformed-path-child.svg fail clipPath: phase 2
-masking/clipPath/mask-has-no-effect.svg fail clipPath: phase 2
-masking/clipPath/mixed-clip-rule.svg fail clipPath: phase 2
-masking/clipPath/multiple-children.svg fail clipPath: phase 2
-masking/clipPath/nested-clip-path.svg fail clipPath: phase 2
-masking/clipPath/no-children.svg fail clipPath: phase 2
+masking/clipPath/invalid-clip-path-on-child.svg pass
+masking/clipPath/invalid-clip-path-on-self.svg pass
+masking/clipPath/invalid-transform-on-clipPath.svg pass
+masking/clipPath/invisible-child-1.svg pass
+masking/clipPath/invisible-child-2.svg pass
+masking/clipPath/line-is-not-a-valid-child.svg pass
+masking/clipPath/malformed-path-child.svg pass
+masking/clipPath/mask-has-no-effect.svg pass
+masking/clipPath/mixed-clip-rule.svg pass
+masking/clipPath/multiple-children.svg pass
+masking/clipPath/nested-clip-path.svg pass
+masking/clipPath/no-children.svg pass
 masking/clipPath/none.svg pass
-masking/clipPath/on-a-horizontal-line.svg fail clipPath: phase 2
-masking/clipPath/on-the-root-svg-with-size.svg fail clipPath: phase 2
+masking/clipPath/on-a-horizontal-line.svg pass
+masking/clipPath/on-the-root-svg-with-size.svg pass
 masking/clipPath/on-the-root-svg-without-size.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-masking/clipPath/opacity-has-no-effect.svg fail clipPath: phase 2
-masking/clipPath/overlapped-shapes-with-evenodd.svg fail clipPath: phase 2
-masking/clipPath/recursive-on-child.svg fail clipPath: phase 2
-masking/clipPath/recursive-on-self.svg fail clipPath: phase 2
-masking/clipPath/recursive.svg fail clipPath: phase 2
-masking/clipPath/self-recursive.svg fail clipPath: phase 2
-masking/clipPath/simple-case.svg fail clipPath: phase 2
-masking/clipPath/stroke-has-no-effect.svg fail clipPath: phase 2
-masking/clipPath/switch-is-not-a-valid-child.svg fail clipPath: phase 2
-masking/clipPath/symbol-via-use-is-not-a-valid-child.svg fail clipPath: phase 2
-masking/clipPath/transform-on-clipPath.svg fail clipPath: phase 2
-masking/clipPath/with-invalid-child-via-use.svg fail clipPath: phase 2
-masking/clipPath/with-marker-on-clip.svg fail clipPath: phase 2
-masking/clipPath/with-use-child.svg fail clipPath: phase 2
-masking/mask/color-interpolation=linearRGB.svg fail mask: phase 2
-masking/mask/half-width-region-with-rotation.svg fail mask: phase 2
+masking/clipPath/opacity-has-no-effect.svg pass
+masking/clipPath/overlapped-shapes-with-evenodd.svg pass
+masking/clipPath/recursive-on-child.svg pass
+masking/clipPath/recursive-on-self.svg pass
+masking/clipPath/recursive.svg pass
+masking/clipPath/self-recursive.svg pass
+masking/clipPath/simple-case.svg pass
+masking/clipPath/stroke-has-no-effect.svg pass
+masking/clipPath/switch-is-not-a-valid-child.svg pass
+masking/clipPath/symbol-via-use-is-not-a-valid-child.svg pass
+masking/clipPath/transform-on-clipPath.svg pass
+masking/clipPath/with-invalid-child-via-use.svg pass
+masking/clipPath/with-marker-on-clip.svg pass
+masking/clipPath/with-use-child.svg pass
+masking/mask/color-interpolation=linearRGB.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/half-width-region-with-rotation.svg pass
 masking/mask/invalid-FuncIRI.svg pass
-masking/mask/invalid-child.svg fail mask: phase 2
-masking/mask/invisible-child-1.svg fail mask: phase 2
-masking/mask/invisible-child-2.svg fail mask: phase 2
-masking/mask/mask-on-child.svg fail mask: phase 2
-masking/mask/mask-on-self-with-mask-type=alpha.svg fail mask: phase 2
-masking/mask/mask-on-self-with-mixed-mask-type.svg fail mask: phase 2
-masking/mask/mask-on-self.svg fail mask: phase 2
-masking/mask/mask-type-in-style.svg fail mask: phase 2
-masking/mask/mask-type=alpha.svg fail mask: phase 2
-masking/mask/mask-type=invalid.svg fail mask: phase 2
-masking/mask/mask-type=luminance.svg fail mask: phase 2
-masking/mask/maskContentUnits=objectBoundingBox.svg fail mask: phase 2
-masking/mask/maskUnits=objectBoundingBox-with-percent.svg fail mask: phase 2
-masking/mask/maskUnits=userSpaceOnUse-with-percent.svg fail mask: phase 2
-masking/mask/maskUnits=userSpaceOnUse-with-rect.svg fail mask: phase 2
-masking/mask/maskUnits=userSpaceOnUse-with-width-only.svg fail mask: phase 2
-masking/mask/maskUnits=userSpaceOnUse-without-rect.svg fail mask: phase 2
-masking/mask/nested-objectBoundingBox.svg fail mask: phase 2
-masking/mask/no-children.svg fail mask: phase 2
+masking/mask/invalid-child.svg pass
+masking/mask/invisible-child-1.svg pass
+masking/mask/invisible-child-2.svg pass
+masking/mask/mask-on-child.svg pass
+masking/mask/mask-on-self-with-mask-type=alpha.svg pass
+masking/mask/mask-on-self-with-mixed-mask-type.svg pass
+masking/mask/mask-on-self.svg pass
+masking/mask/mask-type-in-style.svg pass
+masking/mask/mask-type=alpha.svg pass
+masking/mask/mask-type=invalid.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/mask-type=luminance.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskContentUnits=objectBoundingBox.svg pass
+masking/mask/maskUnits=objectBoundingBox-with-percent.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskUnits=userSpaceOnUse-with-percent.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskUnits=userSpaceOnUse-with-rect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskUnits=userSpaceOnUse-with-width-only.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/maskUnits=userSpaceOnUse-without-rect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/nested-objectBoundingBox.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/no-children.svg pass
 masking/mask/none.svg pass
-masking/mask/on-a-horizontal-line.svg fail mask: phase 2
-masking/mask/on-a-small-object.svg fail mask: phase 2
-masking/mask/on-group-with-transform.svg fail mask: phase 2
+masking/mask/on-a-horizontal-line.svg pass
+masking/mask/on-a-small-object.svg pass
+masking/mask/on-group-with-transform.svg pass
 masking/mask/recursive-on-child.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-masking/mask/recursive-on-self.svg fail mask: phase 2
-masking/mask/recursive.svg fail mask: phase 2
-masking/mask/self-recursive.svg fail mask: phase 2
-masking/mask/simple-case.svg fail mask: phase 2
-masking/mask/transform-has-no-effect.svg fail mask: phase 2
-masking/mask/transform-on-shape.svg fail mask: phase 2
-masking/mask/with-clip-path.svg fail mask: phase 2
-masking/mask/with-grayscale-image.svg fail mask: phase 2
-masking/mask/with-image.svg fail mask: phase 2
-masking/mask/with-opacity-1.svg fail mask: phase 2
-masking/mask/with-opacity-2.svg fail mask: phase 2
-masking/mask/with-opacity-3.svg fail mask: phase 2
+masking/mask/recursive-on-self.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/recursive.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/self-recursive.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/simple-case.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/transform-has-no-effect.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/transform-on-shape.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/with-clip-path.svg pass
+masking/mask/with-grayscale-image.svg fail image: phase 2 package F
+masking/mask/with-image.svg fail image: phase 2 package F
+masking/mask/with-opacity-1.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/with-opacity-2.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+masking/mask/with-opacity-3.svg pass
 paint-servers/linearGradient/attributes-via-xlink-href-complex-order.svg pass
 paint-servers/linearGradient/attributes-via-xlink-href-from-radialGradient.svg pass
 paint-servers/linearGradient/attributes-via-xlink-href-from-rect.svg pass
@@ -681,8 +681,8 @@ painting/context/with-pattern-objectBoundingBox-in-use.svg fail marker: context-
 painting/context/with-pattern-on-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
 painting/context/with-text.svg fail marker: context-fill and context-stroke come with markers in phase 2
 painting/context/without-context-element.svg pass
-painting/display/bBox-impact.svg fail clipPath: phase 2
-painting/display/none-on-clipPath.svg fail clipPath: phase 2
+painting/display/bBox-impact.svg pass
+painting/display/none-on-clipPath.svg pass
 painting/display/none-on-defs.svg pass
 painting/display/none-on-linearGradient.svg pass
 painting/display/none-on-rect.svg pass
@@ -763,8 +763,8 @@ painting/fill/valid-FuncIRI-with-a-fallback-ICC-color.svg fail icc-color: ICC co
 painting/image-rendering/on-feImage.svg fail image: phase 2
 painting/image-rendering/optimizeSpeed-on-SVG.svg fail image: phase 2
 painting/image-rendering/optimizeSpeed.svg fail image: phase 2
-painting/isolation/as-property.svg fail isolation: phase 2 (blend modes)
-painting/isolation/isolate.svg fail isolation: phase 2 (blend modes)
+painting/isolation/as-property.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/isolation/isolate.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
 painting/marker/default-clip.svg fail marker: phase 2
 painting/marker/empty.svg pass
 painting/marker/inheritance-1.svg fail marker: phase 2
@@ -828,28 +828,28 @@ painting/marker/zero-length-path-1.svg fail marker: phase 2
 painting/marker/zero-length-path-2.svg fail marker: phase 2
 painting/marker/zero-sized-stroke.svg pass
 painting/marker/zero-sized.svg pass
-painting/mix-blend-mode/as-property.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/color-burn.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/color-dodge.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/color.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/darken.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/difference.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/exclusion.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/hard-light.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/hue.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/lighten.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/luminosity.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/multiply.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/normal.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/opacity-on-element.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/opacity-on-group.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/overlay.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/saturation.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/screen.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/soft-light.svg fail mix-blend-mode: phase 2
-painting/mix-blend-mode/xor.svg fail mix-blend-mode: phase 2
+painting/mix-blend-mode/as-property.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/color-burn.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/color-dodge.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/color.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/darken.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/difference.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/exclusion.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/hard-light.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/hue.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/lighten.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/luminosity.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/multiply.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/normal.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/opacity-on-element.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/opacity-on-group.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/overlay.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/saturation.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/screen.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/soft-light.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
+painting/mix-blend-mode/xor.svg fail known gap: gradient stops interpolate premultiplied; SVG and Chromium interpolate unpremultiplied, and this test fades a gradient from transparent white
 painting/opacity/50percent.svg pass
-painting/opacity/bBox-impact.svg fail clipPath: phase 2
+painting/opacity/bBox-impact.svg pass
 painting/opacity/clamp-value-1.svg pass
 painting/opacity/clamp-value-2.svg pass
 painting/opacity/group-opacity.svg pass
@@ -862,20 +862,20 @@ painting/overflow/inherit-on-marker-without-parent.svg fail overflow: the overfl
 painting/overflow/inherit-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
 painting/overflow/scroll-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
 painting/overflow/visible-on-marker.svg fail overflow: the overflow property is not in the phase 1 property list
-painting/paint-order/duplicates.svg fail paint-order: phase 2
-painting/paint-order/fill-markers-stroke.svg fail paint-order: phase 2
-painting/paint-order/fill.svg fail paint-order: phase 2
-painting/paint-order/invalid.svg fail paint-order: phase 2
-painting/paint-order/markers-stroke.svg fail paint-order: phase 2
-painting/paint-order/markers.svg fail paint-order: phase 2
-painting/paint-order/normal.svg fail paint-order: phase 2
-painting/paint-order/on-text.svg fail paint-order: phase 2
-painting/paint-order/on-tspan.svg fail paint-order: phase 2
-painting/paint-order/stroke-invalid.svg fail paint-order: phase 2
-painting/paint-order/stroke-markers-fill.svg fail paint-order: phase 2
-painting/paint-order/stroke-markers.svg fail paint-order: phase 2
-painting/paint-order/stroke.svg fail paint-order: phase 2
-painting/paint-order/trailing-data.svg fail paint-order: phase 2
+painting/paint-order/duplicates.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/fill-markers-stroke.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/fill.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/invalid.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/markers-stroke.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/markers.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/normal.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/on-text.svg fail text: phase 3
+painting/paint-order/on-tspan.svg fail text: phase 3
+painting/paint-order/stroke-invalid.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/stroke-markers-fill.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/stroke-markers.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/stroke.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
+painting/paint-order/trailing-data.svg fail marker: paint-order places markers, which render in phase 2 package F; the fill and stroke order is implemented
 painting/shape-rendering/auto-on-circle.svg pass
 painting/shape-rendering/crispEdges-on-circle.svg pass
 painting/shape-rendering/geometricPrecision-on-circle.svg pass
@@ -959,8 +959,8 @@ painting/stroke/pattern-with-objectBoundingBox-on-zero-bbox-shape.svg pass
 painting/stroke/pattern.svg fail pattern: phase 2
 painting/stroke/radial-gradient-on-text.svg fail text: phase 3
 painting/stroke/radial-gradient.svg pass
-painting/visibility/bbox-impact-1.svg fail clipPath: phase 2
-painting/visibility/bbox-impact-2.svg fail clipPath: phase 2
+painting/visibility/bbox-impact-1.svg pass
+painting/visibility/bbox-impact-2.svg pass
 painting/visibility/bbox-impact-3.svg fail text: phase 3
 painting/visibility/collapse-on-tspan.svg fail text: phase 3
 painting/visibility/hidden-on-group.svg pass
@@ -1099,11 +1099,11 @@ shapes/rect/zero-height-attribute-processing.svg pass
 shapes/rect/zero-rx-attribute-resolving.svg pass
 shapes/rect/zero-ry-attribute-resolving.svg pass
 shapes/rect/zero-width-attribute-processing.svg pass
-structure/a/inside-text.svg fail known gap: the a element does not render its children
-structure/a/inside-tspan.svg fail known gap: the a element does not render its children
-structure/a/on-shape.svg fail known gap: the a element does not render its children
-structure/a/on-text.svg fail known gap: the a element does not render its children
-structure/a/on-tspan.svg fail known gap: the a element does not render its children
+structure/a/inside-text.svg fail text: phase 3
+structure/a/inside-tspan.svg fail text: phase 3
+structure/a/on-shape.svg pass
+structure/a/on-text.svg fail text: phase 3
+structure/a/on-tspan.svg fail text: phase 3
 structure/defs/ignore-shapes-inside-defs.svg pass
 structure/defs/multiple-defs.svg pass
 structure/defs/nested-defs.svg pass
@@ -1196,8 +1196,8 @@ structure/svg/invalid-id-attribute-2.svg skip undefined behavior: results.csv ma
 structure/svg/mixed-namespaces.svg fail text: phase 3
 structure/svg/negative-size.svg fail sizing: the test checks the intrinsic size; this runner draws every document into the reference rectangle, and the Chromium oracle differs the same way
 structure/svg/nested-svg-one-with-rect-and-one-with-viewBox.svg pass
-structure/svg/nested-svg-with-overflow-auto.svg fail overflow: the overflow property is not in the phase 1 property list
-structure/svg/nested-svg-with-overflow-visible.svg fail overflow: the overflow property is not in the phase 1 property list
+structure/svg/nested-svg-with-overflow-auto.svg pass
+structure/svg/nested-svg-with-overflow-visible.svg pass
 structure/svg/nested-svg-with-rect-and-percent-values.svg pass
 structure/svg/nested-svg-with-rect-and-viewBox-1.svg pass
 structure/svg/nested-svg-with-rect-and-viewBox-2.svg pass
@@ -1224,19 +1224,19 @@ structure/svg/rect-inside-a-non-SVG-element.svg pass
 structure/svg/viewBox-not-at-zero-pos.svg pass
 structure/svg/xmlns-validation.svg pass
 structure/svg/zero-size.svg pass
-structure/switch/comment-as-first-child.svg fail switch: phase 2
+structure/switch/comment-as-first-child.svg pass
 structure/switch/display-none-on-child.svg pass
-structure/switch/non-SVG-child.svg fail switch: phase 2
-structure/switch/requiredFeatures.svg fail switch: phase 2
-structure/switch/simple-case.svg fail switch: phase 2
-structure/switch/single-child.svg fail switch: phase 2
-structure/switch/systemLanguage.svg fail switch: phase 2
-structure/switch/systemLanguage=en-GB.svg fail switch: phase 2
-structure/switch/systemLanguage=en-US.svg fail switch: phase 2
-structure/switch/systemLanguage=en.svg fail switch: phase 2
-structure/switch/systemLanguage=ru-Ru.svg fail switch: phase 2
-structure/switch/systemLanguage=ru-en.svg fail switch: phase 2
-structure/switch/with-attributes.svg fail switch: phase 2
+structure/switch/non-SVG-child.svg pass
+structure/switch/requiredFeatures.svg pass
+structure/switch/simple-case.svg pass
+structure/switch/single-child.svg pass
+structure/switch/systemLanguage.svg pass
+structure/switch/systemLanguage=en-GB.svg pass
+structure/switch/systemLanguage=en-US.svg pass
+structure/switch/systemLanguage=en.svg pass
+structure/switch/systemLanguage=ru-Ru.svg pass
+structure/switch/systemLanguage=ru-en.svg pass
+structure/switch/with-attributes.svg pass
 structure/symbol/content-outside-the-viewbox.svg pass
 structure/symbol/indirect-symbol-reference.svg pass
 structure/symbol/opacity-on-symbol-with-viewBox.svg pass
@@ -1246,7 +1246,7 @@ structure/symbol/opacity-on-use.svg pass
 structure/symbol/simple-case.svg pass
 structure/symbol/unused-symbol.svg pass
 structure/symbol/with-custom-use-size.svg pass
-structure/symbol/with-overflow-visible.svg fail overflow: the overflow property is not in the phase 1 property list
+structure/symbol/with-overflow-visible.svg pass
 structure/symbol/with-transform-on-use-no-size.svg pass
 structure/symbol/with-transform-on-use.svg pass
 structure/symbol/with-transform.svg fail SVG 2: the transform on symbol applies, as in Chromium; the suite expects SVG 1.1, which ignores it
@@ -1256,12 +1256,12 @@ structure/symbol/with-viewBox.svg pass
 structure/systemLanguage/en-GB.svg pass
 structure/systemLanguage/en-US.svg pass
 structure/systemLanguage/en.svg pass
-structure/systemLanguage/on-clipPath.svg fail switch: systemLanguage is evaluated by switch, phase 2
+structure/systemLanguage/on-clipPath.svg pass
 structure/systemLanguage/on-defs.svg pass
 structure/systemLanguage/on-linearGradient.svg pass
-structure/systemLanguage/on-svg.svg fail switch: systemLanguage is evaluated by switch, phase 2
-structure/systemLanguage/on-tspan.svg fail switch: systemLanguage is evaluated by switch, phase 2
-structure/systemLanguage/ru-Ru.svg fail switch: systemLanguage is evaluated by switch, phase 2
+structure/systemLanguage/on-svg.svg pass
+structure/systemLanguage/on-tspan.svg fail text: phase 3
+structure/systemLanguage/ru-Ru.svg pass
 structure/systemLanguage/ru-en.svg pass
 structure/transform-origin/bottom.svg pass
 structure/transform-origin/center.svg pass
@@ -1270,8 +1270,8 @@ structure/transform-origin/left.svg pass
 structure/transform-origin/length-percent.svg pass
 structure/transform-origin/length-px.svg pass
 structure/transform-origin/no-transform.svg pass
-structure/transform-origin/on-clippath-objectBoundingBox.svg fail clipPath: transform-origin is parsed; clipPath renders in phase 2 package E
-structure/transform-origin/on-clippath.svg fail clipPath: transform-origin is parsed; clipPath renders in phase 2 package E
+structure/transform-origin/on-clippath-objectBoundingBox.svg fail known gap: rounded rectangle corners are arcs that flatten once in user space, so a rounded rectangle in objectBoundingBox units has coarse corners
+structure/transform-origin/on-clippath.svg pass
 structure/transform-origin/on-gradient-object-bounding-box.svg pass
 structure/transform-origin/on-gradient-user-space-on-use.svg pass
 structure/transform-origin/on-group.svg pass
