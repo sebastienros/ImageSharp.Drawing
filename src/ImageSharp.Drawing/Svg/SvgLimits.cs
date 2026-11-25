@@ -13,6 +13,8 @@ public sealed class SvgLimits
     private int maxNodes = 1_000_000;
     private int maxNestingDepth = 512;
     private long maxCharactersFromEntities = 1 << 20;
+    private long maxImagePixels = 64L * 1024 * 1024;
+    private int maxPatternTilePixels = 4096 * 4096;
 
     /// <summary>
     /// Gets or sets the largest number of elements the document can contain. The default is 1,000,000.
@@ -71,6 +73,37 @@ public sealed class SvgLimits
         {
             Guard.MustBeGreaterThan(value, 0, nameof(this.MaxCharactersFromEntities));
             this.maxCharactersFromEntities = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the largest total number of decoded pixels of all <c>image</c> elements of one document. An image
+    /// that would exceed the limit does not draw; the rest of the document still loads. The default is 67,108,864
+    /// (64 × 1024 × 1024).
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
+    public long MaxImagePixels
+    {
+        get => this.maxImagePixels;
+        set
+        {
+            Guard.MustBeGreaterThan(value, 0, nameof(this.MaxImagePixels));
+            this.maxImagePixels = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the largest number of pixels of one rendered pattern tile. A tile that would be larger renders at a
+    /// lower resolution instead. The default is 16,777,216 (4096 × 4096).
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
+    public int MaxPatternTilePixels
+    {
+        get => this.maxPatternTilePixels;
+        set
+        {
+            Guard.MustBeGreaterThan(value, 0, nameof(this.MaxPatternTilePixels));
+            this.maxPatternTilePixels = value;
         }
     }
 }

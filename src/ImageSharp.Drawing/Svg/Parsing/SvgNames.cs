@@ -1,18 +1,16 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
-using System.Xml;
-
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// The element, attribute, property, and namespace names that the reader knows, and the maps from atomized names to ids.
 /// </summary>
 /// <remarks>
-/// The reader pre-seeds its <see cref="XmlNameTable"/> with these constants. <see cref="NameTable.Add(string)"/> stores the
-/// first instance of each name, and C# string literals are interned, so every name that the XML reader returns for a known
-/// name is the same instance as the constant here. The maps therefore compare keys by reference, which is cheaper than
-/// hashing the characters. They must only be queried with names that come from a seeded name table.
+/// The reader gives the XML reader an <see cref="SvgNameTable"/>, which returns these constants for the known names. C#
+/// string literals are interned, so every name that the XML reader returns for a known name is the same instance as the
+/// constant here. The maps therefore compare keys by reference, which is cheaper than hashing the characters. They must
+/// only be queried with names that come from an <see cref="SvgNameTable"/>.
 /// </remarks>
 internal static class SvgNames
 {
@@ -209,6 +207,21 @@ internal static class SvgNames
         ["gradientTransform"] = SvgAttributeId.GradientTransform,
         ["spreadMethod"] = SvgAttributeId.SpreadMethod,
         ["type"] = SvgAttributeId.Type,
+        ["clipPathUnits"] = SvgAttributeId.ClipPathUnits,
+        ["maskUnits"] = SvgAttributeId.MaskUnits,
+        ["maskContentUnits"] = SvgAttributeId.MaskContentUnits,
+        ["patternUnits"] = SvgAttributeId.PatternUnits,
+        ["patternContentUnits"] = SvgAttributeId.PatternContentUnits,
+        ["patternTransform"] = SvgAttributeId.PatternTransform,
+        ["refX"] = SvgAttributeId.RefX,
+        ["refY"] = SvgAttributeId.RefY,
+        ["markerWidth"] = SvgAttributeId.MarkerWidth,
+        ["markerHeight"] = SvgAttributeId.MarkerHeight,
+        ["markerUnits"] = SvgAttributeId.MarkerUnits,
+        ["orient"] = SvgAttributeId.Orient,
+        ["systemLanguage"] = SvgAttributeId.SystemLanguage,
+        ["requiredExtensions"] = SvgAttributeId.RequiredExtensions,
+        ["requiredFeatures"] = SvgAttributeId.RequiredFeatures,
     };
 
     /// <summary>
@@ -216,33 +229,6 @@ internal static class SvgNames
     /// case-sensitive, as XML names are.
     /// </summary>
     public static Dictionary<object, SvgPropertyId> PresentationAttributes { get; } = CreatePresentationAttributes();
-
-    /// <summary>
-    /// Creates a name table that holds every known name, so that the XML reader returns the constant instances.
-    /// </summary>
-    /// <returns>The seeded name table.</returns>
-    public static NameTable CreateNameTable()
-    {
-        NameTable table = new();
-        _ = table.Add(SvgNamespace);
-        _ = table.Add(XLinkNamespace);
-        foreach (object name in ElementKinds.Keys)
-        {
-            _ = table.Add((string)name);
-        }
-
-        foreach (object name in Attributes.Keys)
-        {
-            _ = table.Add((string)name);
-        }
-
-        foreach (object name in PresentationAttributes.Keys)
-        {
-            _ = table.Add((string)name);
-        }
-
-        return table;
-    }
 
     /// <summary>
     /// Creates the presentation attribute map from the property names.
@@ -253,8 +239,13 @@ internal static class SvgNames
         Dictionary<object, SvgPropertyId> map = new(ReferenceEqualityComparer.Instance);
         foreach (string name in SvgPropertyParser.PropertyNames)
         {
+            // The transform attribute is read into the transform table of the element, so only the CSS property goes
+            // through the property parser.
             _ = SvgPropertyParser.TryGetProperty(name, out SvgPropertyId property);
-            map[name] = property;
+            if (property != SvgPropertyId.Transform)
+            {
+                map[name] = property;
+            }
         }
 
         return map;

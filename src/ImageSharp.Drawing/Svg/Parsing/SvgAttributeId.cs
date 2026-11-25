@@ -156,5 +156,80 @@ internal enum SvgAttributeId : byte
     /// <summary>
     /// <c>type</c>.
     /// </summary>
-    Type
+    Type,
+
+    /// <summary>
+    /// <c>clipPathUnits</c>.
+    /// </summary>
+    ClipPathUnits,
+
+    /// <summary>
+    /// <c>maskUnits</c>.
+    /// </summary>
+    MaskUnits,
+
+    /// <summary>
+    /// <c>maskContentUnits</c>.
+    /// </summary>
+    MaskContentUnits,
+
+    /// <summary>
+    /// <c>patternUnits</c>.
+    /// </summary>
+    PatternUnits,
+
+    /// <summary>
+    /// <c>patternContentUnits</c>.
+    /// </summary>
+    PatternContentUnits,
+
+    /// <summary>
+    /// <c>patternTransform</c>.
+    /// </summary>
+    PatternTransform,
+
+    /// <summary>
+    /// <c>refX</c>.
+    /// </summary>
+    RefX,
+
+    /// <summary>
+    /// <c>refY</c>.
+    /// </summary>
+    RefY,
+
+    /// <summary>
+    /// <c>markerWidth</c>.
+    /// </summary>
+    MarkerWidth,
+
+    /// <summary>
+    /// <c>markerHeight</c>.
+    /// </summary>
+    MarkerHeight,
+
+    /// <summary>
+    /// <c>markerUnits</c>.
+    /// </summary>
+    MarkerUnits,
+
+    /// <summary>
+    /// <c>orient</c>.
+    /// </summary>
+    Orient,
+
+    /// <summary>
+    /// <c>systemLanguage</c>, on any element.
+    /// </summary>
+    SystemLanguage,
+
+    /// <summary>
+    /// <c>requiredExtensions</c>, on any element.
+    /// </summary>
+    RequiredExtensions,
+
+    /// <summary>
+    /// <c>requiredFeatures</c>, on any element.
+    /// </summary>
+    RequiredFeatures
 }

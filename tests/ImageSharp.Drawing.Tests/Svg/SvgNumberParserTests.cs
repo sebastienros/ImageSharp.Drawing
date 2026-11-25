@@ -120,6 +120,42 @@ public class SvgNumberParserTests
     public void TryParseViewBox_RejectsInvalidValues(string input)
         => Assert.False(SvgNumberParser.TryParseViewBox(input, out _));
 
+    // CSS Values 4: 1turn = 360deg = 400grad = 2π rad. SVG attributes take a number without a unit as degrees.
+    [Theory]
+    [InlineData("30", 30F)]
+    [InlineData("-45", -45F)]
+    [InlineData("30deg", 30F)]
+    [InlineData("40grad", 36F)]
+    [InlineData("0.25turn", 90F)]
+    [InlineData("1.5rad", 85.943665F)]
+    [InlineData(" 1.5RAD ", 85.943665F)]
+    [InlineData("9999", 9999F)]
+    public void TryParseAngle_ReadsUnitsAndUnitlessDegrees(string input, float expected)
+    {
+        Assert.True(SvgNumberParser.TryParseAngle(input, out float degrees));
+        Assert.Equal(expected, degrees, 3);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("deg")]
+    [InlineData("30 deg")]
+    [InlineData("30px")]
+    [InlineData("30%")]
+    [InlineData("30degx")]
+    public void TryParseAngle_RejectsOtherValues(string input)
+        => Assert.False(SvgNumberParser.TryParseAngle(input, out _));
+
+    // CSS allows an angle without a unit only for zero.
+    [Fact]
+    public void TryReadAngle_CssFormRequiresAUnitUnlessZero()
+    {
+        Assert.False(SvgNumberParser.TryReadAngle("45", false, out _, out _));
+        Assert.True(SvgNumberParser.TryReadAngle("0", false, out float zero, out int length));
+        Assert.Equal(0F, zero);
+        Assert.Equal(1, length);
+    }
+
     [Fact]
     public void TryParsePoints_ReadsCoordinatePairs()
     {

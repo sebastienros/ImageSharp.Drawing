@@ -28,6 +28,14 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// element instance against <see cref="SvgLimits.MaxNodes"/>, because nested references can multiply the content of a
 /// small document.
 /// </para>
+/// <para>
+/// Helpers that the features of phase 2 share, each with its contract on the member:
+/// <see cref="ResolveContent(int, in SvgResolveContext)"/> resolves the content of a referenced element with cycle
+/// detection; <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/> computes the object
+/// bounding box; <see cref="TryGetLocalTransform(int, in SvgComputedStyle, SizeF, out Matrix3x2)"/> applies
+/// <c>transform-origin</c>; <see cref="ComputeDocumentStyle(int)"/> computes a style through the document ancestors; and
+/// <see cref="TakeNodes(int, out int)"/> takes resolved nodes out of the main paint order.
+/// </para>
 /// </remarks>
 internal sealed class SvgResolver
 {
@@ -37,15 +45,19 @@ internal sealed class SvgResolver
     private const float Kappa = 0.5522848F;
 
     private readonly SvgElementTree tree;
-    private readonly float dpi;
+    private readonly SvgUnitBasis units;
     private readonly int maxNodes;
     private readonly int maxDepth;
     private readonly SvgComputedStyle initialStyle;
+    private readonly SvgComputedStyle rootStyle;
+    private readonly SizeF intrinsicSize;
+    private readonly RectangleF? rootViewBox;
+    private readonly bool viewBoxDisablesRendering;
     private readonly SvgPaintCache paints;
     private readonly List<SvgRenderNode> nodes = [];
     private readonly List<Matrix3x2> transforms = [];
     private readonly Dictionary<Matrix3x2, int> transformIndexes = [];
-    private readonly List<int> useChain = [];
+    private readonly List<int> referenceChain = [];
     private readonly IPath?[] shapes;
     private readonly Vector3[] shapeContexts;
     private Matrix3x2 lastTransform;
@@ -54,21 +66,75 @@ internal sealed class SvgResolver
     private bool hasEmptyNodes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SvgResolver"/> class.
+    /// Initializes a new instance of the <see cref="SvgResolver"/> class. It computes the style of the root element and
+    /// the intrinsic size of the document, which the units <c>rem</c>, <c>vw</c>, and <c>vh</c> of every other element
+    /// refer to.
     /// </summary>
-    /// <param name="tree">The element tree.</param>
+    /// <param name="tree">The element tree. The root element is an <c>svg</c> element.</param>
     /// <param name="options">The load options.</param>
-    private SvgResolver(SvgElementTree tree, SvgLoadOptions options)
+    internal SvgResolver(SvgElementTree tree, SvgLoadOptions options)
     {
         this.tree = tree;
-        this.dpi = options.Dpi;
         this.maxNodes = options.Limits.MaxNodes;
         this.maxDepth = options.Limits.MaxNestingDepth;
+        this.MaxImagePixels = options.Limits.MaxImagePixels;
+        this.MaxPatternTilePixels = options.Limits.MaxPatternTilePixels;
+        this.Languages = options.Languages;
+        this.ResourceBaseDirectory = options.ResourceBaseDirectory;
         this.initialStyle = SvgComputedStyle.CreateInitial(options.CurrentColor);
-        this.paints = new SvgPaintCache(tree, this.dpi, in this.initialStyle);
+
+        // rem in the font size of the root refers to the initial font size; the other root lengths refer to the root
+        // font size. Viewport units refer to the intrinsic size, which the root size defines, so the root itself uses
+        // the default size.
+        this.rootStyle = SvgComputedStyle.Compute(
+            in tree.GetStyle(0),
+            in this.initialStyle,
+            in this.initialStyle,
+            SvgUnitBasis.ForRoot(options.Dpi),
+            SvgElementKind.Svg);
+
+        SvgUnitBasis rootUnits = new(options.Dpi, this.rootStyle.FontSize, SvgUnitBasis.DefaultViewportSize);
+        this.intrinsicSize = this.ComputeIntrinsicSize(rootUnits, out this.rootViewBox, out this.viewBoxDisablesRendering);
+        this.units = new SvgUnitBasis(options.Dpi, this.rootStyle.FontSize, this.intrinsicSize);
+        this.paints = new SvgPaintCache(tree, this.units, in this.initialStyle);
         this.shapes = new IPath?[tree.Count];
         this.shapeContexts = new Vector3[tree.Count];
     }
+
+    /// <summary>
+    /// Gets the language tags that <c>systemLanguage</c> tests match, most preferred first, from
+    /// <see cref="SvgLoadOptions.Languages"/>.
+    /// </summary>
+    internal IReadOnlyList<string> Languages { get; }
+
+    /// <summary>
+    /// Gets the directory that file references of <c>image</c> elements resolve against, or <see langword="null"/> when
+    /// only <c>data:</c> URIs may load. From <see cref="SvgLoadOptions.ResourceBaseDirectory"/>.
+    /// </summary>
+    internal string? ResourceBaseDirectory { get; }
+
+    /// <summary>
+    /// Gets the largest total number of decoded pixels of all <c>image</c> elements, from
+    /// <see cref="SvgLimits.MaxImagePixels"/>.
+    /// </summary>
+    internal long MaxImagePixels { get; }
+
+    /// <summary>
+    /// Gets the largest pixel count of one rendered pattern tile, from <see cref="SvgLimits.MaxPatternTilePixels"/>.
+    /// Tiles render at emit time, so a document that uses patterns must carry this value.
+    /// </summary>
+    internal int MaxPatternTilePixels { get; }
+
+    /// <summary>
+    /// Gets the document values that length units refer to.
+    /// </summary>
+    internal SvgUnitBasis Units => this.units;
+
+    /// <summary>
+    /// Gets the number of render nodes resolved so far. Pass it to <see cref="TakeNodes(int, out int)"/> to take the nodes
+    /// that a later call adds.
+    /// </summary>
+    internal int NodeCount => this.nodes.Count;
 
     /// <summary>
     /// Resolves an element tree into a document.
@@ -88,18 +154,63 @@ internal sealed class SvgResolver
     /// <returns>The document.</returns>
     private SvgDocument ResolveDocument()
     {
-        SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(0), in this.initialStyle, in this.initialStyle, this.dpi);
+        SvgComputedStyle style = this.rootStyle;
         ref readonly SvgViewportAttributes root = ref this.tree.GetViewport(0);
+        float width = this.intrinsicSize.Width;
+        float height = this.intrinsicSize.Height;
+        RectangleF? viewBox = this.rootViewBox;
 
-        // The intrinsic size comes from absolute width and height. A missing or percentage side follows the aspect ratio
-        // of the view box, and without a view box the browser fallback of 300 x 150 applies. A view box with a zero side
-        // is kept by the parser because SVG 2 makes it disable rendering; it gives no size.
+        // Without a view box, the intrinsic size is the coordinate system that maps into the destination.
+        RectangleF mappedBox = viewBox ?? new RectangleF(0F, 0F, width, height);
+        bool renders = !this.viewBoxDisablesRendering
+            && width > 0F
+            && height > 0F
+            && float.IsFinite(width)
+            && float.IsFinite(height)
+            && style.Display != SvgDisplay.None
+            && style.Opacity > 0F;
+
+        if (renders)
+        {
+            this.instanceCount = 1;
+            SvgResolveContext context = new(in style, Matrix3x2.Identity, mappedBox.Size, 1);
+            int group = this.BeginGroup(style.Opacity);
+            this.ResolveChildren(0, in context);
+            this.EndGroup(group, style.Opacity);
+        }
+
+        SvgRenderNode[] nodes = this.TakeNodes(0, out int maxScopeDepth);
+        return new SvgDocument(
+            nodes,
+            [.. this.transforms],
+            new SizeF(width, height),
+            viewBox,
+            mappedBox,
+            root.PreserveAspectRatio,
+            maxScopeDepth);
+    }
+
+    /// <summary>
+    /// Computes the intrinsic size of the document from the root element.
+    /// </summary>
+    /// <remarks>
+    /// The intrinsic size comes from absolute width and height. A missing or percentage side follows the aspect ratio of
+    /// the view box, and without a view box the browser fallback of 300 x 150 applies. A view box with a zero side is kept
+    /// by the parser because SVG 2 makes it disable rendering; it gives no size.
+    /// </remarks>
+    /// <param name="rootUnits">The unit basis of the root element.</param>
+    /// <param name="viewBox">When this method returns, contains the root view box, or <see langword="null"/> when it is missing or disables rendering.</param>
+    /// <param name="disablesRendering">When this method returns, contains whether the root view box has a zero side.</param>
+    /// <returns>The intrinsic size.</returns>
+    private SizeF ComputeIntrinsicSize(SvgUnitBasis rootUnits, out RectangleF? viewBox, out bool disablesRendering)
+    {
+        ref readonly SvgViewportAttributes root = ref this.tree.GetViewport(0);
         bool hasWidth = root.Width.IsSpecified && root.Width.Unit != SvgLengthUnit.Percent;
         bool hasHeight = root.Height.IsSpecified && root.Height.Unit != SvgLengthUnit.Percent;
-        float width = hasWidth ? SvgUnits.ToPixels(root.Width, style.FontSize, this.dpi) : 0F;
-        float height = hasHeight ? SvgUnits.ToPixels(root.Height, style.FontSize, this.dpi) : 0F;
-        bool viewBoxDisablesRendering = root.HasViewBox && (root.ViewBox.Width <= 0F || root.ViewBox.Height <= 0F);
-        RectangleF? viewBox = root.HasViewBox && !viewBoxDisablesRendering ? root.ViewBox : null;
+        float width = hasWidth ? SvgUnits.ToPixels(root.Width, this.rootStyle.FontSize, rootUnits) : 0F;
+        float height = hasHeight ? SvgUnits.ToPixels(root.Height, this.rootStyle.FontSize, rootUnits) : 0F;
+        disablesRendering = root.HasViewBox && (root.ViewBox.Width <= 0F || root.ViewBox.Height <= 0F);
+        viewBox = root.HasViewBox && !disablesRendering ? root.ViewBox : null;
 
         if (viewBox is RectangleF box)
         {
@@ -123,34 +234,7 @@ internal sealed class SvgResolver
             height = hasHeight ? height : 150F;
         }
 
-        // Without a view box, the intrinsic size is the coordinate system that maps into the destination.
-        RectangleF mappedBox = viewBox ?? new RectangleF(0F, 0F, width, height);
-        bool renders = !viewBoxDisablesRendering
-            && width > 0F
-            && height > 0F
-            && float.IsFinite(width)
-            && float.IsFinite(height)
-            && style.Display != SvgDisplay.None
-            && style.Opacity > 0F;
-
-        if (renders)
-        {
-            this.instanceCount = 1;
-            SvgResolveContext context = new(in style, Matrix3x2.Identity, mappedBox.Size, 1);
-            int group = this.BeginGroup(style.Opacity);
-            this.ResolveChildren(0, in context);
-            this.EndGroup(group, style.Opacity);
-        }
-
-        SvgRenderNode[] nodes = this.BuildNodes(out int maxScopeDepth);
-        return new SvgDocument(
-            nodes,
-            [.. this.transforms],
-            new SizeF(width, height),
-            viewBox,
-            mappedBox,
-            root.PreserveAspectRatio,
-            maxScopeDepth);
+        return new SizeF(width, height);
     }
 
     /// <summary>
@@ -212,7 +296,7 @@ internal sealed class SvgResolver
         }
 
         SvgComputedStyle parentStyle = parent.Style;
-        SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(index), in parentStyle, in this.initialStyle, this.dpi);
+        SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(index), in parentStyle, in this.initialStyle, this.units, kind);
 
         // display: none removes the subtree, and opacity 0 paints nothing.
         if (style.Display == SvgDisplay.None || style.Opacity <= 0F)
@@ -220,9 +304,9 @@ internal sealed class SvgResolver
             return;
         }
 
-        // The transform attribute maps the user space of the element into the user space of its parent. With row vectors
-        // the element transform comes first.
-        Matrix3x2 transform = this.tree.TryGetTransform(index, out Matrix3x2 local) ? local * parent.Transform : parent.Transform;
+        // The transform maps the user space of the element into the user space of its parent. With row vectors the
+        // element transform comes first.
+        Matrix3x2 transform = this.TryGetLocalTransform(index, in style, parent.Viewport, out Matrix3x2 local) ? local * parent.Transform : parent.Transform;
         SvgResolveContext context = new(in style, transform, parent.Viewport, depth);
 
         switch (kind)
@@ -260,45 +344,19 @@ internal sealed class SvgResolver
     /// <param name="useHeight">The <c>height</c> of the referencing <c>use</c> element, which wins when specified.</param>
     private void ResolveViewport(int index, in SvgResolveContext context, SvgLength useWidth, SvgLength useHeight)
     {
-        ref readonly SvgViewportAttributes attributes = ref this.tree.GetViewport(index);
-        SizeF viewport = context.Viewport;
-        float fontSize = context.Style.FontSize;
-
-        // Width and height default to auto, which is 100% of the parent viewport.
-        SvgLength widthLength = useWidth.IsSpecified ? useWidth : attributes.Width;
-        SvgLength heightLength = useHeight.IsSpecified ? useHeight : attributes.Height;
-        float x = SvgUnits.ToUser(attributes.X, viewport.Width, fontSize, this.dpi, 0F);
-        float y = SvgUnits.ToUser(attributes.Y, viewport.Height, fontSize, this.dpi, 0F);
-        float width = SvgUnits.ToUser(widthLength, viewport.Width, fontSize, this.dpi, viewport.Width);
-        float height = SvgUnits.ToUser(heightLength, viewport.Height, fontSize, this.dpi, viewport.Height);
-
-        if (width <= 0F || height <= 0F)
+        if (!this.TryGetViewportTransform(
+            index,
+            in context,
+            useWidth,
+            useHeight,
+            out Matrix3x2 viewportTransform,
+            out SizeF contentViewport,
+            out RectangleF viewportRectangle))
         {
             return;
         }
 
-        RectangleF viewportRectangle = new(x, y, width, height);
-        Matrix3x2 content;
-        SizeF contentViewport;
-
-        if (attributes.HasViewBox)
-        {
-            // A view box with a zero side disables rendering of the element.
-            RectangleF viewBox = attributes.ViewBox;
-            if (viewBox.Width <= 0F || viewBox.Height <= 0F)
-            {
-                return;
-            }
-
-            content = SvgViewBoxTransform.Create(viewBox, attributes.PreserveAspectRatio, viewportRectangle) * context.Transform;
-            contentViewport = viewBox.Size;
-        }
-        else
-        {
-            content = Matrix3x2.CreateTranslation(x, y) * context.Transform;
-            contentViewport = viewportRectangle.Size;
-        }
-
+        Matrix3x2 content = viewportTransform * context.Transform;
         float opacity = context.Style.Opacity;
         int group = this.BeginGroup(opacity);
 
@@ -329,6 +387,71 @@ internal sealed class SvgResolver
     }
 
     /// <summary>
+    /// Computes the viewport of a nested <c>svg</c> element, or of a <c>symbol</c> that a <c>use</c> element references.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <param name="context">The context of the element.</param>
+    /// <param name="useWidth">The <c>width</c> of the referencing <c>use</c> element, which wins when specified.</param>
+    /// <param name="useHeight">The <c>height</c> of the referencing <c>use</c> element, which wins when specified.</param>
+    /// <param name="content">
+    /// When this method returns <see langword="true"/>, contains the transform from the content coordinate system to the
+    /// user space of the element: the view box transform, or the translation to the viewport origin.
+    /// </param>
+    /// <param name="contentViewport">When this method returns <see langword="true"/>, contains the viewport size that percentages in the content refer to.</param>
+    /// <param name="viewportRectangle">When this method returns <see langword="true"/>, contains the viewport rectangle in the user space of the element.</param>
+    /// <returns><see langword="true"/> if the viewport renders; <see langword="false"/> for a zero size or a view box with a zero side.</returns>
+    private bool TryGetViewportTransform(
+        int index,
+        in SvgResolveContext context,
+        SvgLength useWidth,
+        SvgLength useHeight,
+        out Matrix3x2 content,
+        out SizeF contentViewport,
+        out RectangleF viewportRectangle)
+    {
+        ref readonly SvgViewportAttributes attributes = ref this.tree.GetViewport(index);
+        SizeF viewport = context.Viewport;
+        float fontSize = context.Style.FontSize;
+
+        // Width and height default to auto, which is 100% of the parent viewport.
+        SvgLength widthLength = useWidth.IsSpecified ? useWidth : attributes.Width;
+        SvgLength heightLength = useHeight.IsSpecified ? useHeight : attributes.Height;
+        float x = SvgUnits.ToUser(attributes.X, viewport.Width, fontSize, this.units, 0F);
+        float y = SvgUnits.ToUser(attributes.Y, viewport.Height, fontSize, this.units, 0F);
+        float width = SvgUnits.ToUser(widthLength, viewport.Width, fontSize, this.units, viewport.Width);
+        float height = SvgUnits.ToUser(heightLength, viewport.Height, fontSize, this.units, viewport.Height);
+        content = Matrix3x2.Identity;
+        contentViewport = default;
+        viewportRectangle = default;
+
+        if (width <= 0F || height <= 0F)
+        {
+            return false;
+        }
+
+        viewportRectangle = new RectangleF(x, y, width, height);
+        if (attributes.HasViewBox)
+        {
+            // A view box with a zero side disables rendering of the element.
+            RectangleF viewBox = attributes.ViewBox;
+            if (viewBox.Width <= 0F || viewBox.Height <= 0F)
+            {
+                return false;
+            }
+
+            content = SvgViewBoxTransform.Create(viewBox, attributes.PreserveAspectRatio, viewportRectangle);
+            contentViewport = viewBox.Size;
+        }
+        else
+        {
+            content = Matrix3x2.CreateTranslation(x, y);
+            contentViewport = viewportRectangle.Size;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Resolves a <c>use</c> element: an instance of the referenced element that inherits style from the <c>use</c>
     /// element, translated by <c>x</c> and <c>y</c>.
     /// </summary>
@@ -343,15 +466,15 @@ internal sealed class SvgResolver
         }
 
         // A reference to the element itself or to an ancestor would contain itself, and a reference back into the chain
-        // of use elements being expanded is a cycle. Both render nothing.
-        if ((target <= index && index < this.tree[target].SubtreeEnd) || this.useChain.Contains(index))
+        // of references being expanded is a cycle. Both render nothing.
+        if ((target <= index && index < this.tree[target].SubtreeEnd) || !this.TryEnterReference(index))
         {
             return;
         }
 
         SizeF viewport = context.Viewport;
-        float x = SvgUnits.ToUser(use.X, viewport.Width, context.Style.FontSize, this.dpi, 0F);
-        float y = SvgUnits.ToUser(use.Y, viewport.Height, context.Style.FontSize, this.dpi, 0F);
+        float x = SvgUnits.ToUser(use.X, viewport.Width, context.Style.FontSize, this.units, 0F);
+        float y = SvgUnits.ToUser(use.Y, viewport.Height, context.Style.FontSize, this.units, 0F);
 
         // x and y add a translation after the transform of the use element.
         Matrix3x2 transform = Matrix3x2.CreateTranslation(x, y) * context.Transform;
@@ -359,10 +482,291 @@ internal sealed class SvgResolver
 
         float opacity = context.Style.Opacity;
         int group = this.BeginGroup(opacity);
-        this.useChain.Add(index);
         this.ResolveElement(target, in instance, use.Width, use.Height, true);
-        this.useChain.RemoveAt(this.useChain.Count - 1);
+        this.ExitReference();
         this.EndGroup(group, opacity);
+    }
+
+    /// <summary>
+    /// Resolves the children of a referenced element into render nodes, appended to the node list in paint order. This
+    /// is the entry point for content that another element references: the content of <c>clipPath</c>, <c>mask</c>,
+    /// <c>pattern</c>, and <c>marker</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Contract for the caller:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><paramref name="element"/> is the referenced container. It does not render itself and its own
+    /// <c>opacity</c>, <c>transform</c>, clip, and mask are not applied; each child renders through
+    /// <see cref="ResolveElement(int, in SvgResolveContext, SvgLength, SvgLength, bool)"/> as a child of a group would,
+    /// with its own transform, style, and group opacity.</description></item>
+    /// <item><description><paramref name="context"/> carries the style that the children inherit, the transform from the
+    /// content coordinate system to document user space (for example the marker transform, or the object bounding box
+    /// mapping), the viewport size that percentages in the content refer to, and the current depth. For
+    /// <c>clipPath</c>, <c>mask</c>, <c>pattern</c>, and <c>marker</c>, take the style from
+    /// <see cref="ComputeDocumentStyle(int)"/>: their content inherits from their own ancestors, not from the referencing
+    /// element.</description></item>
+    /// <item><description>Cycle detection: the method pushes <paramref name="element"/> on the reference chain while it
+    /// resolves the children and returns <see langword="false"/>, adding nothing, when the element is already on the
+    /// chain. Code that follows a reference without resolving content, such as a paint server lookup, checks
+    /// <see cref="IsReferenceActive(int)"/> first.</description></item>
+    /// <item><description>The nodes go to the shared node list. A caller that needs them elsewhere, such as a pattern tile
+    /// or a marker instance list, takes them out with <see cref="TakeNodes(int, out int)"/>, passing the
+    /// <see cref="NodeCount"/> from before the call.</description></item>
+    /// </list>
+    /// <para>
+    /// The same element can be resolved many times, once per reference; every call counts against
+    /// <see cref="SvgLimits.MaxNodes"/> and <see cref="SvgLimits.MaxNestingDepth"/> as <c>use</c> expansion does.
+    /// </para>
+    /// </remarks>
+    /// <param name="element">The index of the referenced element whose children render.</param>
+    /// <param name="context">The context that the children inherit.</param>
+    /// <returns><see langword="true"/> if the content was resolved; <see langword="false"/> if the reference is a cycle.</returns>
+    internal bool ResolveContent(int element, in SvgResolveContext context)
+    {
+        if (!this.TryEnterReference(element))
+        {
+            return false;
+        }
+
+        this.ResolveChildren(element, in context);
+        this.ExitReference();
+        return true;
+    }
+
+    /// <summary>
+    /// Returns whether an element is on the reference chain: a <c>use</c> element being expanded, or a referenced element
+    /// whose content <see cref="ResolveContent(int, in SvgResolveContext)"/> is resolving. Following a reference to such an
+    /// element is a cycle, which SVG makes an error.
+    /// </summary>
+    /// <param name="element">The element index.</param>
+    /// <returns><see langword="true"/> if the element is on the chain; otherwise, <see langword="false"/>.</returns>
+    internal bool IsReferenceActive(int element) => this.referenceChain.Contains(element);
+
+    /// <summary>
+    /// Pushes an element on the reference chain, unless it is already on it.
+    /// </summary>
+    /// <param name="element">The element index.</param>
+    /// <returns><see langword="true"/> if the element was pushed; <see langword="false"/> if following it is a cycle.</returns>
+    internal bool TryEnterReference(int element)
+    {
+        if (this.referenceChain.Contains(element))
+        {
+            return false;
+        }
+
+        this.referenceChain.Add(element);
+        return true;
+    }
+
+    /// <summary>
+    /// Pops the element that the last successful <see cref="TryEnterReference(int)"/> pushed.
+    /// </summary>
+    internal void ExitReference() => this.referenceChain.RemoveAt(this.referenceChain.Count - 1);
+
+    /// <summary>
+    /// Computes the style of an element through its ancestors in the document, starting from the initial style. This is
+    /// the style that the content of a <c>clipPath</c>, <c>mask</c>, <c>pattern</c>, or <c>marker</c> inherits, because
+    /// such content inherits from its place in the document, not from the element that references it.
+    /// </summary>
+    /// <param name="element">The element index.</param>
+    /// <returns>The computed style of the element.</returns>
+    internal SvgComputedStyle ComputeDocumentStyle(int element) => this.paints.ComputeDocumentStyle(element);
+
+    /// <summary>
+    /// Returns the local transform of an element: its <c>transform</c> attribute or CSS <c>transform</c> property, about
+    /// its <c>transform-origin</c>.
+    /// </summary>
+    /// <remarks>
+    /// The transform maps the user space of the element into the user space of its parent. The origin resolves against
+    /// <paramref name="referenceBox"/>: for SVG elements the nearest viewport (<c>transform-box: view-box</c>), which is
+    /// <see cref="SvgResolveContext.Viewport"/> of the parent. <c>clipPath</c>, <c>pattern</c> (with
+    /// <c>patternTransform</c>), and paint servers in bounding box units pass their own reference box to
+    /// <see cref="SvgComputedStyle.GetTransformOrigin(SizeF)"/> and
+    /// <see cref="SvgComputedStyle.ApplyTransformOrigin(Matrix3x2, Vector2)"/> instead.
+    /// </remarks>
+    /// <param name="index">The element index.</param>
+    /// <param name="style">The computed style of the element, which holds its <c>transform-origin</c>.</param>
+    /// <param name="referenceBox">The size of the reference box for percentages of the origin.</param>
+    /// <param name="transform">When this method returns <see langword="true"/>, contains the transform.</param>
+    /// <returns><see langword="true"/> if the element has a transform; otherwise, <see langword="false"/>.</returns>
+    internal bool TryGetLocalTransform(int index, in SvgComputedStyle style, SizeF referenceBox, out Matrix3x2 transform)
+    {
+        if (!this.tree.TryGetTransform(index, out transform))
+        {
+            return false;
+        }
+
+        transform = SvgComputedStyle.ApplyTransformOrigin(transform, style.GetTransformOrigin(referenceBox));
+        return true;
+    }
+
+    /// <summary>
+    /// Computes the object bounding box of an element in its own user space, as SVG defines it for
+    /// <c>objectBoundingBox</c> units.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Contract: the box is the fill geometry of a shape, without the stroke, markers, clipping, masking, or opacity.
+    /// For a container (<c>g</c>, <c>a</c>, nested <c>svg</c>, <c>symbol</c>) it is the union of the boxes of its
+    /// children, each mapped through the transform of the child (with its <c>transform-origin</c>) and, for a nested
+    /// viewport, through the viewport transform; the box of a transformed child is the bounding box of its transformed
+    /// box, as browsers compute it. A <c>use</c> element is a container of its referenced element, translated by its
+    /// <c>x</c> and <c>y</c>. The own transform of <paramref name="element"/> is not applied.
+    /// </para>
+    /// <para>
+    /// An element that draws nothing contributes nothing: <c>display: none</c>, invalid or empty geometry, a missing or
+    /// cyclic <c>use</c> reference, and elements that do not render (definitions, paint servers, unknown elements).
+    /// <c>visibility: hidden</c> and <c>opacity: 0</c> elements still contribute, because SVG excludes neither from the
+    /// box. A line contributes a box with a zero side. Kinds that render from phase 2 (<c>image</c>, <c>switch</c>) are
+    /// not handled yet and contribute nothing; the packages that render them extend the switch in
+    /// <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/>.
+    /// </para>
+    /// <para>
+    /// Geometry comes from the shared shape cache, so a shape that later renders builds its path once.
+    /// </para>
+    /// </remarks>
+    /// <param name="element">The element index.</param>
+    /// <param name="context">
+    /// The context of the element: its computed style (for font-relative lengths and the inherited style of children) and
+    /// the viewport that percentages refer to. The transform and depth of the context are ignored.
+    /// </param>
+    /// <param name="bounds">When this method returns <see langword="true"/>, contains the box in the user space of the element.</param>
+    /// <returns><see langword="true"/> if the element has a box; otherwise, <see langword="false"/>.</returns>
+    internal bool TryGetObjectBoundingBox(int element, in SvgResolveContext context, out RectangleF bounds)
+    {
+        bounds = default;
+        if (context.Style.Display == SvgDisplay.None)
+        {
+            return false;
+        }
+
+        SvgElementKind kind = this.tree[element].Kind;
+        switch (kind)
+        {
+            case SvgElementKind.Path:
+            case SvgElementKind.Rect:
+            case SvgElementKind.Circle:
+            case SvgElementKind.Ellipse:
+            case SvgElementKind.Line:
+            case SvgElementKind.Polyline:
+            case SvgElementKind.Polygon:
+            {
+                IPath? path = this.GetShape(element, kind, in context);
+                if (path is null)
+                {
+                    return false;
+                }
+
+                bounds = path.Bounds;
+                return float.IsFinite(bounds.Width) && float.IsFinite(bounds.Height);
+            }
+
+            case SvgElementKind.G:
+            case SvgElementKind.A:
+                return this.TryGetChildrenBoundingBox(element, in context, Matrix3x2.Identity, context.Viewport, out bounds);
+
+            case SvgElementKind.Svg:
+            case SvgElementKind.Symbol:
+            {
+                // A nested viewport maps its content through its viewport transform. The clip of the viewport does not
+                // reduce the box. A symbol only has a viewport through use, which passes its size in the viewport
+                // attributes of the use element; outside use the symbol takes the size of the parent viewport.
+                if (!this.TryGetViewportTransform(element, in context, default, default, out Matrix3x2 content, out SizeF contentViewport, out _))
+                {
+                    return false;
+                }
+
+                return this.TryGetChildrenBoundingBox(element, in context, content, contentViewport, out bounds);
+            }
+
+            case SvgElementKind.Use:
+            {
+                ref readonly SvgUseAttributes use = ref this.tree.GetUse(element);
+                if (use.Href is null
+                    || !this.tree.TryGetElementById(use.Href, out int target)
+                    || (target <= element && element < this.tree[target].SubtreeEnd)
+                    || !this.TryEnterReference(element))
+                {
+                    return false;
+                }
+
+                SvgElementKind targetKind = this.tree[target].Kind;
+                ref readonly SvgSpecifiedStyle targetSpecified = ref this.tree.GetStyle(target);
+                SvgComputedStyle targetStyle = SvgComputedStyle.Compute(in targetSpecified, context.Style, in this.initialStyle, this.units, targetKind);
+                SvgResolveContext targetContext = new(in targetStyle, Matrix3x2.Identity, context.Viewport, context.Depth + 1);
+                bool found = false;
+                RectangleF box = default;
+                if (targetKind is SvgElementKind.Svg or SvgElementKind.Symbol)
+                {
+                    // The referenced viewport takes its size from the use element.
+                    if (targetStyle.Display != SvgDisplay.None
+                        && this.TryGetViewportTransform(target, in targetContext, use.Width, use.Height, out Matrix3x2 content, out SizeF viewport, out _))
+                    {
+                        found = this.TryGetChildrenBoundingBox(target, in targetContext, content, viewport, out box);
+                    }
+                }
+                else
+                {
+                    found = this.TryGetObjectBoundingBox(target, in targetContext, out box);
+                }
+
+                this.ExitReference();
+                if (!found)
+                {
+                    return false;
+                }
+
+                float x = SvgUnits.ToUser(use.X, context.Viewport.Width, context.Style.FontSize, this.units, 0F);
+                float y = SvgUnits.ToUser(use.Y, context.Viewport.Height, context.Style.FontSize, this.units, 0F);
+                Matrix3x2 transform = this.TryGetLocalTransform(target, in targetStyle, context.Viewport, out Matrix3x2 local) ? local : Matrix3x2.Identity;
+                bounds = TransformBounds(box, transform * Matrix3x2.CreateTranslation(x, y));
+                return true;
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Computes the union of the object bounding boxes of the children of an element, each mapped through its own local
+    /// transform and then through <paramref name="contentTransform"/>.
+    /// </summary>
+    /// <param name="element">The element index.</param>
+    /// <param name="context">The context of the element, whose style the children inherit.</param>
+    /// <param name="contentTransform">The transform from the content coordinate system of the element to its user space.</param>
+    /// <param name="viewport">The viewport that percentages in the children refer to.</param>
+    /// <param name="bounds">When this method returns <see langword="true"/>, contains the union.</param>
+    /// <returns><see langword="true"/> if at least one child has a box; otherwise, <see langword="false"/>.</returns>
+    private bool TryGetChildrenBoundingBox(int element, in SvgResolveContext context, Matrix3x2 contentTransform, SizeF viewport, out RectangleF bounds)
+    {
+        bounds = default;
+        bool found = false;
+        int depth = context.Depth + 1;
+        if (depth > this.maxDepth)
+        {
+            throw new InvalidImageContentException($"The SVG document exceeds the nesting depth limit of {this.maxDepth} through use references.");
+        }
+
+        for (int child = this.tree.GetFirstChild(element); child >= 0; child = this.tree.GetNextSibling(child))
+        {
+            SvgElementKind kind = this.tree[child].Kind;
+            SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(child), context.Style, in this.initialStyle, this.units, kind);
+            SvgResolveContext childContext = new(in style, Matrix3x2.Identity, viewport, depth);
+            if (!this.TryGetObjectBoundingBox(child, in childContext, out RectangleF box))
+            {
+                continue;
+            }
+
+            Matrix3x2 transform = this.TryGetLocalTransform(child, in style, viewport, out Matrix3x2 local) ? local * contentTransform : contentTransform;
+            box = TransformBounds(box, transform);
+            bounds = found ? RectangleF.Union(bounds, box) : box;
+            found = true;
+        }
+
+        return found;
     }
 
     /// <summary>
@@ -523,7 +927,7 @@ internal sealed class SvgResolver
 
         for (int i = 0; i < lengths.Length; i++)
         {
-            float length = SvgUnits.ToUser(lengths[i], diagonal, fontSize, this.dpi, 0F);
+            float length = SvgUnits.ToUser(lengths[i], diagonal, fontSize, this.units, 0F);
             pattern[i] = length / width;
             sum += length;
         }
@@ -622,17 +1026,17 @@ internal sealed class SvgResolver
         SizeF viewport = context.Viewport;
         float fontSize = context.Style.FontSize;
 
-        float width = SvgUnits.ToUser(rect.Width, viewport.Width, fontSize, this.dpi, 0F);
-        float height = SvgUnits.ToUser(rect.Height, viewport.Height, fontSize, this.dpi, 0F);
+        float width = SvgUnits.ToUser(rect.Width, viewport.Width, fontSize, this.units, 0F);
+        float height = SvgUnits.ToUser(rect.Height, viewport.Height, fontSize, this.units, 0F);
         if (!(width > 0F) || !(height > 0F))
         {
             return null;
         }
 
-        float x = SvgUnits.ToUser(rect.X, viewport.Width, fontSize, this.dpi, 0F);
-        float y = SvgUnits.ToUser(rect.Y, viewport.Height, fontSize, this.dpi, 0F);
-        float rx = SvgUnits.ToUser(rect.Rx, viewport.Width, fontSize, this.dpi, 0F);
-        float ry = SvgUnits.ToUser(rect.Ry, viewport.Height, fontSize, this.dpi, 0F);
+        float x = SvgUnits.ToUser(rect.X, viewport.Width, fontSize, this.units, 0F);
+        float y = SvgUnits.ToUser(rect.Y, viewport.Height, fontSize, this.units, 0F);
+        float rx = SvgUnits.ToUser(rect.Rx, viewport.Width, fontSize, this.units, 0F);
+        float ry = SvgUnits.ToUser(rect.Ry, viewport.Height, fontSize, this.units, 0F);
 
         if (!rect.Rx.IsSpecified)
         {
@@ -673,13 +1077,13 @@ internal sealed class SvgResolver
         float ry;
         if (kind == SvgElementKind.Circle)
         {
-            rx = SvgUnits.ToUser(circle.R, SvgUnits.Diagonal(viewport), fontSize, this.dpi, 0F);
+            rx = SvgUnits.ToUser(circle.R, SvgUnits.Diagonal(viewport), fontSize, this.units, 0F);
             ry = rx;
         }
         else
         {
-            rx = SvgUnits.ToUser(circle.Rx, viewport.Width, fontSize, this.dpi, 0F);
-            ry = SvgUnits.ToUser(circle.Ry, viewport.Height, fontSize, this.dpi, 0F);
+            rx = SvgUnits.ToUser(circle.Rx, viewport.Width, fontSize, this.units, 0F);
+            ry = SvgUnits.ToUser(circle.Ry, viewport.Height, fontSize, this.units, 0F);
             if (!circle.Rx.IsSpecified)
             {
                 rx = ry;
@@ -695,8 +1099,8 @@ internal sealed class SvgResolver
             return null;
         }
 
-        float cx = SvgUnits.ToUser(circle.Cx, viewport.Width, fontSize, this.dpi, 0F);
-        float cy = SvgUnits.ToUser(circle.Cy, viewport.Height, fontSize, this.dpi, 0F);
+        float cx = SvgUnits.ToUser(circle.Cx, viewport.Width, fontSize, this.units, 0F);
+        float cy = SvgUnits.ToUser(circle.Cy, viewport.Height, fontSize, this.units, 0F);
         float kx = rx * Kappa;
         float ky = ry * Kappa;
 
@@ -725,11 +1129,11 @@ internal sealed class SvgResolver
         float fontSize = context.Style.FontSize;
 
         PointF start = new(
-            SvgUnits.ToUser(line.X1, viewport.Width, fontSize, this.dpi, 0F),
-            SvgUnits.ToUser(line.Y1, viewport.Height, fontSize, this.dpi, 0F));
+            SvgUnits.ToUser(line.X1, viewport.Width, fontSize, this.units, 0F),
+            SvgUnits.ToUser(line.Y1, viewport.Height, fontSize, this.units, 0F));
         PointF end = new(
-            SvgUnits.ToUser(line.X2, viewport.Width, fontSize, this.dpi, 0F),
-            SvgUnits.ToUser(line.Y2, viewport.Height, fontSize, this.dpi, 0F));
+            SvgUnits.ToUser(line.X2, viewport.Width, fontSize, this.units, 0F),
+            SvgUnits.ToUser(line.Y2, viewport.Height, fontSize, this.units, 0F));
 
         return new Path(new LinearLineSegment(start, end));
     }
@@ -875,13 +1279,33 @@ internal sealed class SvgResolver
     }
 
     /// <summary>
+    /// Takes the render nodes from <paramref name="start"/> to the end of the node list out of the list, as a finished
+    /// node array: the placeholder nodes are removed, every begin node is linked to its end node, and the deepest scope
+    /// nesting is measured. The document takes all nodes this way; a package that keeps content apart from the main paint
+    /// order, such as a pattern tile, takes the nodes that <see cref="ResolveContent(int, in SvgResolveContext)"/> added.
+    /// </summary>
+    /// <remarks>
+    /// The range must hold whole scopes: every begin node in it has its end node in it. The transform indexes of the nodes
+    /// refer to the transform table of the document, which every node array of the document shares.
+    /// </remarks>
+    /// <param name="start">The first node to take, a value of <see cref="NodeCount"/> from before the nodes were added.</param>
+    /// <param name="maxScopeDepth">When this method returns, contains the deepest nesting of layer and clip scopes.</param>
+    /// <returns>The nodes.</returns>
+    internal SvgRenderNode[] TakeNodes(int start, out int maxScopeDepth)
+    {
+        SvgRenderNode[] result = this.BuildNodes(CollectionsMarshal.AsSpan(this.nodes)[start..], out maxScopeDepth);
+        this.nodes.RemoveRange(start, this.nodes.Count - start);
+        return result;
+    }
+
+    /// <summary>
     /// Removes the placeholder nodes, links every begin node to its end node, and measures the deepest scope nesting.
     /// </summary>
+    /// <param name="source">The nodes, which hold whole scopes.</param>
     /// <param name="maxScopeDepth">When this method returns, contains the deepest nesting of layer and clip scopes.</param>
-    /// <returns>The nodes of the document.</returns>
-    private SvgRenderNode[] BuildNodes(out int maxScopeDepth)
+    /// <returns>The finished nodes.</returns>
+    private SvgRenderNode[] BuildNodes(ReadOnlySpan<SvgRenderNode> source, out int maxScopeDepth)
     {
-        ReadOnlySpan<SvgRenderNode> source = CollectionsMarshal.AsSpan(this.nodes);
         int count = source.Length;
         if (this.hasEmptyNodes)
         {

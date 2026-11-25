@@ -9,8 +9,10 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <remarks>
 /// The kinds from <see cref="Svg"/> to <see cref="Style"/> are the phase 1 elements; the reader parses their geometry
 /// and reference attributes. The kinds from <see cref="A"/> on are SVG elements of later phases. The reader recognizes
-/// them so that selectors and later phases can name them, but reads only their common attributes; phase 1 renders neither
-/// them nor their children, the same as <see cref="Unknown"/>.
+/// them so that selectors and later phases can name them. It parses the attributes of <see cref="ClipPath"/>,
+/// <see cref="Mask"/>, <see cref="Pattern"/>, <see cref="Marker"/>, and <see cref="Image"/>, and the common attributes
+/// of the others. Until the phase that renders a kind, neither it nor its children render, the same as
+/// <see cref="Unknown"/>.
 /// </remarks>
 internal enum SvgElementKind : byte
 {
@@ -106,27 +108,27 @@ internal enum SvgElementKind : byte
     A,
 
     /// <summary>
-    /// <c>clipPath</c>. Recognized for later phases.
+    /// <c>clipPath</c>. The reader parses its attributes; it renders from phase 2.
     /// </summary>
     ClipPath,
 
     /// <summary>
-    /// <c>mask</c>. Recognized for later phases.
+    /// <c>mask</c>. The reader parses its attributes; it renders from phase 2.
     /// </summary>
     Mask,
 
     /// <summary>
-    /// <c>pattern</c>. Recognized for later phases.
+    /// <c>pattern</c>. The reader parses its attributes; it renders from phase 2.
     /// </summary>
     Pattern,
 
     /// <summary>
-    /// <c>marker</c>. Recognized for later phases.
+    /// <c>marker</c>. The reader parses its attributes; it renders from phase 2.
     /// </summary>
     Marker,
 
     /// <summary>
-    /// <c>image</c>. Recognized for later phases.
+    /// <c>image</c>. The reader parses its attributes; it renders from phase 2.
     /// </summary>
     Image,
 

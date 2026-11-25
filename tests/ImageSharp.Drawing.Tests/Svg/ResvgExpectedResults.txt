@@ -663,7 +663,7 @@ paint-servers/stop/stops-with-equal-offset-5.svg pass
 paint-servers/stop/stops-with-equal-offset-6.svg pass
 paint-servers/stop/zero-offset-in-the-middle.svg pass
 painting/color/inherit.svg pass
-painting/color/recursive-nested-context-without-color.svg fail marker: context-fill and context-stroke come with markers in phase 2
+painting/color/recursive-nested-context-without-color.svg pass
 painting/color/recursive-nested-context.svg fail marker: context-fill and context-stroke come with markers in phase 2
 painting/color/simple-case.svg pass
 painting/context/in-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
@@ -680,7 +680,7 @@ painting/context/with-pattern-in-use.svg fail marker: context-fill and context-s
 painting/context/with-pattern-objectBoundingBox-in-use.svg fail marker: context-fill and context-stroke come with markers in phase 2
 painting/context/with-pattern-on-marker.svg fail marker: context-fill and context-stroke come with markers in phase 2
 painting/context/with-text.svg fail marker: context-fill and context-stroke come with markers in phase 2
-painting/context/without-context-element.svg fail marker: context-fill and context-stroke come with markers in phase 2
+painting/context/without-context-element.svg pass
 painting/display/bBox-impact.svg fail clipPath: phase 2
 painting/display/none-on-clipPath.svg fail clipPath: phase 2
 painting/display/none-on-defs.svg pass
@@ -1062,7 +1062,7 @@ shapes/polyline/not-enough-points.svg pass
 shapes/polyline/simple-case.svg pass
 shapes/polyline/stop-processing-on-invalid-data.svg pass
 shapes/rect/cap-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-shapes/rect/ch-values.svg fail units: the ch unit is not in the phase 1 length grammar
+shapes/rect/ch-values.svg fail units: ch needs font metrics (phase 3); without them it is 0.5em, which differs from the Noto Sans glyph of the reference
 shapes/rect/em-values.svg pass
 shapes/rect/ex-values.svg pass
 shapes/rect/ic-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
@@ -1079,8 +1079,8 @@ shapes/rect/negative-ry-attribute-resolving.svg pass
 shapes/rect/negative-width-attribute-processing.svg pass
 shapes/rect/percentage-values-1.svg pass
 shapes/rect/percentage-values-2.svg pass
-shapes/rect/q-values.svg fail units: the Q unit is not in the phase 1 length grammar
-shapes/rect/rem-values.svg fail units: the rem unit is not in the phase 1 length grammar
+shapes/rect/q-values.svg pass
+shapes/rect/rem-values.svg pass
 shapes/rect/rlh-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 shapes/rect/rounded-rect.svg pass
 shapes/rect/rx-and-ry-attributes-clamping-order.svg pass
@@ -1090,8 +1090,8 @@ shapes/rect/ry-attribute-clamping.svg pass
 shapes/rect/ry-attribute-resolving.svg pass
 shapes/rect/simple-case.svg pass
 shapes/rect/vi-and-vb-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-shapes/rect/vmin-and-vmax-values.svg fail units: the vmin and vmax units are not in the phase 1 length grammar
-shapes/rect/vw-and-vh-values.svg fail units: the vw and vh units are not in the phase 1 length grammar
+shapes/rect/vmin-and-vmax-values.svg fail units: vmin and vmax refer to the intrinsic size of the document (200 here); the reference resolves them against its 500 px output size
+shapes/rect/vw-and-vh-values.svg fail units: vw and vh refer to the intrinsic size of the document (200 here); the reference resolves them against its 500 px output size
 shapes/rect/with-child.svg pass
 shapes/rect/x-attribute-resolving.svg pass
 shapes/rect/y-attribute-resolving.svg pass
@@ -1165,7 +1165,7 @@ structure/image/zero-width.svg pass
 structure/style-attribute/comments.svg pass
 structure/style-attribute/non-presentational-attribute.svg pass
 structure/style-attribute/simple-case.svg pass
-structure/style-attribute/transform.svg fail transform property: transform in CSS is not in the phase 1 property list
+structure/style-attribute/transform.svg pass
 structure/style/attribute-selector.svg fail CSS selectors: attribute selectors come with the full selector set in phase 2
 structure/style/class-selector.svg pass
 structure/style/combined-selectors.svg pass
@@ -1178,7 +1178,7 @@ structure/style/resolve-order.svg pass
 structure/style/rule-specificity.svg pass
 structure/style/style-after-usage.svg pass
 structure/style/style-inside-CDATA.svg pass
-structure/style/transform.svg fail transform property: transform in CSS is not in the phase 1 property list
+structure/style/transform.svg pass
 structure/style/type-selector.svg pass
 structure/style/universal-selector.svg pass
 structure/style/unresolved-class-selector.svg pass
@@ -1210,7 +1210,7 @@ structure/svg/nested-svg-with-viewBox.svg pass
 structure/svg/nested-svg.svg pass
 structure/svg/no-children.svg pass
 structure/svg/no-size.svg fail sizing: the test checks the intrinsic size; this runner draws every document into the reference rectangle, and the Chromium oracle differs the same way
-structure/svg/not-UTF-8-encoding.svg fail encoding: Windows-1251 needs an encoding provider that the application registers; the test also needs text (phase 3)
+structure/svg/not-UTF-8-encoding.svg fail text: the Windows-1251 document loads; its content is text (phase 3)
 structure/svg/preserveAspectRatio-with-viewBox-not-at-zero-pos.svg pass
 structure/svg/preserveAspectRatio=none.svg pass
 structure/svg/preserveAspectRatio=xMaxYMax-slice.svg pass
@@ -1263,28 +1263,28 @@ structure/systemLanguage/on-svg.svg fail switch: systemLanguage is evaluated by 
 structure/systemLanguage/on-tspan.svg fail switch: systemLanguage is evaluated by switch, phase 2
 structure/systemLanguage/ru-Ru.svg fail switch: systemLanguage is evaluated by switch, phase 2
 structure/systemLanguage/ru-en.svg pass
-structure/transform-origin/bottom.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/center.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/keyword-length.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/left.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/length-percent.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/length-px.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
+structure/transform-origin/bottom.svg pass
+structure/transform-origin/center.svg pass
+structure/transform-origin/keyword-length.svg pass
+structure/transform-origin/left.svg pass
+structure/transform-origin/length-percent.svg pass
+structure/transform-origin/length-px.svg pass
 structure/transform-origin/no-transform.svg pass
-structure/transform-origin/on-clippath-objectBoundingBox.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-clippath.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-gradient-object-bounding-box.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-gradient-user-space-on-use.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-group.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-image.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-pattern-object-bounding-box.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-pattern-user-space-on-use.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-shape.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-text-path.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/on-text.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/right-bottom.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
-structure/transform-origin/right.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
+structure/transform-origin/on-clippath-objectBoundingBox.svg fail clipPath: transform-origin is parsed; clipPath renders in phase 2 package E
+structure/transform-origin/on-clippath.svg fail clipPath: transform-origin is parsed; clipPath renders in phase 2 package E
+structure/transform-origin/on-gradient-object-bounding-box.svg pass
+structure/transform-origin/on-gradient-user-space-on-use.svg pass
+structure/transform-origin/on-group.svg pass
+structure/transform-origin/on-image.svg fail image: transform-origin is parsed; image renders in phase 2 package F
+structure/transform-origin/on-pattern-object-bounding-box.svg fail pattern: transform-origin is parsed; pattern renders in phase 2 package F
+structure/transform-origin/on-pattern-user-space-on-use.svg fail pattern: transform-origin is parsed; pattern renders in phase 2 package F
+structure/transform-origin/on-shape.svg pass
+structure/transform-origin/on-text-path.svg fail text: phase 3
+structure/transform-origin/on-text.svg fail text: phase 3
+structure/transform-origin/right-bottom.svg pass
+structure/transform-origin/right.svg pass
 structure/transform-origin/top-left.svg pass
-structure/transform-origin/top.svg fail transform-origin: the transform-origin property is not in the phase 1 property list
+structure/transform-origin/top.svg pass
 structure/transform-origin/transform-on-parent.svg pass
 structure/transform/default.svg pass
 structure/transform/direct-transform.svg pass

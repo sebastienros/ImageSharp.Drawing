@@ -61,5 +61,42 @@ internal enum SvgLengthUnit : byte
     /// <summary>
     /// A percentage (<c>%</c>). <see cref="SvgLength.Value"/> holds the percentage, so 50% has the value 50.
     /// </summary>
-    Percent
+    Percent,
+
+    /// <summary>
+    /// The advance of the "0" glyph of the element font (<c>ch</c>). Without font metrics, CSS Values 4 lets it be
+    /// half the font size, which the resolve stage uses.
+    /// </summary>
+    Ch,
+
+    /// <summary>
+    /// The computed font size of the root element (<c>rem</c>).
+    /// </summary>
+    Rem,
+
+    /// <summary>
+    /// Quarter-millimeters (<c>Q</c>), 1/40 of a centimeter.
+    /// </summary>
+    Q,
+
+    /// <summary>
+    /// 1% of the width of the initial containing block (<c>vw</c>). For a standalone document that is the intrinsic
+    /// size of the document.
+    /// </summary>
+    Vw,
+
+    /// <summary>
+    /// 1% of the height of the initial containing block (<c>vh</c>).
+    /// </summary>
+    Vh,
+
+    /// <summary>
+    /// The smaller of <see cref="Vw"/> and <see cref="Vh"/> (<c>vmin</c>).
+    /// </summary>
+    Vmin,
+
+    /// <summary>
+    /// The larger of <see cref="Vw"/> and <see cref="Vh"/> (<c>vmax</c>).
+    /// </summary>
+    Vmax
 }

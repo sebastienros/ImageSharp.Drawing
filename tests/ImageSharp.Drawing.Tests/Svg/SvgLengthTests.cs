@@ -24,6 +24,15 @@ public class SvgLengthTests
     [InlineData("1e2px", 100F, (int)SvgLengthUnit.Px)]
     [InlineData("1e1em", 10F, (int)SvgLengthUnit.Em)]
     [InlineData(" .5in ", 0.5F, (int)SvgLengthUnit.In)]
+    [InlineData("3ch", 3F, (int)SvgLengthUnit.Ch)]
+    [InlineData("3rem", 3F, (int)SvgLengthUnit.Rem)]
+    [InlineData("3REM", 3F, (int)SvgLengthUnit.Rem)]
+    [InlineData("3Q", 3F, (int)SvgLengthUnit.Q)]
+    [InlineData("3q", 3F, (int)SvgLengthUnit.Q)]
+    [InlineData("3vw", 3F, (int)SvgLengthUnit.Vw)]
+    [InlineData("3vh", 3F, (int)SvgLengthUnit.Vh)]
+    [InlineData("3vmin", 3F, (int)SvgLengthUnit.Vmin)]
+    [InlineData("3VMax", 3F, (int)SvgLengthUnit.Vmax)]
     public void TryParse_KeepsValueAndUnit(string input, float value, int unit)
     {
         Assert.True(SvgLength.TryParse(input, out SvgLength length));
@@ -43,6 +52,9 @@ public class SvgLengthTests
     [InlineData("10 20")]
     [InlineData("1e39px")]
     [InlineData("auto")]
+    [InlineData("10re")]
+    [InlineData("10vm")]
+    [InlineData("10qq")]
     public void TryParse_RejectsInvalidLengths(string input)
     {
         Assert.False(SvgLength.TryParse(input, out SvgLength length));

@@ -37,7 +37,8 @@ internal readonly struct SvgLength
 
     /// <summary>
     /// Parses a length: a number followed directly by an optional unit, with optional surrounding whitespace. Units are
-    /// ASCII case-insensitive, as in CSS.
+    /// ASCII case-insensitive, as in CSS. The units are those of <see cref="SvgLengthUnit"/>: the SVG 1.1 units and
+    /// the CSS units <c>ch</c>, <c>rem</c>, <c>Q</c>, <c>vw</c>, <c>vh</c>, <c>vmin</c>, and <c>vmax</c>.
     /// </summary>
     /// <param name="source">The characters to parse.</param>
     /// <param name="value">When this method returns <see langword="true"/>, contains the length.</param>
@@ -156,6 +157,7 @@ internal readonly struct SvgLength
         {
             0 => SvgLengthUnit.Number,
             1 when unit[0] == '%' => SvgLengthUnit.Percent,
+            1 when unit[0] is 'q' or 'Q' => SvgLengthUnit.Q,
             2 => (char.ToLowerInvariant(unit[0]), char.ToLowerInvariant(unit[1])) switch
             {
                 ('p', 'x') => SvgLengthUnit.Px,
@@ -166,8 +168,14 @@ internal readonly struct SvgLength
                 ('i', 'n') => SvgLengthUnit.In,
                 ('e', 'm') => SvgLengthUnit.Em,
                 ('e', 'x') => SvgLengthUnit.Ex,
+                ('c', 'h') => SvgLengthUnit.Ch,
+                ('v', 'w') => SvgLengthUnit.Vw,
+                ('v', 'h') => SvgLengthUnit.Vh,
                 _ => SvgLengthUnit.Unspecified
             },
+            3 when unit.Equals("rem", StringComparison.OrdinalIgnoreCase) => SvgLengthUnit.Rem,
+            4 when unit.Equals("vmin", StringComparison.OrdinalIgnoreCase) => SvgLengthUnit.Vmin,
+            4 when unit.Equals("vmax", StringComparison.OrdinalIgnoreCase) => SvgLengthUnit.Vmax,
             _ => SvgLengthUnit.Unspecified
         };
 

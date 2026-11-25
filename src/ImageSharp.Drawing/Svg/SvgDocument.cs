@@ -180,13 +180,13 @@ public sealed class SvgDocument
         => SvgViewBoxTransform.Create(this.MappedBox, this.PreserveAspectRatio, destination);
 
     /// <summary>
-    /// Creates the reader options from the load limits.
+    /// Creates the reader options from the load options.
     /// </summary>
     /// <param name="options">The load options.</param>
     /// <returns>The reader options.</returns>
     private static SvgReaderOptions CreateReaderOptions(SvgLoadOptions options)
     {
         SvgLimits limits = options.Limits;
-        return new SvgReaderOptions(limits.MaxElements, limits.MaxNestingDepth, limits.MaxCharactersFromEntities);
+        return new SvgReaderOptions(limits.MaxElements, limits.MaxNestingDepth, limits.MaxCharactersFromEntities, options.UserStyleSheet);
     }
 }

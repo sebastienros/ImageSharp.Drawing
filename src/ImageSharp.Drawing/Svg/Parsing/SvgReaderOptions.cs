@@ -14,11 +14,13 @@ internal readonly struct SvgReaderOptions
     /// <param name="maxElements">The maximum number of elements in the document.</param>
     /// <param name="maxNestingDepth">The maximum element nesting depth; the root element has depth 1.</param>
     /// <param name="maxCharactersFromEntities">The maximum number of characters that entity expansion may produce.</param>
-    public SvgReaderOptions(int maxElements, int maxNestingDepth, long maxCharactersFromEntities)
+    /// <param name="userStyleSheet">The CSS text of the user style sheet, or <see langword="null"/> for none.</param>
+    public SvgReaderOptions(int maxElements, int maxNestingDepth, long maxCharactersFromEntities, string? userStyleSheet = null)
     {
         this.MaxElements = maxElements;
         this.MaxNestingDepth = maxNestingDepth;
         this.MaxCharactersFromEntities = maxCharactersFromEntities;
+        this.UserStyleSheet = userStyleSheet;
     }
 
     /// <summary>
@@ -42,4 +44,11 @@ internal readonly struct SvgReaderOptions
     /// <see cref="System.Xml.XmlReaderSettings.MaxCharactersFromEntities"/> applies it.
     /// </summary>
     public long MaxCharactersFromEntities { get; }
+
+    /// <summary>
+    /// Gets the CSS text of the user style sheet from <see cref="SvgLoadOptions.UserStyleSheet"/>, or
+    /// <see langword="null"/> for none. The reader does not apply it yet; the user origin of the cascade comes with the
+    /// full CSS support of phase 2.
+    /// </summary>
+    public string? UserStyleSheet { get; }
 }

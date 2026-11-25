@@ -26,5 +26,17 @@ internal enum SvgPaintKind : byte
     /// <summary>
     /// A paint server reference (<c>url(...)</c>) with an optional fallback.
     /// </summary>
-    Url
+    Url,
+
+    /// <summary>
+    /// <c>context-fill</c>: the fill of the context element. Inside marker content the context element is the shape that
+    /// the marker decorates; inside the content of a <c>use</c> element it is the <c>use</c> element. Without a context
+    /// element the paint is <c>none</c>. Only <c>fill</c> and <c>stroke</c> accept it.
+    /// </summary>
+    ContextFill,
+
+    /// <summary>
+    /// <c>context-stroke</c>: the stroke of the context element, with the same rules as <see cref="ContextFill"/>.
+    /// </summary>
+    ContextStroke
 }

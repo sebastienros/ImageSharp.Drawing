@@ -73,7 +73,7 @@ internal struct SvgGradientAttributes
     /// <summary>
     /// Gets or sets <c>gradientUnits</c>.
     /// </summary>
-    public SvgGradientUnits Units { readonly get; set; }
+    public SvgCoordinateUnits Units { readonly get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether <c>gradientTransform</c> is specified and valid.

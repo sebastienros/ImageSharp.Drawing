@@ -18,7 +18,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 public class SvgRenderTests
 {
     /// <summary>
-    /// The feature files: one small document per phase 1 feature, in <c>tests/Images/Input/Svg/Features</c>.
+    /// The feature files: one small document per feature, in <c>tests/Images/Input/Svg/Features</c>.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
     /// <param name="provider">The image provider.</param>
@@ -44,6 +44,7 @@ public class SvgRenderTests
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "current-color")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "units")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "display-visibility")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "transform-origin")]
     public void DrawSvg_Feature<TPixel>(TestImageProvider<TPixel> provider, string name)
         where TPixel : unmanaged, IPixel<TPixel>
         => RunTest(provider, SvgDocument.Load(TestFile.GetInputFileFullPath($"Svg/Features/{name}.svg")), name);

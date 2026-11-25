@@ -18,6 +18,11 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// inherited property and <see cref="Initial"/> otherwise.
 /// </para>
 /// <para>
+/// The values of the properties from <see cref="SvgPropertyId.ClipPath"/> on live in <see cref="Extended"/>, which is
+/// <see langword="null"/> until the style specifies one of them with a value. See <see cref="SvgExtendedStyle"/> for its
+/// ownership rules.
+/// </para>
+/// <para>
 /// The resolve stage computes a value as follows: the value field when <see cref="HasValue(SvgPropertyId)"/> is true;
 /// the parent computed value when the <see cref="Inherit"/> bit is set, or when nothing is specified and
 /// <see cref="IsInherited(SvgPropertyId)"/> is true; otherwise the initial value listed on <see cref="SvgPropertyId"/>.
@@ -42,7 +47,32 @@ internal struct SvgSpecifiedStyle
         | (1UL << (int)SvgPropertyId.StrokeMiterLimit)
         | (1UL << (int)SvgPropertyId.StrokeDashArray)
         | (1UL << (int)SvgPropertyId.StrokeDashOffset)
-        | (1UL << (int)SvgPropertyId.FontSize);
+        | (1UL << (int)SvgPropertyId.FontSize)
+        | (1UL << (int)SvgPropertyId.ClipRule)
+        | (1UL << (int)SvgPropertyId.PaintOrder)
+        | (1UL << (int)SvgPropertyId.MarkerStart)
+        | (1UL << (int)SvgPropertyId.MarkerMid)
+        | (1UL << (int)SvgPropertyId.MarkerEnd)
+        | (1UL << (int)SvgPropertyId.ImageRendering)
+        | (1UL << (int)SvgPropertyId.ShapeRendering)
+        | (1UL << (int)SvgPropertyId.ColorInterpolation);
+
+    /// <summary>
+    /// The mask of the properties whose values live in <see cref="Extended"/>: every property from
+    /// <see cref="SvgPropertyId.ClipPath"/> on.
+    /// </summary>
+    public const ulong ExtendedProperties = ~((1UL << (int)SvgPropertyId.ClipPath) - 1);
+
+    /// <summary>
+    /// The <c>stroke-linecap</c> value in the low 4 bits and the <c>stroke-linejoin</c> value in the high 4 bits.
+    /// </summary>
+    /// <remarks>
+    /// The style table holds one entry per styled element, so its size matters for large documents. The struct ends with
+    /// its byte-sized fields; sharing one byte between the two keywords makes room for the <see cref="Extended"/>
+    /// reference inside the last 8-byte block, so the struct keeps its phase 1 size of 264 bytes. Without it, the struct
+    /// grows to 272 bytes and loading the Paris benchmark document allocates about 1 MB more.
+    /// </remarks>
+    private byte strokeKeywords;
 
     /// <summary>
     /// Gets the mask of the properties that have a specified value or keyword.
@@ -118,12 +148,20 @@ internal struct SvgSpecifiedStyle
     /// <summary>
     /// Gets or sets the <c>stroke-linecap</c> value.
     /// </summary>
-    public SvgStrokeLineCap StrokeLineCap { readonly get; set; }
+    public SvgStrokeLineCap StrokeLineCap
+    {
+        readonly get => (SvgStrokeLineCap)(this.strokeKeywords & 0x0F);
+        set => this.strokeKeywords = (byte)((this.strokeKeywords & 0xF0) | (byte)value);
+    }
 
     /// <summary>
     /// Gets or sets the <c>stroke-linejoin</c> value.
     /// </summary>
-    public SvgStrokeLineJoin StrokeLineJoin { readonly get; set; }
+    public SvgStrokeLineJoin StrokeLineJoin
+    {
+        readonly get => (SvgStrokeLineJoin)(this.strokeKeywords >> 4);
+        set => this.strokeKeywords = (byte)((this.strokeKeywords & 0x0F) | ((byte)value << 4));
+    }
 
     /// <summary>
     /// Gets or sets the <c>stroke-miterlimit</c> value. It is never less than 1.
@@ -156,6 +194,12 @@ internal struct SvgSpecifiedStyle
     /// Gets or sets the <c>stop-opacity</c> value, clamped to the range 0 to 1.
     /// </summary>
     public float StopOpacity { readonly get; set; }
+
+    /// <summary>
+    /// Gets the values of the properties from <see cref="SvgPropertyId.ClipPath"/> on, or <see langword="null"/> when the
+    /// style specifies none of them with a value.
+    /// </summary>
+    public SvgExtendedStyle? Extended { readonly get; private set; }
 
     /// <summary>
     /// Returns whether a property inherits by default.
@@ -230,14 +274,24 @@ internal struct SvgSpecifiedStyle
     }
 
     /// <summary>
+    /// Returns the extension that holds the values of the properties from <see cref="SvgPropertyId.ClipPath"/> on,
+    /// creating it when the style has none. Only the property parser calls this, while it fills a style that is not yet
+    /// stored in a table; see <see cref="SvgExtendedStyle"/>.
+    /// </summary>
+    /// <returns>The extension, which the caller may change.</returns>
+    public SvgExtendedStyle GetOrCreateExtended() => this.Extended ??= new SvgExtendedStyle();
+
+    /// <summary>
     /// Applies the specified properties of <paramref name="source"/> over this style, as a declaration of higher
     /// precedence does in the cascade. Properties that <paramref name="source"/> does not specify keep their values.
+    /// Values of extended properties are shared or merged into a new <see cref="SvgExtendedStyle"/>, so no extension
+    /// changes.
     /// </summary>
     /// <param name="source">The style of higher precedence.</param>
     public void Apply(in SvgSpecifiedStyle source)
     {
-        // Visit only the set bits; a typical declaration block specifies a few properties.
-        ulong bits = source.Specified;
+        // Visit only the set bits of the phase 1 properties; a typical declaration block specifies a few properties.
+        ulong bits = source.Specified & ~ExtendedProperties;
         while (bits != 0)
         {
             SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
@@ -299,6 +353,15 @@ internal struct SvgSpecifiedStyle
                     this.StopOpacity = source.StopOpacity;
                     break;
             }
+        }
+
+        // A style without extended values shares the extension of the source, because no stored extension changes. A
+        // style with its own values gets a new merged extension. Fields of properties that the source does not give a
+        // value are meaningless, so taking them along is harmless: the bits of this style decide which fields count.
+        ulong extended = source.Specified & ExtendedProperties;
+        if (extended != 0 && source.Extended is not null)
+        {
+            this.Extended = this.Extended is null ? source.Extended : SvgExtendedStyle.Merge(this.Extended, source.Extended, extended);
         }
 
         // The keyword bits of the applied properties come from the source; the bits of the other properties stay.

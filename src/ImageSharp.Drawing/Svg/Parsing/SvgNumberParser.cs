@@ -127,6 +127,87 @@ internal static class SvgNumberParser
     }
 
     /// <summary>
+    /// Parses a value that is exactly one angle, with optional surrounding whitespace.
+    /// </summary>
+    /// <param name="source">The characters to parse.</param>
+    /// <param name="degrees">When this method returns <see langword="true"/>, contains the angle in degrees.</param>
+    /// <returns><see langword="true"/> if the value is one finite angle; otherwise, <see langword="false"/>.</returns>
+    public static bool TryParseAngle(ReadOnlySpan<char> source, out float degrees)
+    {
+        source = Trim(source);
+        return TryReadAngle(source, true, out degrees, out int length) && length == source.Length;
+    }
+
+    /// <summary>
+    /// Reads the angle at the start of <paramref name="source"/>: a number directly followed by an optional unit,
+    /// <c>deg</c>, <c>grad</c>, <c>rad</c>, or <c>turn</c>, ASCII case-insensitive as in CSS. Leading separators are not
+    /// skipped.
+    /// </summary>
+    /// <param name="source">The characters to read.</param>
+    /// <param name="allowUnitless">
+    /// Whether a number without a unit is an angle in degrees, as SVG attributes allow. CSS allows a unitless angle only
+    /// for zero.
+    /// </param>
+    /// <param name="degrees">When this method returns <see langword="true"/>, contains the angle in degrees.</param>
+    /// <param name="length">When this method returns <see langword="true"/>, contains the number of characters read.</param>
+    /// <returns><see langword="true"/> if an angle was read; otherwise, <see langword="false"/>.</returns>
+    public static bool TryReadAngle(ReadOnlySpan<char> source, bool allowUnitless, out float degrees, out int length)
+    {
+        if (!TryReadNumber(source, false, out float number, out length))
+        {
+            degrees = default;
+            return false;
+        }
+
+        int unitLength = 0;
+        ReadOnlySpan<char> rest = source[length..];
+        while (unitLength < rest.Length && char.IsAsciiLetter(rest[unitLength]))
+        {
+            unitLength++;
+        }
+
+        // CSS Values 4: 1turn = 360deg = 400grad = 2π rad.
+        ReadOnlySpan<char> unit = rest[..unitLength];
+        bool valid = true;
+        if (unit.IsEmpty)
+        {
+            degrees = number;
+            valid = allowUnitless || number == 0F;
+        }
+        else if (unit.Equals("deg", StringComparison.OrdinalIgnoreCase))
+        {
+            degrees = number;
+        }
+        else if (unit.Equals("grad", StringComparison.OrdinalIgnoreCase))
+        {
+            degrees = number * 0.9F;
+        }
+        else if (unit.Equals("rad", StringComparison.OrdinalIgnoreCase))
+        {
+            degrees = number * (180F / MathF.PI);
+        }
+        else if (unit.Equals("turn", StringComparison.OrdinalIgnoreCase))
+        {
+            degrees = number * 360F;
+        }
+        else
+        {
+            degrees = default;
+            valid = false;
+        }
+
+        if (!valid || !float.IsFinite(degrees))
+        {
+            degrees = default;
+            length = 0;
+            return false;
+        }
+
+        length += unitLength;
+        return true;
+    }
+
+    /// <summary>
     /// Parses a number or a percentage and returns it as a fraction, so <c>50%</c> and <c>0.5</c> both give 0.5. The result
     /// is clamped to the range 0 to 1, as CSS does for opacity values and SVG does for gradient stop offsets.
     /// </summary>

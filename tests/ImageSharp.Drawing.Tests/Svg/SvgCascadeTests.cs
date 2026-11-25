@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Numerics;
 using SixLabors.ImageSharp.Drawing.Svg;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -341,6 +342,80 @@ public class SvgCascadeTests
         Assert.False(StyleOf(tree, "r").IsSpecified(SvgPropertyId.Fill));
     }
 
+    // The marker shorthand sets marker-start, marker-mid, and marker-end, from a style sheet and from a style attribute.
+    [Fact]
+    public void Cascade_MarkerShorthandSetsTheThreeLonghands()
+    {
+        SvgElementTree tree = Read(
+            """
+            <style>#a { marker: url(#m) } #b { MARKER: url(#m) !important }</style>
+            <path id="a" marker-end="url(#x)"/>
+            <path id="b" style="marker-start: url(#n)"/>
+            <path id="c" style="marker: url(#n); marker-mid: none"/>
+            """);
+
+        SvgExtendedStyle a = StyleOf(tree, "a").Extended!;
+        Assert.Equal("m", a.MarkerStart.Id);
+        Assert.Equal("m", a.MarkerMid.Id);
+
+        // A rule overrides the presentation attribute.
+        Assert.Equal("m", a.MarkerEnd.Id);
+
+        // An important rule overrides the normal style attribute.
+        Assert.Equal("m", StyleOf(tree, "b").Extended!.MarkerStart.Id);
+
+        SvgExtendedStyle c = StyleOf(tree, "c").Extended!;
+        Assert.Equal("n", c.MarkerStart.Id);
+        Assert.True(c.MarkerMid.IsNone);
+        Assert.Equal("n", c.MarkerEnd.Id);
+    }
+
+    // One rule styles many elements, so the cascade of one element must not change the values that another element sees.
+    [Fact]
+    public void Cascade_SharedRuleExtensionsStayUnchanged()
+    {
+        SvgElementTree tree = Read(
+            """
+            <style>rect { clip-path: url(#a); mask: url(#b) }</style>
+            <rect id="first" style="mask: url(#c)"/>
+            <rect id="second"/>
+            """);
+
+        Assert.Equal("c", StyleOf(tree, "first").Extended!.Mask.Id);
+        Assert.Equal("a", StyleOf(tree, "first").Extended!.ClipPath.Id);
+        Assert.Equal("b", StyleOf(tree, "second").Extended!.Mask.Id);
+        Assert.Equal("a", StyleOf(tree, "second").Extended!.ClipPath.Id);
+    }
+
+    // SVG 2: the transform attribute is the presentation attribute of the transform property, so CSS wins over it.
+    [Fact]
+    public void Cascade_CssTransformReplacesTheTransformAttribute()
+    {
+        SvgElementTree tree = Read(
+            """
+            <style>#a { transform: scale(2) } #b { transform: none }</style>
+            <g id="g" transform="translate(5)">
+              <rect id="a" transform="translate(1)"/>
+              <rect id="b" transform="translate(1)"/>
+              <rect id="c" style="transform: rotate(90deg)"/>
+              <rect id="d" style="transform: inherit"/>
+              <rect id="e" style="transform: rotate(90)" transform="translate(3)"/>
+            </g>
+            """);
+
+        Assert.True(tree.TryGetTransform(Index(tree, "a"), out Matrix3x2 a));
+        Assert.Equal(Matrix3x2.CreateScale(2F), a);
+        Assert.False(tree.TryGetTransform(Index(tree, "b"), out _));
+        Assert.True(tree.TryGetTransform(Index(tree, "c"), out Matrix3x2 c));
+        Assert.Equal(1F, Vector2.Transform(Vector2.UnitX, c).Y, 5);
+        Assert.True(tree.TryGetTransform(Index(tree, "d"), out Matrix3x2 d));
+        Assert.Equal(Matrix3x2.CreateTranslation(5, 0), d);
+
+        // An invalid CSS value is dropped, so the attribute applies.
+        Assert.True(tree.TryGetTransform(Index(tree, "e"), out Matrix3x2 e));
+        Assert.Equal(Matrix3x2.CreateTranslation(3, 0), e);
+    }
+
     private static ref readonly SvgSpecifiedStyle StyleOf(SvgElementTree tree, string id)
     {
         Assert.True(tree.TryGetElementById(id, out int index));
@@ -349,4 +424,10 @@ public class SvgCascadeTests
 
     private static SvgElementTree Read(string content)
         => SvgReader.Read($"<svg xmlns=\"http://www.w3.org/2000/svg\">{content}</svg>", SvgReaderOptions.Default);
+
+    private static int Index(SvgElementTree tree, string id)
+    {
+        Assert.True(tree.TryGetElementById(id, out int index));
+        return index;
+    }
 }

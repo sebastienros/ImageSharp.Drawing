@@ -14,8 +14,9 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <remarks>
 /// <para>
 /// The reader makes one forward pass over an <see cref="XmlReader"/>. It does not build an XML DOM and does not recurse on
-/// the XML depth. Element and attribute names are matched by reference against a pre-seeded name table. Attribute values
-/// are parsed from spans into typed fields as they are read; <c>style</c> element text is parsed into a style sheet. After
+/// the XML depth. Element and attribute names are matched by reference, through a name table that returns the known names
+/// as constants (<see cref="SvgNameTable"/>). Attribute values are parsed from spans into typed fields as they are read;
+/// <c>style</c> element text is parsed into a style sheet. After
 /// the last element, the cascade combines presentation attributes, style sheet rules, and <c>style</c> attributes into one
 /// specified style per element.
 /// </para>
@@ -62,9 +63,94 @@ internal sealed class SvgReader
     /// <exception cref="InvalidImageContentException">The input is not a valid SVG document, or a limit is exceeded.</exception>
     public static SvgElementTree Read(Stream stream, in SvgReaderOptions options)
     {
-        NameTable nameTable = SvgNames.CreateNameTable();
-        using XmlReader xml = XmlReader.Create(stream, CreateSettings(in options, nameTable));
-        return new SvgReader(in options).ReadDocument(xml);
+        SvgNameTable nameTable = new();
+        XmlReaderSettings settings = CreateSettings(in options, nameTable);
+        Encoding? legacyEncoding = DetectLegacyEncoding(stream);
+        if (legacyEncoding is null)
+        {
+            using XmlReader xml = XmlReader.Create(stream, settings);
+            return new SvgReader(in options).ReadDocument(xml);
+        }
+
+        // The XML reader ignores the encoding declaration when it reads characters, so the decoder chosen here applies.
+        using StreamReader text = new(stream, legacyEncoding, false, -1, true);
+        using XmlReader legacyXml = XmlReader.Create(text, settings);
+        return new SvgReader(in options).ReadDocument(legacyXml);
+    }
+
+    /// <summary>
+    /// Finds a legacy encoding, such as Windows-1251, that the XML declaration of a seekable stream names and that .NET
+    /// does not provide without an encoding provider.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="XmlReader"/> looks the declared encoding up with <see cref="Encoding.GetEncoding(string)"/>, which knows
+    /// only the encodings built into .NET unless the application registers <see cref="CodePagesEncodingProvider"/>
+    /// globally. Registering it here would change the behavior of the whole process, so the provider is asked directly
+    /// instead and the stream is decoded with the result.
+    /// </para>
+    /// <para>
+    /// The method reads the start of the stream and seeks back. A stream that cannot seek is left to the XML reader, so a
+    /// legacy encoding fails to load from it as before. A byte order mark or an encoding that the provider does not
+    /// supply, which includes UTF-8 and UTF-16, also leaves the stream to the XML reader.
+    /// </para>
+    /// </remarks>
+    /// <param name="stream">The stream, at the start of the document.</param>
+    /// <returns>The encoding, or <see langword="null"/> when the XML reader handles the encoding itself.</returns>
+    private static Encoding? DetectLegacyEncoding(Stream stream)
+    {
+        if (!stream.CanSeek)
+        {
+            return null;
+        }
+
+        // The XML declaration comes first and is short, so a small prefix holds it.
+        long position = stream.Position;
+        Span<byte> buffer = stackalloc byte[256];
+        int read = stream.ReadAtLeast(buffer, buffer.Length, false);
+        stream.Position = position;
+
+        // Only an encoding that is ASCII compatible can start with the ASCII text of the declaration.
+        ReadOnlySpan<byte> prefix = buffer[..read];
+        int end = prefix.IndexOf("?>"u8);
+        if (!prefix.StartsWith("<?xml"u8) || end < 0)
+        {
+            return null;
+        }
+
+        ReadOnlySpan<byte> declaration = prefix[..end];
+        int attribute = declaration.IndexOf("encoding"u8);
+        if (attribute < 0)
+        {
+            return null;
+        }
+
+        ReadOnlySpan<byte> rest = declaration[(attribute + "encoding"u8.Length)..].TrimStart(" \t\r\n"u8);
+        if (rest.IsEmpty || rest[0] != '=')
+        {
+            return null;
+        }
+
+        rest = rest[1..].TrimStart(" \t\r\n"u8);
+        if (rest.IsEmpty || rest[0] is not ((byte)'"' or (byte)'\''))
+        {
+            return null;
+        }
+
+        int close = rest[1..].IndexOf(rest[0]);
+        if (close <= 0)
+        {
+            return null;
+        }
+
+        // The common UTF-8 declaration needs no lookup and no string.
+        ReadOnlySpan<byte> name = rest.Slice(1, close);
+        if (Ascii.EqualsIgnoreCase(name, "utf-8"u8))
+        {
+            return null;
+        }
+
+        return CodePagesEncodingProvider.Instance.GetEncoding(Encoding.ASCII.GetString(name));
     }
 
     /// <summary>
@@ -76,7 +162,7 @@ internal sealed class SvgReader
     /// <exception cref="InvalidImageContentException">The input is not a valid SVG document, or a limit is exceeded.</exception>
     public static SvgElementTree Read(string svg, in SvgReaderOptions options)
     {
-        NameTable nameTable = SvgNames.CreateNameTable();
+        SvgNameTable nameTable = new();
         using StringReader text = new(svg);
         using XmlReader xml = XmlReader.Create(text, CreateSettings(in options, nameTable));
         return new SvgReader(in options).ReadDocument(xml);
@@ -96,9 +182,9 @@ internal sealed class SvgReader
     /// Creates the XML reader settings for untrusted input.
     /// </summary>
     /// <param name="options">The input limits.</param>
-    /// <param name="nameTable">The pre-seeded name table.</param>
+    /// <param name="nameTable">The name table of the read.</param>
     /// <returns>The settings.</returns>
-    private static XmlReaderSettings CreateSettings(in SvgReaderOptions options, NameTable nameTable)
+    private static XmlReaderSettings CreateSettings(in SvgReaderOptions options, XmlNameTable nameTable)
         => new()
         {
             DtdProcessing = DtdProcessing.Parse,
@@ -161,7 +247,56 @@ internal sealed class SvgReader
             this.tables.Styles,
             this.styleSheet);
 
+        if (this.properties.HasTransformDeclarations)
+        {
+            this.ApplyTransformProperty();
+        }
+
         return new SvgElementTree(this.tables, this.styleSheet.Count);
+    }
+
+    /// <summary>
+    /// Replaces the <c>transform</c> attribute of every element whose cascaded style specifies the CSS
+    /// <c>transform</c> property.
+    /// </summary>
+    /// <remarks>
+    /// SVG 2 makes the attribute the presentation attribute of the property, so a style sheet rule or a <c>style</c>
+    /// attribute always wins over it. Writing the result into the transform table keeps one source of truth for the
+    /// resolve stage. The pass runs in document order, so for <c>inherit</c> the parent already holds its final
+    /// transform. <c>none</c>, <c>initial</c>, and <c>unset</c> (the property does not inherit) remove the transform.
+    /// </remarks>
+    private void ApplyTransformProperty()
+    {
+        Span<SvgElement> elements = CollectionsMarshal.AsSpan(this.tables.Elements);
+        ReadOnlySpan<SvgSpecifiedStyle> styles = CollectionsMarshal.AsSpan(this.tables.Styles);
+        for (int i = 0; i < elements.Length; i++)
+        {
+            ref SvgElement element = ref elements[i];
+            if (element.StyleIndex < 0)
+            {
+                continue;
+            }
+
+            ref readonly SvgSpecifiedStyle style = ref styles[element.StyleIndex];
+            if (!style.IsSpecified(SvgPropertyId.Transform))
+            {
+                continue;
+            }
+
+            if (style.IsInherit(SvgPropertyId.Transform))
+            {
+                element.TransformIndex = element.Parent >= 0 ? elements[element.Parent].TransformIndex : -1;
+            }
+            else if (style.HasValue(SvgPropertyId.Transform) && !style.Extended!.Transform.IsIdentity)
+            {
+                element.TransformIndex = this.tables.Transforms.Count;
+                this.tables.Transforms.Add(style.Extended.Transform);
+            }
+            else
+            {
+                element.TransformIndex = -1;
+            }
+        }
     }
 
     /// <summary>
@@ -345,6 +480,12 @@ internal sealed class SvgReader
                                 // A style element applies only for an absent or empty type, or text/css.
                                 isCss = value.Length == 0 || value.Equals("text/css", StringComparison.OrdinalIgnoreCase);
                                 break;
+                            case SvgAttributeId.SystemLanguage:
+                            case SvgAttributeId.RequiredExtensions:
+                            case SvgAttributeId.RequiredFeatures:
+                                this.tables.SetConditional(index, attribute, value);
+                                element.HasConditionalAttributes = true;
+                                break;
                             default:
                                 this.tables.SetGeometry(kind, element.DataIndex, attribute, value);
                                 break;
@@ -516,6 +657,37 @@ internal sealed class SvgReader
         public List<float> StopOffsets { get; } = [];
 
         /// <summary>
+        /// Gets the <c>clipPathUnits</c> of <c>clipPath</c> elements.
+        /// </summary>
+        public List<SvgCoordinateUnits> ClipPathUnits { get; } = [];
+
+        /// <summary>
+        /// Gets the attributes of <c>mask</c> elements.
+        /// </summary>
+        public List<SvgMaskAttributes> Masks { get; } = [];
+
+        /// <summary>
+        /// Gets the attributes of <c>pattern</c> elements.
+        /// </summary>
+        public List<SvgPatternAttributes> Patterns { get; } = [];
+
+        /// <summary>
+        /// Gets the attributes of <c>marker</c> elements.
+        /// </summary>
+        public List<SvgMarkerAttributes> Markers { get; } = [];
+
+        /// <summary>
+        /// Gets the attributes of <c>image</c> elements.
+        /// </summary>
+        public List<SvgImageAttributes> Images { get; } = [];
+
+        /// <summary>
+        /// Gets the conditional processing attributes by element index, or <see langword="null"/> when no element has
+        /// one. Few documents use them, so the map is created on first use.
+        /// </summary>
+        public Dictionary<int, SvgConditionalAttributes>? Conditions { get; private set; }
+
+        /// <summary>
         /// Gets the map from id to the first element with that id.
         /// </summary>
         public Dictionary<string, int> Ids { get; } = new(StringComparer.Ordinal);
@@ -552,6 +724,16 @@ internal sealed class SvgReader
                     return AddDefault(this.Gradients);
                 case SvgElementKind.Stop:
                     return AddDefault(this.StopOffsets);
+                case SvgElementKind.ClipPath:
+                    return AddDefault(this.ClipPathUnits);
+                case SvgElementKind.Mask:
+                    return AddDefault(this.Masks);
+                case SvgElementKind.Pattern:
+                    return AddDefault(this.Patterns);
+                case SvgElementKind.Marker:
+                    return AddDefault(this.Markers);
+                case SvgElementKind.Image:
+                    return AddDefault(this.Images);
                 default:
                     return -1;
             }
@@ -565,8 +747,15 @@ internal sealed class SvgReader
         /// <param name="value">The <c>href</c> value.</param>
         public void SetHref(SvgElementKind kind, int dataIndex, string value)
         {
-            // Only a same-document fragment names an element. External references never resolve in phase 1.
             ReadOnlySpan<char> reference = SvgNumberParser.Trim(value);
+            if (kind == SvgElementKind.Image)
+            {
+                // An image references a resource, not an element, so the whole URL is kept for the resolve stage.
+                CollectionsMarshal.AsSpan(this.Images)[dataIndex].Href = reference.Length == value.Length ? value : reference.ToString();
+                return;
+            }
+
+            // Only a same-document fragment names an element. External references never resolve.
             string? id = reference.Length > 1 && reference[0] == '#' ? reference[1..].ToString() : null;
             switch (kind)
             {
@@ -577,7 +766,39 @@ internal sealed class SvgReader
                 case SvgElementKind.RadialGradient:
                     CollectionsMarshal.AsSpan(this.Gradients)[dataIndex].Href = id;
                     break;
+                case SvgElementKind.Pattern:
+                    CollectionsMarshal.AsSpan(this.Patterns)[dataIndex].Href = id;
+                    break;
             }
+        }
+
+        /// <summary>
+        /// Stores a conditional processing attribute of an element as written.
+        /// </summary>
+        /// <param name="index">The element index.</param>
+        /// <param name="attribute">
+        /// <see cref="SvgAttributeId.SystemLanguage"/>, <see cref="SvgAttributeId.RequiredExtensions"/>, or
+        /// <see cref="SvgAttributeId.RequiredFeatures"/>.
+        /// </param>
+        /// <param name="value">The attribute value.</param>
+        public void SetConditional(int index, SvgAttributeId attribute, string value)
+        {
+            this.Conditions ??= [];
+            _ = this.Conditions.TryGetValue(index, out SvgConditionalAttributes conditions);
+            switch (attribute)
+            {
+                case SvgAttributeId.SystemLanguage:
+                    conditions.SystemLanguage = value;
+                    break;
+                case SvgAttributeId.RequiredExtensions:
+                    conditions.RequiredExtensions = value;
+                    break;
+                default:
+                    conditions.RequiredFeatures = value;
+                    break;
+            }
+
+            this.Conditions[index] = conditions;
         }
 
         /// <summary>
@@ -639,6 +860,25 @@ internal sealed class SvgReader
                     }
 
                     break;
+                case SvgElementKind.ClipPath:
+                    if (attribute == SvgAttributeId.ClipPathUnits)
+                    {
+                        this.ClipPathUnits[dataIndex] = Units(value);
+                    }
+
+                    break;
+                case SvgElementKind.Mask:
+                    SetMask(ref CollectionsMarshal.AsSpan(this.Masks)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.Pattern:
+                    SetPattern(ref CollectionsMarshal.AsSpan(this.Patterns)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.Marker:
+                    SetMarker(ref CollectionsMarshal.AsSpan(this.Markers)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.Image:
+                    SetImage(ref CollectionsMarshal.AsSpan(this.Images)[dataIndex], attribute, value);
+                    break;
             }
         }
 
@@ -667,6 +907,171 @@ internal sealed class SvgReader
         /// <param name="value">The attribute value.</param>
         /// <returns>The length.</returns>
         private static SvgLength NonNegativeLength(string value) => SvgLength.TryParseNonNegative(value, out SvgLength length) ? length : default;
+
+        /// <summary>
+        /// Parses a coordinate system keyword: <c>userSpaceOnUse</c> or <c>objectBoundingBox</c>. Keywords are
+        /// case-sensitive, as in the SVG grammar.
+        /// </summary>
+        /// <param name="value">The attribute value.</param>
+        /// <returns>The units, or <see cref="SvgCoordinateUnits.Unspecified"/> for an invalid value.</returns>
+        private static SvgCoordinateUnits Units(string value)
+            => SvgNumberParser.Trim(value) switch
+            {
+                "userSpaceOnUse" => SvgCoordinateUnits.UserSpaceOnUse,
+                "objectBoundingBox" => SvgCoordinateUnits.ObjectBoundingBox,
+                _ => SvgCoordinateUnits.Unspecified
+            };
+
+        /// <summary>
+        /// Parses a <c>mask</c> attribute. Negative sizes are kept, because SVG makes them an error that disables the
+        /// mask, which differs from an unspecified size.
+        /// </summary>
+        /// <param name="mask">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetMask(ref SvgMaskAttributes mask, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.X:
+                    mask.X = Length(value);
+                    break;
+                case SvgAttributeId.Y:
+                    mask.Y = Length(value);
+                    break;
+                case SvgAttributeId.Width:
+                    mask.Width = Length(value);
+                    break;
+                case SvgAttributeId.Height:
+                    mask.Height = Length(value);
+                    break;
+                case SvgAttributeId.MaskUnits:
+                    mask.Units = Units(value);
+                    break;
+                case SvgAttributeId.MaskContentUnits:
+                    mask.ContentUnits = Units(value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Parses a <c>pattern</c> attribute. Negative sizes are kept, as for <c>mask</c>.
+        /// </summary>
+        /// <param name="pattern">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetPattern(ref SvgPatternAttributes pattern, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.X:
+                    pattern.X = Length(value);
+                    break;
+                case SvgAttributeId.Y:
+                    pattern.Y = Length(value);
+                    break;
+                case SvgAttributeId.Width:
+                    pattern.Width = Length(value);
+                    break;
+                case SvgAttributeId.Height:
+                    pattern.Height = Length(value);
+                    break;
+                case SvgAttributeId.PatternUnits:
+                    pattern.Units = Units(value);
+                    break;
+                case SvgAttributeId.PatternContentUnits:
+                    pattern.ContentUnits = Units(value);
+                    break;
+                case SvgAttributeId.PatternTransform:
+                    pattern.HasTransform = SvgTransformParser.TryParse(value, out Matrix3x2 transform);
+                    pattern.Transform = transform;
+                    break;
+                case SvgAttributeId.ViewBox:
+                    pattern.HasViewBox = SvgNumberParser.TryParseViewBox(value, out RectangleF viewBox);
+                    pattern.ViewBox = viewBox;
+                    break;
+                case SvgAttributeId.PreserveAspectRatio:
+                    pattern.HasPreserveAspectRatio = SvgPreserveAspectRatio.TryParse(value, out SvgPreserveAspectRatio preserveAspectRatio);
+                    pattern.PreserveAspectRatio = preserveAspectRatio;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Parses a <c>marker</c> attribute. Negative sizes are kept, as for <c>mask</c>.
+        /// </summary>
+        /// <param name="marker">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetMarker(ref SvgMarkerAttributes marker, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.RefX:
+                    marker.RefX = Length(value);
+                    break;
+                case SvgAttributeId.RefY:
+                    marker.RefY = Length(value);
+                    break;
+                case SvgAttributeId.MarkerWidth:
+                    marker.MarkerWidth = Length(value);
+                    break;
+                case SvgAttributeId.MarkerHeight:
+                    marker.MarkerHeight = Length(value);
+                    break;
+                case SvgAttributeId.MarkerUnits:
+                    marker.Units = SvgNumberParser.Trim(value) switch
+                    {
+                        "strokeWidth" => SvgMarkerUnits.StrokeWidth,
+                        "userSpaceOnUse" => SvgMarkerUnits.UserSpaceOnUse,
+                        _ => SvgMarkerUnits.Unspecified
+                    };
+
+                    break;
+                case SvgAttributeId.Orient:
+                    _ = SvgMarkerOrient.TryParse(value, out SvgMarkerOrient orient);
+                    marker.Orient = orient;
+                    break;
+                case SvgAttributeId.ViewBox:
+                    marker.HasViewBox = SvgNumberParser.TryParseViewBox(value, out RectangleF viewBox);
+                    marker.ViewBox = viewBox;
+                    break;
+                case SvgAttributeId.PreserveAspectRatio:
+                    _ = SvgPreserveAspectRatio.TryParse(value, out SvgPreserveAspectRatio preserveAspectRatio);
+                    marker.PreserveAspectRatio = preserveAspectRatio;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Parses an <c>image</c> attribute.
+        /// </summary>
+        /// <param name="image">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetImage(ref SvgImageAttributes image, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.X:
+                    image.X = Length(value);
+                    break;
+                case SvgAttributeId.Y:
+                    image.Y = Length(value);
+                    break;
+                case SvgAttributeId.Width:
+                    // The keyword auto and an invalid value both leave the length unspecified, which means auto.
+                    image.Width = Length(value);
+                    break;
+                case SvgAttributeId.Height:
+                    image.Height = Length(value);
+                    break;
+                case SvgAttributeId.PreserveAspectRatio:
+                    _ = SvgPreserveAspectRatio.TryParse(value, out SvgPreserveAspectRatio preserveAspectRatio);
+                    image.PreserveAspectRatio = preserveAspectRatio;
+                    break;
+            }
+        }
 
         /// <summary>
         /// Parses a <c>rect</c> attribute.
@@ -821,13 +1226,7 @@ internal sealed class SvgReader
                     gradient.Fr = NonNegativeLength(value);
                     break;
                 case SvgAttributeId.GradientUnits:
-                    gradient.Units = SvgNumberParser.Trim(value) switch
-                    {
-                        "userSpaceOnUse" => SvgGradientUnits.UserSpaceOnUse,
-                        "objectBoundingBox" => SvgGradientUnits.ObjectBoundingBox,
-                        _ => SvgGradientUnits.Unspecified
-                    };
-
+                    gradient.Units = Units(value);
                     break;
                 case SvgAttributeId.GradientTransform:
                     gradient.HasTransform = SvgTransformParser.TryParse(value, out Matrix3x2 transform);

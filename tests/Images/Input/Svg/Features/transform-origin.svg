@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <style>
+    #css { transform: rotate(45deg); transform-origin: 30px 160px; }
+  </style>
+  <linearGradient id="gradient" gradientTransform="rotate(90)" transform-origin="0.5 0.5">
+    <stop offset="0" stop-color="black"/>
+    <stop offset="1" stop-color="gold"/>
+  </linearGradient>
+  <radialGradient id="user" gradientUnits="userSpaceOnUse" cx="165" cy="165" r="10" gradientTransform="scale(2)" transform-origin="165px 165px">
+    <stop offset="0" stop-color="white"/>
+    <stop offset="1" stop-color="darkgreen"/>
+  </radialGradient>
+
+  <!-- A keyword: the origin is the center of the viewport. -->
+  <rect x="80" y="80" width="40" height="40" fill="green" transform="rotate(45)" transform-origin="center"/>
+
+  <!-- A percentage and a length. -->
+  <rect x="10" y="10" width="40" height="20" fill="blue" transform="rotate(30)" transform-origin="10% 20px"/>
+
+  <!-- A keyword and a length. -->
+  <rect x="140" y="10" width="50" height="40" fill="orange" transform="scale(0.5)" transform-origin="right 30px"/>
+
+  <!-- Two keywords, vertical first. -->
+  <rect x="80" y="10" width="40" height="40" fill="purple" transform="scale(0.5)" transform-origin="top center"/>
+
+  <!-- em units on a group. -->
+  <g font-size="10" transform="rotate(-20)" transform-origin="2.5em 10.5em">
+    <rect x="10" y="90" width="30" height="30" fill="teal"/>
+  </g>
+
+  <!-- In a nested viewport a percentage refers to the size of its view box, measured from 0, not from the view box origin. -->
+  <svg x="90" y="140" width="50" height="50" viewBox="10 10 100 100">
+    <rect x="40" y="40" width="40" height="40" fill="crimson" transform="rotate(45)" transform-origin="60% 60%"/>
+  </svg>
+
+  <!-- The CSS transform and transform-origin properties from the style sheet. -->
+  <rect id="css" x="20" y="150" width="20" height="20" fill="navy"/>
+
+  <!-- transform-origin applies to gradientTransform: in the unit square of the bounding box, and in user space. -->
+  <rect x="140" y="70" width="50" height="50" fill="url(#gradient)"/>
+  <rect x="145" y="145" width="40" height="40" fill="url(#user)"/>
+</svg>

@@ -50,7 +50,8 @@ internal readonly struct SvgPaint
     public SvgPaintKind Fallback { get; }
 
     /// <summary>
-    /// Parses a paint: <c>none</c>, <c>currentColor</c>, a color, or <c>url(...)</c> followed by an optional fallback.
+    /// Parses a paint: <c>none</c>, <c>currentColor</c>, a color, <c>context-fill</c>, <c>context-stroke</c>, or
+    /// <c>url(...)</c> followed by an optional fallback. The fallback cannot be a context keyword.
     /// </summary>
     /// <param name="source">The characters to parse.</param>
     /// <param name="cache">The color cache, or <see langword="null"/>.</param>
@@ -89,6 +90,20 @@ internal readonly struct SvgPaint
             }
 
             value = new SvgPaint(SvgPaintKind.Url, fallback.Color, reference, fallback.Kind);
+            return true;
+        }
+
+        // SVG 2: the context keywords take the fill or stroke of the context element, such as the shape that a marker
+        // decorates. They are ASCII case-insensitive, as CSS keywords are.
+        if (source.Equals("context-fill", StringComparison.OrdinalIgnoreCase))
+        {
+            value = new SvgPaint(SvgPaintKind.ContextFill, default, null, SvgPaintKind.None);
+            return true;
+        }
+
+        if (source.Equals("context-stroke", StringComparison.OrdinalIgnoreCase))
+        {
+            value = new SvgPaint(SvgPaintKind.ContextStroke, default, null, SvgPaintKind.None);
             return true;
         }
 
@@ -148,7 +163,7 @@ internal readonly struct SvgPaint
     /// <param name="content">The characters between the parentheses.</param>
     /// <param name="valid">When this method returns, indicates whether the content is well formed.</param>
     /// <returns>The fragment id for a same-document reference; otherwise, <see langword="null"/>.</returns>
-    private static string? ParseUrlReference(ReadOnlySpan<char> content, out bool valid)
+    internal static string? ParseUrlReference(ReadOnlySpan<char> content, out bool valid)
     {
         content = SvgNumberParser.Trim(content);
         if (content.Length >= 2 && content[0] is '"' or '\'')

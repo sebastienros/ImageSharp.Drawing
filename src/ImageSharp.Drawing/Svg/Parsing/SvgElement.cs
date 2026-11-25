@@ -64,4 +64,11 @@ internal struct SvgElement
     /// Gets or sets the index into the style table, or -1 when no style property is specified for the element.
     /// </summary>
     public int StyleIndex { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the element has at least one conditional processing attribute. Read them
+    /// with <see cref="SvgElementTree.TryGetConditionalAttributes(int, out SvgConditionalAttributes)"/>. The flag fits in
+    /// the padding of the struct, so elements without conditions cost nothing extra.
+    /// </summary>
+    public bool HasConditionalAttributes { readonly get; set; }
 }

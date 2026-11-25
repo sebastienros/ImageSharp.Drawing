@@ -320,9 +320,12 @@ internal static class SvgCssParser
         // CSS Syntax 5.4.6, consume a declaration.
         SvgCssTokenizer tokenizer = new(text);
         SvgCssToken name = tokenizer.Next();
-        bool known = name.HasEscape
-            ? SvgPropertyParser.TryGetProperty(name.GetValue(text), out SvgPropertyId property)
-            : SvgPropertyParser.TryGetProperty(name.GetRawValue(text), out property);
+        ReadOnlySpan<char> propertyName = name.HasEscape ? name.GetValue(text) : name.GetRawValue(text);
+        bool known = SvgPropertyParser.TryGetProperty(propertyName, out SvgPropertyId property);
+
+        // The marker shorthand is not a property of its own: it sets the three marker longhands.
+        bool isMarker = !known && SvgPropertyParser.IsMarkerShorthand(propertyName);
+        known |= isMarker;
 
         SvgCssToken token = tokenizer.Next();
         while (token.Kind == SvgCssTokenKind.Whitespace)
@@ -389,7 +392,7 @@ internal static class SvgCssParser
         ref SvgSpecifiedStyle target = ref isImportant ? ref important : ref normal;
         if (!hasGap)
         {
-            _ = properties.TryParse(property, value, ref target);
+            _ = isMarker ? properties.TryParseMarkerShorthand(value, ref target) : properties.TryParse(property, value, ref target);
             return;
         }
 
@@ -411,7 +414,9 @@ internal static class SvgCssParser
                 end = t.End;
             }
 
-            _ = properties.TryParse(property, builder.AsSpan(), ref target);
+            _ = isMarker
+                ? properties.TryParseMarkerShorthand(builder.AsSpan(), ref target)
+                : properties.TryParse(property, builder.AsSpan(), ref target);
         }
         finally
         {

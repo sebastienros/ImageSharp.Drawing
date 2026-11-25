@@ -60,12 +60,63 @@ internal sealed class SvgPropertyParser
     /// </summary>
     private static readonly float[] AbsoluteSizeScales = [3F / 5F, 3F / 4F, 8F / 9F, 1F, 6F / 5F, 3F / 2F, 2F, 3F];
 
+    /// <summary>
+    /// The <c>mask-type</c> keywords in <see cref="SvgMaskType"/> order.
+    /// </summary>
+    private static readonly string[] MaskTypeKeywords = ["luminance", "alpha"];
+
+    /// <summary>
+    /// The <c>mix-blend-mode</c> keywords in <see cref="SvgBlendMode"/> order.
+    /// </summary>
+    private static readonly string[] BlendModeKeywords =
+    [
+        "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light",
+        "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"
+    ];
+
+    /// <summary>
+    /// The <c>isolation</c> keywords in <see cref="SvgIsolation"/> order.
+    /// </summary>
+    private static readonly string[] IsolationKeywords = ["auto", "isolate"];
+
+    /// <summary>
+    /// The <c>vector-effect</c> keywords in <see cref="SvgVectorEffect"/> order.
+    /// </summary>
+    private static readonly string[] VectorEffectKeywords = ["none", "non-scaling-stroke"];
+
+    /// <summary>
+    /// The <c>overflow</c> keywords in <see cref="SvgOverflow"/> order.
+    /// </summary>
+    private static readonly string[] OverflowKeywords = ["visible", "hidden", "scroll", "auto"];
+
+    /// <summary>
+    /// The <c>image-rendering</c> keywords in <see cref="SvgImageRendering"/> order.
+    /// </summary>
+    private static readonly string[] ImageRenderingKeywords =
+        ["auto", "optimizeQuality", "optimizeSpeed", "pixelated", "crisp-edges", "smooth", "high-quality"];
+
+    /// <summary>
+    /// The <c>shape-rendering</c> keywords in <see cref="SvgShapeRendering"/> order.
+    /// </summary>
+    private static readonly string[] ShapeRenderingKeywords = ["auto", "optimizeSpeed", "crispEdges", "geometricPrecision"];
+
+    /// <summary>
+    /// The <c>color-interpolation</c> keywords in <see cref="SvgColorInterpolation"/> order.
+    /// </summary>
+    private static readonly string[] ColorInterpolationKeywords = ["sRGB", "auto", "linearRGB"];
+
     private readonly SvgColorCache colors = new();
 
     /// <summary>
     /// Gets the dash length table. <see cref="SvgDashArray"/> values index into it.
     /// </summary>
     public List<SvgLength> DashLengths { get; } = [];
+
+    /// <summary>
+    /// Gets a value indicating whether the parser has seen a declaration of the CSS <c>transform</c> property, valid or
+    /// not. When it has not, the reader skips the pass that applies the property to the transform table.
+    /// </summary>
+    public bool HasTransformDeclarations { get; private set; }
 
     /// <summary>
     /// Gets the property names in their canonical lowercase form, for pre-seeding the XML name table.
@@ -92,6 +143,7 @@ internal sealed class SvgPropertyParser
     public bool TryParse(SvgPropertyId property, ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
     {
         source = SvgNumberParser.Trim(source);
+        this.HasTransformDeclarations |= property == SvgPropertyId.Transform;
 
         // The CSS-wide keywords apply to every property.
         if (source.Equals("inherit", StringComparison.OrdinalIgnoreCase))
@@ -263,12 +315,413 @@ internal sealed class SvgPropertyParser
                 style.StopColor = stopColor;
                 break;
             default:
-                return false;
+                if (!TryParseExtended(property, source, ref style))
+                {
+                    return false;
+                }
+
+                break;
         }
 
         style.MarkValue(property);
         return true;
     }
+
+    /// <summary>
+    /// Returns whether a CSS declaration name is the <c>marker</c> shorthand. The shorthand exists only in CSS; SVG does
+    /// not define a <c>marker</c> presentation attribute.
+    /// </summary>
+    /// <param name="name">The declaration name.</param>
+    /// <returns><see langword="true"/> if the name is <c>marker</c>, ignoring ASCII case; otherwise, <see langword="false"/>.</returns>
+    public static bool IsMarkerShorthand(ReadOnlySpan<char> name) => name.Equals("marker", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Parses the value of the CSS <c>marker</c> shorthand and stores it in <c>marker-start</c>, <c>marker-mid</c>, and
+    /// <c>marker-end</c>, as CSS expands a shorthand into its longhands. An invalid value leaves the style unchanged.
+    /// </summary>
+    /// <param name="source">The value characters, without <c>!important</c>.</param>
+    /// <param name="style">The style that receives the values.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    public bool TryParseMarkerShorthand(ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
+    {
+        // The value has the grammar of one longhand, so parsing it once validates it for all three. The CSS-wide
+        // keywords apply to each longhand.
+        SvgSpecifiedStyle parsed = default;
+        if (!this.TryParse(SvgPropertyId.MarkerStart, source, ref parsed))
+        {
+            return false;
+        }
+
+        _ = this.TryParse(SvgPropertyId.MarkerStart, source, ref style);
+        _ = this.TryParse(SvgPropertyId.MarkerMid, source, ref style);
+        _ = this.TryParse(SvgPropertyId.MarkerEnd, source, ref style);
+        return true;
+    }
+
+    /// <summary>
+    /// Parses the value of a property from <see cref="SvgPropertyId.ClipPath"/> on and stores it in the extension of the
+    /// style. The caller marks the property.
+    /// </summary>
+    /// <param name="property">The property.</param>
+    /// <param name="source">The trimmed value, which is not a CSS-wide keyword.</param>
+    /// <param name="style">The style that receives the value.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseExtended(SvgPropertyId property, ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
+    {
+        // Parse first and create the extension only for a valid value, so an invalid declaration allocates nothing.
+        int keyword;
+        switch (property)
+        {
+            case SvgPropertyId.ClipPath:
+            case SvgPropertyId.Mask:
+            case SvgPropertyId.MarkerStart:
+            case SvgPropertyId.MarkerMid:
+            case SvgPropertyId.MarkerEnd:
+                if (!SvgReference.TryParse(source, out SvgReference reference))
+                {
+                    return false;
+                }
+
+                SetReference(style.GetOrCreateExtended(), property, reference);
+                return true;
+            case SvgPropertyId.ClipRule:
+                if (!TryParseKeyword(source, FillRuleKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().ClipRule = (SvgFillRule)keyword;
+                return true;
+            case SvgPropertyId.MaskType:
+                if (!TryParseKeyword(source, MaskTypeKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().MaskType = (SvgMaskType)keyword;
+                return true;
+            case SvgPropertyId.MixBlendMode:
+                if (!TryParseKeyword(source, BlendModeKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().MixBlendMode = (SvgBlendMode)keyword;
+                return true;
+            case SvgPropertyId.Isolation:
+                if (!TryParseKeyword(source, IsolationKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().Isolation = (SvgIsolation)keyword;
+                return true;
+            case SvgPropertyId.PaintOrder:
+                if (!TryParsePaintOrder(source, out SvgPaintOrder paintOrder))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().PaintOrder = paintOrder;
+                return true;
+            case SvgPropertyId.VectorEffect:
+                if (!TryParseKeyword(source, VectorEffectKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().VectorEffect = (SvgVectorEffect)keyword;
+                return true;
+            case SvgPropertyId.Overflow:
+                if (!TryParseKeyword(source, OverflowKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().Overflow = (SvgOverflow)keyword;
+                return true;
+            case SvgPropertyId.ImageRendering:
+                if (!TryParseKeyword(source, ImageRenderingKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().ImageRendering = (SvgImageRendering)keyword;
+                return true;
+            case SvgPropertyId.ShapeRendering:
+                if (!TryParseKeyword(source, ShapeRenderingKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().ShapeRendering = (SvgShapeRendering)keyword;
+                return true;
+            case SvgPropertyId.ColorInterpolation:
+                if (!TryParseKeyword(source, ColorInterpolationKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().ColorInterpolation = (SvgColorInterpolation)keyword;
+                return true;
+            case SvgPropertyId.TransformOrigin:
+                if (!TryParseTransformOrigin(source, out SvgLength originX, out SvgLength originY))
+                {
+                    return false;
+                }
+
+                SvgExtendedStyle extended = style.GetOrCreateExtended();
+                extended.TransformOriginX = originX;
+                extended.TransformOriginY = originY;
+                return true;
+            case SvgPropertyId.Transform:
+                if (!SvgTransformParser.TryParseCss(source, out System.Numerics.Matrix3x2 transform))
+                {
+                    return false;
+                }
+
+                style.GetOrCreateExtended().Transform = transform;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Stores a reference value in the field of its property.
+    /// </summary>
+    /// <param name="extended">The extension that receives the value.</param>
+    /// <param name="property">One of the five reference properties.</param>
+    /// <param name="value">The reference.</param>
+    private static void SetReference(SvgExtendedStyle extended, SvgPropertyId property, SvgReference value)
+    {
+        switch (property)
+        {
+            case SvgPropertyId.ClipPath:
+                extended.ClipPath = value;
+                break;
+            case SvgPropertyId.Mask:
+                extended.Mask = value;
+                break;
+            case SvgPropertyId.MarkerStart:
+                extended.MarkerStart = value;
+                break;
+            case SvgPropertyId.MarkerMid:
+                extended.MarkerMid = value;
+                break;
+            default:
+                extended.MarkerEnd = value;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Parses a <c>paint-order</c> value: <c>normal</c>, or one to three of <c>fill</c>, <c>stroke</c>, and
+    /// <c>markers</c>, each at most once, in any order.
+    /// </summary>
+    /// <remarks>
+    /// The layers that the value omits follow the listed ones in the order fill, stroke, markers. The order is built as
+    /// three 2-bit layer codes (fill 0, stroke 1, markers 2) and then mapped to the enum member.
+    /// </remarks>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the order.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParsePaintOrder(ReadOnlySpan<char> source, out SvgPaintOrder value)
+    {
+        value = SvgPaintOrder.FillStrokeMarkers;
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        Span<int> order = stackalloc int[3];
+        int count = 0;
+        int seen = 0;
+        ReadOnlySpan<char> rest = source;
+        while (!rest.IsEmpty)
+        {
+            int length = 0;
+            while (length < rest.Length && !SvgNumberParser.IsWhitespace(rest[length]))
+            {
+                length++;
+            }
+
+            ReadOnlySpan<char> word = rest[..length];
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            int layer;
+            if (word.Equals("fill", StringComparison.OrdinalIgnoreCase))
+            {
+                layer = 0;
+            }
+            else if (word.Equals("stroke", StringComparison.OrdinalIgnoreCase))
+            {
+                layer = 1;
+            }
+            else if (word.Equals("markers", StringComparison.OrdinalIgnoreCase))
+            {
+                layer = 2;
+            }
+            else
+            {
+                return false;
+            }
+
+            // A layer listed twice makes the value invalid.
+            if ((seen & (1 << layer)) != 0)
+            {
+                return false;
+            }
+
+            seen |= 1 << layer;
+            order[count++] = layer;
+        }
+
+        for (int layer = 0; layer < 3 && count < 3; layer++)
+        {
+            if ((seen & (1 << layer)) == 0)
+            {
+                order[count++] = layer;
+            }
+        }
+
+        value = (order[0], order[1]) switch
+        {
+            (0, 1) => SvgPaintOrder.FillStrokeMarkers,
+            (0, _) => SvgPaintOrder.FillMarkersStroke,
+            (1, 0) => SvgPaintOrder.StrokeFillMarkers,
+            (1, _) => SvgPaintOrder.StrokeMarkersFill,
+            (_, 0) => SvgPaintOrder.MarkersFillStroke,
+            _ => SvgPaintOrder.MarkersStrokeFill
+        };
+
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>transform-origin</c> value: one, two, or three components, as CSS Transforms Level 1 defines.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One component is a horizontal keyword or a length, with the vertical position at the center, or a vertical
+    /// keyword with the horizontal position at the center. With two components, two keywords can come in either order,
+    /// and otherwise the first is horizontal and the second vertical. A third component is the z position, a length that
+    /// is not a percentage; it has no effect in two dimensions and is checked and dropped.
+    /// </para>
+    /// <para>
+    /// Keywords become percentages: left and top 0%, center 50%, right and bottom 100%. As for other SVG lengths, a
+    /// number without a unit is accepted as user units.
+    /// </para>
+    /// </remarks>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="x">When this method returns <see langword="true"/>, contains the horizontal position.</param>
+    /// <param name="y">When this method returns <see langword="true"/>, contains the vertical position.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseTransformOrigin(ReadOnlySpan<char> source, out SvgLength x, out SvgLength y)
+    {
+        SvgLength center = new(50F, SvgLengthUnit.Percent);
+        x = center;
+        y = center;
+
+        // Each component is a keyword or a length. Keyword codes: 1 left, 2 right, 3 top, 4 bottom, 5 center; 0 is a length.
+        Span<int> keywords = stackalloc int[3];
+        Span<SvgLength> lengths = stackalloc SvgLength[3];
+        int count = 0;
+        ReadOnlySpan<char> rest = source;
+        while (!rest.IsEmpty)
+        {
+            if (count == 3)
+            {
+                return false;
+            }
+
+            int length = 0;
+            while (length < rest.Length && !SvgNumberParser.IsWhitespace(rest[length]))
+            {
+                length++;
+            }
+
+            ReadOnlySpan<char> word = rest[..length];
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            keywords[count] = word switch
+            {
+                _ when word.Equals("left", StringComparison.OrdinalIgnoreCase) => 1,
+                _ when word.Equals("right", StringComparison.OrdinalIgnoreCase) => 2,
+                _ when word.Equals("top", StringComparison.OrdinalIgnoreCase) => 3,
+                _ when word.Equals("bottom", StringComparison.OrdinalIgnoreCase) => 4,
+                _ when word.Equals("center", StringComparison.OrdinalIgnoreCase) => 5,
+                _ => 0
+            };
+
+            if (keywords[count] == 0 && !SvgLength.TryParse(word, out lengths[count]))
+            {
+                return false;
+            }
+
+            count++;
+        }
+
+        if (count == 0)
+        {
+            return false;
+        }
+
+        // The z component must be a length that is not a percentage.
+        if (count == 3 && (keywords[2] != 0 || lengths[2].Unit == SvgLengthUnit.Percent))
+        {
+            return false;
+        }
+
+        if (count == 1)
+        {
+            switch (keywords[0])
+            {
+                case 0:
+                    x = lengths[0];
+                    return true;
+                case 3:
+                case 4:
+                    y = KeywordPosition(keywords[0]);
+                    return true;
+                default:
+                    x = KeywordPosition(keywords[0]);
+                    return true;
+            }
+        }
+
+        int first = keywords[0];
+        int second = keywords[1];
+
+        // Two keywords may come in either order: a vertical keyword first, or a horizontal keyword second, swaps them.
+        if (first != 0 && second != 0 && (first is 3 or 4 || second is 1 or 2))
+        {
+            (first, second) = (second, first);
+        }
+
+        // The first component is horizontal and the second vertical.
+        if (first is 3 or 4 || second is 1 or 2)
+        {
+            return false;
+        }
+
+        x = first == 0 ? lengths[0] : KeywordPosition(first);
+        y = second == 0 ? lengths[1] : KeywordPosition(second);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns the percentage of a <c>transform-origin</c> keyword.
+    /// </summary>
+    /// <param name="keyword">The keyword code: 1 left, 2 right, 3 top, 4 bottom, 5 center.</param>
+    /// <returns>The position as a percentage.</returns>
+    private static SvgLength KeywordPosition(int keyword)
+        => new(
+            keyword switch
+            {
+                1 or 3 => 0F,
+                2 or 4 => 100F,
+                _ => 50F
+            },
+            SvgLengthUnit.Percent);
 
     /// <summary>
     /// Stores an opacity value in the field of its property.
@@ -398,5 +851,22 @@ internal sealed class SvgPropertyParser
             [SvgNames.FontSize] = SvgPropertyId.FontSize,
             [SvgNames.StopColor] = SvgPropertyId.StopColor,
             [SvgNames.StopOpacity] = SvgPropertyId.StopOpacity,
+            ["clip-path"] = SvgPropertyId.ClipPath,
+            ["clip-rule"] = SvgPropertyId.ClipRule,
+            ["mask"] = SvgPropertyId.Mask,
+            ["mask-type"] = SvgPropertyId.MaskType,
+            ["mix-blend-mode"] = SvgPropertyId.MixBlendMode,
+            ["isolation"] = SvgPropertyId.Isolation,
+            ["paint-order"] = SvgPropertyId.PaintOrder,
+            ["vector-effect"] = SvgPropertyId.VectorEffect,
+            ["overflow"] = SvgPropertyId.Overflow,
+            ["marker-start"] = SvgPropertyId.MarkerStart,
+            ["marker-mid"] = SvgPropertyId.MarkerMid,
+            ["marker-end"] = SvgPropertyId.MarkerEnd,
+            ["image-rendering"] = SvgPropertyId.ImageRendering,
+            ["shape-rendering"] = SvgPropertyId.ShapeRendering,
+            ["color-interpolation"] = SvgPropertyId.ColorInterpolation,
+            ["transform-origin"] = SvgPropertyId.TransformOrigin,
+            [SvgNames.Transform] = SvgPropertyId.Transform,
         };
 }

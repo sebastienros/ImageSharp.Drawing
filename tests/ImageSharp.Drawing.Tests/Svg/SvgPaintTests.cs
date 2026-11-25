@@ -16,6 +16,8 @@ public class SvgPaintTests
     [InlineData("red", (int)SvgPaintKind.Color)]
     [InlineData("#00ff00", (int)SvgPaintKind.Color)]
     [InlineData("rgb(0 0 255)", (int)SvgPaintKind.Color)]
+    [InlineData("context-fill", (int)SvgPaintKind.ContextFill)]
+    [InlineData(" Context-Stroke ", (int)SvgPaintKind.ContextStroke)]
     public void TryParse_ReadsSimplePaints(string input, int kind)
     {
         Assert.True(SvgPaint.TryParse(input, null, out SvgPaint paint));
@@ -77,7 +79,8 @@ public class SvgPaintTests
     [InlineData("url('#g)")]
     [InlineData("url(#g) foo")]
     [InlineData("url(#g) url(#h)")]
-    [InlineData("context-fill")]
+    [InlineData("url(#g) context-fill")]
+    [InlineData("context-fill red")]
     [InlineData("red !important")]
     [InlineData("inherit")]
     public void TryParse_RejectsInvalidPaints(string input)

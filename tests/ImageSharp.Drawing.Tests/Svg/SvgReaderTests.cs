@@ -168,7 +168,7 @@ public class SvgReaderTests
 
         ref readonly SvgGradientAttributes linear = ref tree.GetGradient(1);
         Assert.Equal(new SvgLength(4, SvgLengthUnit.Number), linear.Y2);
-        Assert.Equal(SvgGradientUnits.UserSpaceOnUse, linear.Units);
+        Assert.Equal(SvgCoordinateUnits.UserSpaceOnUse, linear.Units);
         Assert.Equal(SvgSpreadMethod.Reflect, linear.SpreadMethod);
         Assert.True(linear.HasTransform);
         Assert.Equal(Matrix3x2.CreateTranslation(5, 6), linear.Transform);
@@ -180,7 +180,7 @@ public class SvgReaderTests
         ref readonly SvgGradientAttributes radial = ref tree.GetGradient(2);
         Assert.Equal(new SvgLength(6, SvgLengthUnit.Number), radial.Fr);
         Assert.Equal(SvgSpreadMethod.Repeat, radial.SpreadMethod);
-        Assert.Equal(SvgGradientUnits.Unspecified, radial.Units);
+        Assert.Equal(SvgCoordinateUnits.Unspecified, radial.Units);
         Assert.False(radial.HasTransform);
         Assert.False(radial.X1.IsSpecified);
 
@@ -289,7 +289,7 @@ public class SvgReaderTests
         Assert.False(tree.GetCircle(3).R.IsSpecified);
 
         ref readonly SvgGradientAttributes gradient = ref tree.GetGradient(4);
-        Assert.Equal(SvgGradientUnits.Unspecified, gradient.Units);
+        Assert.Equal(SvgCoordinateUnits.Unspecified, gradient.Units);
         Assert.False(gradient.HasTransform);
         Assert.Equal(SvgSpreadMethod.Unspecified, gradient.SpreadMethod);
         Assert.False(gradient.X1.IsSpecified);
@@ -467,6 +467,270 @@ public class SvgReaderTests
         Assert.Equal(expectedPaths, paths);
     }
 
+    [Fact]
+    public void Read_StoresClipPathUnitsAndTransform()
+    {
+        SvgElementTree tree = Read(
+            "<clipPath id=\"a\" clipPathUnits=\"objectBoundingBox\" transform=\"scale(2)\"/>"
+            + "<clipPath id=\"b\" clipPathUnits=\"bogus\"/><clipPath id=\"c\"/>");
+
+        Assert.Equal(SvgCoordinateUnits.ObjectBoundingBox, tree.GetClipPathUnits(Index(tree, "a")));
+        Assert.True(tree.TryGetTransform(Index(tree, "a"), out Matrix3x2 transform));
+        Assert.Equal(Matrix3x2.CreateScale(2F), transform);
+        Assert.Equal(SvgCoordinateUnits.Unspecified, tree.GetClipPathUnits(Index(tree, "b")));
+        Assert.Equal(SvgCoordinateUnits.Unspecified, tree.GetClipPathUnits(Index(tree, "c")));
+    }
+
+    [Fact]
+    public void Read_StoresMaskAttributes()
+    {
+        SvgElementTree tree = Read(
+            "<mask id=\"m\" x=\"-5%\" y=\"2\" width=\"-3\" height=\"50%\" maskUnits=\"userSpaceOnUse\" maskContentUnits=\"objectBoundingBox\"/>"
+            + "<mask id=\"d\" x=\"z\" maskUnits=\"UserSpaceOnUse\"/>");
+
+        ref readonly SvgMaskAttributes mask = ref tree.GetMask(Index(tree, "m"));
+        Assert.Equal(new SvgLength(-5, SvgLengthUnit.Percent), mask.X);
+        Assert.Equal(new SvgLength(2, SvgLengthUnit.Number), mask.Y);
+
+        // A negative size is kept, because it disables the mask instead of taking the default.
+        Assert.Equal(new SvgLength(-3, SvgLengthUnit.Number), mask.Width);
+        Assert.Equal(new SvgLength(50, SvgLengthUnit.Percent), mask.Height);
+        Assert.Equal(SvgCoordinateUnits.UserSpaceOnUse, mask.Units);
+        Assert.Equal(SvgCoordinateUnits.ObjectBoundingBox, mask.ContentUnits);
+
+        // Invalid values are unspecified; keywords are case-sensitive.
+        ref readonly SvgMaskAttributes defaults = ref tree.GetMask(Index(tree, "d"));
+        Assert.False(defaults.X.IsSpecified);
+        Assert.False(defaults.Width.IsSpecified);
+        Assert.Equal(SvgCoordinateUnits.Unspecified, defaults.Units);
+        Assert.Equal(SvgCoordinateUnits.Unspecified, defaults.ContentUnits);
+    }
+
+    [Fact]
+    public void Read_StoresPatternAttributesAndWhatWasSpecified()
+    {
+        SvgElementTree tree = Read(
+            "<pattern id=\"p\" x=\"1\" y=\"2\" width=\"10\" height=\"20%\" patternUnits=\"userSpaceOnUse\""
+            + " patternContentUnits=\"objectBoundingBox\" patternTransform=\"translate(5)\" viewBox=\"0 0 4 8\""
+            + " preserveAspectRatio=\"xMinYMax slice\" href=\"#q\" xlink:href=\"#other\"/>"
+            + "<pattern id=\"q\" xlink:href=\"#p\" patternTransform=\"bogus(\" viewBox=\"0 0 -1 1\" preserveAspectRatio=\"bogus\"/>");
+
+        ref readonly SvgPatternAttributes pattern = ref tree.GetPattern(Index(tree, "p"));
+        Assert.Equal("q", pattern.Href);
+        Assert.Equal(new SvgLength(1, SvgLengthUnit.Number), pattern.X);
+        Assert.Equal(new SvgLength(2, SvgLengthUnit.Number), pattern.Y);
+        Assert.Equal(new SvgLength(10, SvgLengthUnit.Number), pattern.Width);
+        Assert.Equal(new SvgLength(20, SvgLengthUnit.Percent), pattern.Height);
+        Assert.Equal(SvgCoordinateUnits.UserSpaceOnUse, pattern.Units);
+        Assert.Equal(SvgCoordinateUnits.ObjectBoundingBox, pattern.ContentUnits);
+        Assert.True(pattern.HasTransform);
+        Assert.Equal(Matrix3x2.CreateTranslation(5, 0), pattern.Transform);
+        Assert.True(pattern.HasViewBox);
+        Assert.Equal(new RectangleF(0, 0, 4, 8), pattern.ViewBox);
+        Assert.True(pattern.HasPreserveAspectRatio);
+        Assert.Equal(SvgAlign.XMinYMax, pattern.PreserveAspectRatio.Align);
+        Assert.True(pattern.PreserveAspectRatio.Slice);
+
+        ref readonly SvgPatternAttributes invalid = ref tree.GetPattern(Index(tree, "q"));
+        Assert.Equal("p", invalid.Href);
+        Assert.False(invalid.X.IsSpecified);
+        Assert.False(invalid.HasTransform);
+        Assert.False(invalid.HasViewBox);
+        Assert.False(invalid.HasPreserveAspectRatio);
+    }
+
+    // SVG 2: an attribute that a pattern does not specify comes from the pattern that href references.
+    [Fact]
+    public void PatternAttributes_InheritFromFillsOnlyUnspecifiedAttributes()
+    {
+        SvgElementTree tree = Read(
+            "<pattern id=\"base\" x=\"1\" width=\"10\" height=\"10\" patternUnits=\"userSpaceOnUse\" patternTransform=\"scale(2)\""
+            + " viewBox=\"0 0 1 1\" preserveAspectRatio=\"none\"/>"
+            + "<pattern id=\"own\" href=\"#base\" width=\"5\" patternContentUnits=\"objectBoundingBox\"/>");
+
+        SvgPatternAttributes own = tree.GetPattern(Index(tree, "own"));
+        own.InheritFrom(in tree.GetPattern(Index(tree, "base")));
+
+        Assert.Equal("base", own.Href);
+        Assert.Equal(new SvgLength(1, SvgLengthUnit.Number), own.X);
+        Assert.False(own.Y.IsSpecified);
+        Assert.Equal(new SvgLength(5, SvgLengthUnit.Number), own.Width);
+        Assert.Equal(new SvgLength(10, SvgLengthUnit.Number), own.Height);
+        Assert.Equal(SvgCoordinateUnits.UserSpaceOnUse, own.Units);
+        Assert.Equal(SvgCoordinateUnits.ObjectBoundingBox, own.ContentUnits);
+        Assert.Equal(Matrix3x2.CreateScale(2F), own.Transform);
+        Assert.Equal(new RectangleF(0, 0, 1, 1), own.ViewBox);
+        Assert.Equal(SvgAlign.None, own.PreserveAspectRatio.Align);
+    }
+
+    [Fact]
+    public void Read_StoresMarkerAttributes()
+    {
+        SvgElementTree tree = Read(
+            "<marker id=\"m\" refX=\"5%\" refY=\"2\" markerWidth=\"-20\" markerHeight=\"3mm\" markerUnits=\"userSpaceOnUse\""
+            + " orient=\"auto-start-reverse\" viewBox=\"0 0 10 10\" preserveAspectRatio=\"xMaxYMid\"/>"
+            + "<marker id=\"d\" markerUnits=\"qwe\" orient=\"Auto\"/>");
+
+        ref readonly SvgMarkerAttributes marker = ref tree.GetMarker(Index(tree, "m"));
+        Assert.Equal(new SvgLength(5, SvgLengthUnit.Percent), marker.RefX);
+        Assert.Equal(new SvgLength(2, SvgLengthUnit.Number), marker.RefY);
+
+        // A negative size is kept, because it disables the marker instead of taking the default size.
+        Assert.Equal(new SvgLength(-20, SvgLengthUnit.Number), marker.MarkerWidth);
+        Assert.Equal(new SvgLength(3, SvgLengthUnit.Mm), marker.MarkerHeight);
+        Assert.Equal(SvgMarkerUnits.UserSpaceOnUse, marker.Units);
+        Assert.Equal(SvgMarkerOrientKind.AutoStartReverse, marker.Orient.Kind);
+        Assert.True(marker.HasViewBox);
+        Assert.Equal(SvgAlign.XMaxYMid, marker.PreserveAspectRatio.Align);
+
+        ref readonly SvgMarkerAttributes defaults = ref tree.GetMarker(Index(tree, "d"));
+        Assert.Equal(SvgMarkerUnits.Unspecified, defaults.Units);
+
+        // SVG keywords are case-sensitive, so Auto is invalid and the orientation is unspecified.
+        Assert.Equal(SvgMarkerOrientKind.Unspecified, defaults.Orient.Kind);
+        Assert.False(defaults.MarkerWidth.IsSpecified);
+    }
+
+    [Theory]
+    [InlineData("auto", (int)SvgMarkerOrientKind.Auto, 0F)]
+    [InlineData("auto-start-reverse", (int)SvgMarkerOrientKind.AutoStartReverse, 0F)]
+    [InlineData("30", (int)SvgMarkerOrientKind.Angle, 30F)]
+    [InlineData("-45", (int)SvgMarkerOrientKind.Angle, -45F)]
+    [InlineData("0.25turn", (int)SvgMarkerOrientKind.Angle, 90F)]
+    [InlineData("40grad", (int)SvgMarkerOrientKind.Angle, 36F)]
+    [InlineData("bogus", (int)SvgMarkerOrientKind.Unspecified, 0F)]
+    [InlineData("30px", (int)SvgMarkerOrientKind.Unspecified, 0F)]
+    public void Read_ParsesMarkerOrient(string value, int kind, float angle)
+    {
+        SvgElementTree tree = Read($"<marker orient=\"{value}\"/>");
+
+        SvgMarkerOrient orient = tree.GetMarker(1).Orient;
+        Assert.Equal((SvgMarkerOrientKind)kind, orient.Kind);
+        Assert.Equal(angle, orient.Angle, 4);
+    }
+
+    [Fact]
+    public void Read_StoresImageAttributesWithTheWholeUrl()
+    {
+        SvgElementTree tree = Read(
+            "<image id=\"a\" x=\"1\" y=\"2\" width=\"auto\" height=\"-4\" preserveAspectRatio=\"none\" xlink:href=\"  data:image/png;base64,AAAA \"/>"
+            + "<image id=\"b\" href=\"pictures/cat.png\" xlink:href=\"ignored.png\" width=\"30\"/><image id=\"c\"/>");
+
+        ref readonly SvgImageAttributes image = ref tree.GetImage(Index(tree, "a"));
+        Assert.Equal("data:image/png;base64,AAAA", image.Href);
+        Assert.Equal(new SvgLength(1, SvgLengthUnit.Number), image.X);
+        Assert.Equal(new SvgLength(2, SvgLengthUnit.Number), image.Y);
+
+        // auto is unspecified; a negative size is kept.
+        Assert.False(image.Width.IsSpecified);
+        Assert.Equal(new SvgLength(-4, SvgLengthUnit.Number), image.Height);
+        Assert.Equal(SvgAlign.None, image.PreserveAspectRatio.Align);
+
+        // href wins over xlink:href, and a file reference is not a fragment, so it is kept whole.
+        Assert.Equal("pictures/cat.png", tree.GetImage(Index(tree, "b")).Href);
+        Assert.Equal(new SvgLength(30, SvgLengthUnit.Number), tree.GetImage(Index(tree, "b")).Width);
+        Assert.Null(tree.GetImage(Index(tree, "c")).Href);
+    }
+
+    [Fact]
+    public void Read_StoresConditionalAttributesAsWritten()
+    {
+        SvgElementTree tree = Read(
+            "<switch><g id=\"a\" systemLanguage=\"en-US, fr\" requiredExtensions=\"\" requiredFeatures=\"http://www.w3.org/TR/SVG11/feature#Shape\"/>"
+            + "<rect id=\"b\" systemLanguage=\"\"/><circle id=\"c\"/></switch>");
+
+        Assert.True(tree.TryGetConditionalAttributes(Index(tree, "a"), out SvgConditionalAttributes a));
+        Assert.Equal("en-US, fr", a.SystemLanguage);
+        Assert.Equal(string.Empty, a.RequiredExtensions);
+        Assert.Equal("http://www.w3.org/TR/SVG11/feature#Shape", a.RequiredFeatures);
+
+        // An empty attribute is present, which differs from absent.
+        Assert.True(tree.TryGetConditionalAttributes(Index(tree, "b"), out SvgConditionalAttributes b));
+        Assert.Equal(string.Empty, b.SystemLanguage);
+        Assert.Null(b.RequiredExtensions);
+        Assert.Null(b.RequiredFeatures);
+
+        Assert.False(tree.TryGetConditionalAttributes(Index(tree, "c"), out _));
+        Assert.False(tree.TryGetConditionalAttributes(0, out _));
+    }
+
+    [Fact]
+    public void Read_ConditionalAttributesWithoutAnyLeaveNoTable()
+    {
+        SvgElementTree tree = Read("<rect/><g/>");
+
+        Assert.False(tree.TryGetConditionalAttributes(1, out _));
+        Assert.False(tree.TryGetConditionalAttributes(2, out _));
+    }
+
+    [Fact]
+    public void Read_StoresPhase2PresentationAttributes()
+    {
+        SvgElementTree tree = Read(
+            "<path id=\"p\" clip-path=\"url(#c)\" clip-rule=\"evenodd\" mask=\"url(#m)\" mix-blend-mode=\"multiply\" isolation=\"isolate\""
+            + " paint-order=\"stroke\" vector-effect=\"non-scaling-stroke\" overflow=\"visible\" marker-start=\"url(#s)\""
+            + " marker-mid=\"url(#d)\" marker-end=\"url(#e)\" image-rendering=\"pixelated\" shape-rendering=\"crispEdges\""
+            + " color-interpolation=\"linearRGB\" transform-origin=\"center\"/><mask id=\"k\" mask-type=\"alpha\"/>");
+
+        SvgExtendedStyle style = tree.GetStyle(Index(tree, "p")).Extended!;
+        Assert.Equal("c", style.ClipPath.Id);
+        Assert.Equal(SvgFillRule.EvenOdd, style.ClipRule);
+        Assert.Equal("m", style.Mask.Id);
+        Assert.Equal(SvgBlendMode.Multiply, style.MixBlendMode);
+        Assert.Equal(SvgIsolation.Isolate, style.Isolation);
+        Assert.Equal(SvgPaintOrder.StrokeFillMarkers, style.PaintOrder);
+        Assert.Equal(SvgVectorEffect.NonScalingStroke, style.VectorEffect);
+        Assert.Equal(SvgOverflow.Visible, style.Overflow);
+        Assert.Equal("s", style.MarkerStart.Id);
+        Assert.Equal("d", style.MarkerMid.Id);
+        Assert.Equal("e", style.MarkerEnd.Id);
+        Assert.Equal(SvgImageRendering.Pixelated, style.ImageRendering);
+        Assert.Equal(SvgShapeRendering.CrispEdges, style.ShapeRendering);
+        Assert.Equal(SvgColorInterpolation.LinearRgb, style.ColorInterpolation);
+        Assert.Equal(new SvgLength(50, SvgLengthUnit.Percent), style.TransformOriginX);
+        Assert.Equal(SvgMaskType.Alpha, tree.GetStyle(Index(tree, "k")).Extended!.MaskType);
+    }
+
+    // SVG 2 defines no marker presentation attribute; the marker shorthand exists only in CSS.
+    [Fact]
+    public void Read_IgnoresTheMarkerAttribute()
+    {
+        SvgElementTree tree = Read("<path id=\"p\" marker=\"url(#m)\"/>");
+
+        Assert.True(tree.GetStyle(Index(tree, "p")).IsEmpty);
+    }
+
+    // A phase 1 document specifies no phase 2 property, so no style needs the extension.
+    [Fact]
+    public void Read_Phase1StylesHaveNoExtension()
+    {
+        using FileStream stream = File.OpenRead(TestFile.GetInputFileFullPath(TestImages.Svg.GhostscriptTiger));
+        SvgElementTree tree = SvgReader.Read(stream, SvgReaderOptions.Default);
+
+        for (int i = 0; i < tree.Count; i++)
+        {
+            Assert.Null(tree.GetStyle(i).Extended);
+        }
+    }
+
+    // The resvg test structure/svg/not-UTF-8-encoding.svg: a Windows-1251 document loads without a global encoding
+    // provider.
+    [Fact]
+    public void Read_DecodesALegacyEncodingFromTheXmlDeclaration()
+    {
+        byte[] prefix = Encoding.ASCII.GetBytes("<?xml version=\"1.0\" encoding=\"Windows-1251\"?>\n" + SvgOpen + "<g id=\"");
+
+        // "Привет" in Windows-1251.
+        byte[] word = [0xCF, 0xF0, 0xE8, 0xE2, 0xE5, 0xF2];
+        byte[] suffix = Encoding.ASCII.GetBytes("\"/></svg>");
+        using MemoryStream stream = new([.. prefix, .. word, .. suffix]);
+
+        SvgElementTree tree = SvgReader.Read(stream, SvgReaderOptions.Default);
+
+        Assert.True(tree.TryGetElementById("Привет", out _));
+        Assert.True(stream.CanRead);
+    }
+
     private static int CountOccurrences(string text, string value)
     {
         int count = 0;
@@ -479,4 +743,10 @@ public class SvgReaderTests
     }
 
     private static SvgElementTree Read(string content) => SvgReader.Read(SvgOpen + content + "</svg>", SvgReaderOptions.Default);
+
+    private static int Index(SvgElementTree tree, string id)
+    {
+        Assert.True(tree.TryGetElementById(id, out int index));
+        return index;
+    }
 }

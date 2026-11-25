@@ -6,19 +6,25 @@ using System.Numerics;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The computed values of the phase 1 style properties of one element: the cascaded specified value, else the parent
-/// value for an inherited property, else the initial value.
+/// The computed values of the style properties of one element: the cascaded specified value, else the parent value for
+/// an inherited property, else the initial value.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The resolve walk computes the style top down. Content that a <c>use</c> element references takes the computed style of
 /// the <c>use</c> element as its parent, so the same element can have a different computed style in each instance.
+/// Content of <c>clipPath</c>, <c>mask</c>, <c>pattern</c>, and <c>marker</c> inherits from the ancestors of that element
+/// in the document instead; see <see cref="SvgResolver.ComputeDocumentStyle(int)"/>.
 /// </para>
 /// <para>
 /// Lengths keep the CSS computed form: an absolute length or a font-relative length becomes pixels at the element that
 /// specifies it, and a percentage stays a percentage, because it resolves against the viewport of the element that uses
 /// it. <c>currentColor</c> in <see cref="Fill"/>, <see cref="Stroke"/>, and <see cref="StopColor"/> stays a keyword and
 /// resolves against <see cref="Color"/> of the element that paints, as CSS Color Level 4 defines.
+/// </para>
+/// <para>
+/// Every property of <see cref="SvgPropertyId"/> has a member here except <see cref="SvgPropertyId.Transform"/>, which
+/// the reader folds into the transform table of the element.
 /// </para>
 /// </remarks>
 internal struct SvgComputedStyle
@@ -44,7 +50,8 @@ internal struct SvgComputedStyle
     public float Opacity { readonly get; set; }
 
     /// <summary>
-    /// Gets or sets <c>fill</c>.
+    /// Gets or sets <c>fill</c>. <see cref="SvgPaintKind.ContextFill"/> and <see cref="SvgPaintKind.ContextStroke"/> stay
+    /// keywords; they resolve against the context element of the painting element.
     /// </summary>
     public SvgPaint Fill { readonly get; set; }
 
@@ -59,7 +66,7 @@ internal struct SvgComputedStyle
     public SvgFillRule FillRule { readonly get; set; }
 
     /// <summary>
-    /// Gets or sets <c>stroke</c>.
+    /// Gets or sets <c>stroke</c>, with the same keyword rules as <see cref="Fill"/>.
     /// </summary>
     public SvgPaint Stroke { readonly get; set; }
 
@@ -114,6 +121,97 @@ internal struct SvgComputedStyle
     public float StopOpacity { readonly get; set; }
 
     /// <summary>
+    /// Gets or sets <c>clip-path</c>. Not inherited.
+    /// </summary>
+    public SvgReference ClipPath { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>clip-rule</c>, the fill rule of an element when it is a child of a <c>clipPath</c>. Inherited.
+    /// </summary>
+    public SvgFillRule ClipRule { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>mask</c>. Not inherited.
+    /// </summary>
+    public SvgReference Mask { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>mask-type</c>, which applies to a <c>mask</c> element. Not inherited.
+    /// </summary>
+    public SvgMaskType MaskType { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>mix-blend-mode</c>. Not inherited.
+    /// </summary>
+    public SvgBlendMode MixBlendMode { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>isolation</c>. Not inherited.
+    /// </summary>
+    public SvgIsolation Isolation { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>paint-order</c>. Inherited.
+    /// </summary>
+    public SvgPaintOrder PaintOrder { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>vector-effect</c>. Not inherited.
+    /// </summary>
+    public SvgVectorEffect VectorEffect { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>overflow</c>. Not inherited. The value includes the SVG 2 user agent style sheet rule that sets
+    /// <see cref="SvgOverflow.Hidden"/> on <c>svg</c>, <c>symbol</c>, <c>image</c>, <c>marker</c>, and <c>pattern</c>
+    /// elements that do not specify the property. The rule excludes the root element, but the root element always clips
+    /// its viewport, so the value of the root does not matter.
+    /// </summary>
+    public SvgOverflow Overflow { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>marker-start</c>. Inherited.
+    /// </summary>
+    public SvgReference MarkerStart { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>marker-mid</c>. Inherited.
+    /// </summary>
+    public SvgReference MarkerMid { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>marker-end</c>. Inherited.
+    /// </summary>
+    public SvgReference MarkerEnd { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>image-rendering</c>. Inherited.
+    /// </summary>
+    public SvgImageRendering ImageRendering { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>shape-rendering</c>. Inherited.
+    /// </summary>
+    public SvgShapeRendering ShapeRendering { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>color-interpolation</c>. Inherited.
+    /// </summary>
+    public SvgColorInterpolation ColorInterpolation { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the horizontal component of <c>transform-origin</c>, in <see cref="SvgLengthUnit.Px"/> or
+    /// <see cref="SvgLengthUnit.Percent"/>. Not inherited. A percentage refers to the width of the reference box; see
+    /// <see cref="GetTransformOrigin(SizeF)"/>.
+    /// </summary>
+    public SvgLength TransformOriginX { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the vertical component of <c>transform-origin</c>, with the same rules as
+    /// <see cref="TransformOriginX"/> for the height.
+    /// </summary>
+    public SvgLength TransformOriginY { readonly get; set; }
+
+    /// <summary>
     /// Creates the style that holds the initial value of every property. It is the parent style of the root element.
     /// </summary>
     /// <param name="currentColor">The initial value of <c>color</c>.</param>
@@ -136,9 +234,29 @@ internal struct SvgComputedStyle
             StrokeMiterLimit = 4F,
             StrokeDashArray = default,
             StrokeDashOffset = new SvgLength(0F, SvgLengthUnit.Px),
-            FontSize = 16F,
+            FontSize = SvgUnitBasis.InitialFontSize,
             StopColor = new SvgPaint(SvgPaintKind.Color, Color.Black, null, SvgPaintKind.None),
             StopOpacity = 1F,
+            ClipPath = default,
+            ClipRule = SvgFillRule.NonZero,
+            Mask = default,
+            MaskType = SvgMaskType.Luminance,
+            MixBlendMode = SvgBlendMode.Normal,
+            Isolation = SvgIsolation.Auto,
+            PaintOrder = SvgPaintOrder.FillStrokeMarkers,
+            VectorEffect = SvgVectorEffect.None,
+            Overflow = SvgOverflow.Visible,
+            MarkerStart = default,
+            MarkerMid = default,
+            MarkerEnd = default,
+            ImageRendering = SvgImageRendering.Auto,
+            ShapeRendering = SvgShapeRendering.Auto,
+            ColorInterpolation = SvgColorInterpolation.SRgb,
+
+            // CSS Transforms 1: the initial value is 50% 50%, but the used value for SVG elements without a CSS layout box
+            // is 0 0, as if the user agent style sheet set it.
+            TransformOriginX = new SvgLength(0F, SvgLengthUnit.Px),
+            TransformOriginY = new SvgLength(0F, SvgLengthUnit.Px),
         };
 
     /// <summary>
@@ -147,9 +265,15 @@ internal struct SvgComputedStyle
     /// <param name="specified">The cascaded specified style of the element.</param>
     /// <param name="parent">The computed style of the parent, or the initial style for the root.</param>
     /// <param name="initial">The initial style.</param>
-    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    /// <param name="kind">The kind of the element, for the user agent style sheet rule of <see cref="Overflow"/>.</param>
     /// <returns>The computed style.</returns>
-    public static SvgComputedStyle Compute(in SvgSpecifiedStyle specified, in SvgComputedStyle parent, in SvgComputedStyle initial, float dpi)
+    public static SvgComputedStyle Compute(
+        in SvgSpecifiedStyle specified,
+        in SvgComputedStyle parent,
+        in SvgComputedStyle initial,
+        SvgUnitBasis units,
+        SvgElementKind kind)
     {
         // Start from the parent, which is the computed value of every inherited property that the element does not
         // specify. Properties that do not inherit start from their initial values instead.
@@ -158,6 +282,20 @@ internal struct SvgComputedStyle
         style.Opacity = initial.Opacity;
         style.StopColor = initial.StopColor;
         style.StopOpacity = initial.StopOpacity;
+        style.ClipPath = initial.ClipPath;
+        style.Mask = initial.Mask;
+        style.MaskType = initial.MaskType;
+        style.MixBlendMode = initial.MixBlendMode;
+        style.Isolation = initial.Isolation;
+        style.VectorEffect = initial.VectorEffect;
+        style.TransformOriginX = initial.TransformOriginX;
+        style.TransformOriginY = initial.TransformOriginY;
+
+        // SVG 2 user agent style sheet: svg:not(:root), symbol, image, marker, pattern { overflow: hidden }. It has the
+        // lowest precedence, so any specified value, including inherit and initial, replaces it below.
+        style.Overflow = kind is SvgElementKind.Svg or SvgElementKind.Symbol or SvgElementKind.Image or SvgElementKind.Marker or SvgElementKind.Pattern
+            ? SvgOverflow.Hidden
+            : initial.Overflow;
 
         if (specified.IsEmpty)
         {
@@ -167,12 +305,13 @@ internal struct SvgComputedStyle
         // Font size first: em and ex lengths of the other properties refer to the computed font size of the element.
         if (specified.IsSpecified(SvgPropertyId.FontSize))
         {
-            style.FontSize = ComputeFontSize(in specified, in parent, in initial, dpi);
+            style.FontSize = ComputeFontSize(in specified, in parent, in initial, units);
         }
 
         // Visit only the specified properties. The inherit keyword takes the parent value for any property, and the
         // initial keyword takes the initial value.
         ulong bits = specified.Specified;
+        SvgExtendedStyle? extended = specified.Extended;
         while (bits != 0)
         {
             SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
@@ -225,7 +364,7 @@ internal struct SvgComputedStyle
                     style.StrokeOpacity = specified.StrokeOpacity;
                     break;
                 case SvgPropertyId.StrokeWidth:
-                    style.StrokeWidth = ToComputedLength(specified.StrokeWidth, style.FontSize, dpi);
+                    style.StrokeWidth = ToComputedLength(specified.StrokeWidth, style.FontSize, units);
                     break;
                 case SvgPropertyId.StrokeLineCap:
                     style.StrokeLineCap = specified.StrokeLineCap;
@@ -240,13 +379,20 @@ internal struct SvgComputedStyle
                     style.StrokeDashArray = specified.StrokeDashArray;
                     break;
                 case SvgPropertyId.StrokeDashOffset:
-                    style.StrokeDashOffset = ToComputedLength(specified.StrokeDashOffset, style.FontSize, dpi);
+                    style.StrokeDashOffset = ToComputedLength(specified.StrokeDashOffset, style.FontSize, units);
                     break;
                 case SvgPropertyId.StopColor:
                     style.StopColor = specified.StopColor;
                     break;
                 case SvgPropertyId.StopOpacity:
                     style.StopOpacity = specified.StopOpacity;
+                    break;
+                case SvgPropertyId.Transform:
+                    // The reader has folded the property into the transform table of the element.
+                    break;
+                default:
+                    // A value bit of an extended property means the parser stored its value in the extension.
+                    ComputeExtended(property, extended!, ref style, units);
                     break;
             }
         }
@@ -255,14 +401,120 @@ internal struct SvgComputedStyle
     }
 
     /// <summary>
-    /// Computes <c>font-size</c>. A percentage, <c>em</c>, and <c>ex</c> refer to the font size of the parent.
+    /// Returns the transform origin in user units for a reference box.
+    /// </summary>
+    /// <remarks>
+    /// For SVG elements without a CSS layout box, <c>transform-box</c> is <c>view-box</c>: the reference box is the
+    /// nearest SVG viewport, placed at the origin of the coordinate system that its <c>viewBox</c> establishes, with the
+    /// size of the view box. So a percentage is a fraction of the viewport size, measured from 0, not from the view box
+    /// origin. Chromium uses the same reference box for the <c>gradientTransform</c> of a gradient in
+    /// <c>objectBoundingBox</c> units, where the resulting origin then applies in the unit square.
+    /// </remarks>
+    /// <param name="referenceBox">The size of the reference box.</param>
+    /// <returns>The origin.</returns>
+    public readonly Vector2 GetTransformOrigin(SizeF referenceBox)
+        => ResolveTransformOrigin(this.TransformOriginX, this.TransformOriginY, referenceBox);
+
+    /// <summary>
+    /// Returns a transform origin in user units from its computed components and a reference box.
+    /// </summary>
+    /// <param name="x">The computed horizontal component, in pixels or as a percentage; unspecified is 0.</param>
+    /// <param name="y">The computed vertical component, in pixels or as a percentage; unspecified is 0.</param>
+    /// <param name="referenceBox">The size of the reference box.</param>
+    /// <returns>The origin.</returns>
+    public static Vector2 ResolveTransformOrigin(SvgLength x, SvgLength y, SizeF referenceBox)
+        => new(
+            x.Unit == SvgLengthUnit.Percent ? x.Value * referenceBox.Width / 100F : x.Value,
+            y.Unit == SvgLengthUnit.Percent ? y.Value * referenceBox.Height / 100F : y.Value);
+
+    /// <summary>
+    /// Applies a transform origin to a transform: the result is <c>translate(origin) × transform × translate(-origin)</c>
+    /// in the column-vector notation of CSS.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Matrix3x2"/> uses row vectors, where the transform applied first comes first in the product, so the
+    /// result is <c>T(-origin) * transform * T(origin)</c>.
+    /// </remarks>
+    /// <param name="transform">The transform.</param>
+    /// <param name="origin">The origin in the coordinate system that the transform maps into.</param>
+    /// <returns>The transform about the origin.</returns>
+    public static Matrix3x2 ApplyTransformOrigin(Matrix3x2 transform, Vector2 origin)
+        => origin == Vector2.Zero
+            ? transform
+            : Matrix3x2.CreateTranslation(-origin) * transform * Matrix3x2.CreateTranslation(origin);
+
+    /// <summary>
+    /// Stores the computed value of an extended property from its specified value.
+    /// </summary>
+    /// <param name="property">A property from <see cref="SvgPropertyId.ClipPath"/> on, other than <see cref="SvgPropertyId.Transform"/>.</param>
+    /// <param name="extended">The extension of the specified style, which holds the value.</param>
+    /// <param name="style">The style to change.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    private static void ComputeExtended(SvgPropertyId property, SvgExtendedStyle extended, ref SvgComputedStyle style, SvgUnitBasis units)
+    {
+        switch (property)
+        {
+            case SvgPropertyId.ClipPath:
+                style.ClipPath = extended.ClipPath;
+                break;
+            case SvgPropertyId.ClipRule:
+                style.ClipRule = extended.ClipRule;
+                break;
+            case SvgPropertyId.Mask:
+                style.Mask = extended.Mask;
+                break;
+            case SvgPropertyId.MaskType:
+                style.MaskType = extended.MaskType;
+                break;
+            case SvgPropertyId.MixBlendMode:
+                style.MixBlendMode = extended.MixBlendMode;
+                break;
+            case SvgPropertyId.Isolation:
+                style.Isolation = extended.Isolation;
+                break;
+            case SvgPropertyId.PaintOrder:
+                style.PaintOrder = extended.PaintOrder;
+                break;
+            case SvgPropertyId.VectorEffect:
+                style.VectorEffect = extended.VectorEffect;
+                break;
+            case SvgPropertyId.Overflow:
+                style.Overflow = extended.Overflow;
+                break;
+            case SvgPropertyId.MarkerStart:
+                style.MarkerStart = extended.MarkerStart;
+                break;
+            case SvgPropertyId.MarkerMid:
+                style.MarkerMid = extended.MarkerMid;
+                break;
+            case SvgPropertyId.MarkerEnd:
+                style.MarkerEnd = extended.MarkerEnd;
+                break;
+            case SvgPropertyId.ImageRendering:
+                style.ImageRendering = extended.ImageRendering;
+                break;
+            case SvgPropertyId.ShapeRendering:
+                style.ShapeRendering = extended.ShapeRendering;
+                break;
+            case SvgPropertyId.ColorInterpolation:
+                style.ColorInterpolation = extended.ColorInterpolation;
+                break;
+            case SvgPropertyId.TransformOrigin:
+                style.TransformOriginX = ToComputedLength(extended.TransformOriginX, style.FontSize, units);
+                style.TransformOriginY = ToComputedLength(extended.TransformOriginY, style.FontSize, units);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Computes <c>font-size</c>. A percentage, <c>em</c>, <c>ex</c>, and <c>ch</c> refer to the font size of the parent.
     /// </summary>
     /// <param name="specified">The cascaded specified style of the element.</param>
     /// <param name="parent">The computed style of the parent.</param>
     /// <param name="initial">The initial style.</param>
-    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="units">The document values that length units refer to.</param>
     /// <returns>The font size in pixels.</returns>
-    private static float ComputeFontSize(in SvgSpecifiedStyle specified, in SvgComputedStyle parent, in SvgComputedStyle initial, float dpi)
+    private static float ComputeFontSize(in SvgSpecifiedStyle specified, in SvgComputedStyle parent, in SvgComputedStyle initial, SvgUnitBasis units)
     {
         if (specified.IsInherit(SvgPropertyId.FontSize))
         {
@@ -277,7 +529,7 @@ internal struct SvgComputedStyle
         SvgLength value = specified.FontSize;
         return value.Unit == SvgLengthUnit.Percent
             ? parent.FontSize * value.Value / 100F
-            : SvgUnits.ToPixels(value, parent.FontSize, dpi);
+            : SvgUnits.ToPixels(value, parent.FontSize, units);
     }
 
     /// <summary>
@@ -285,10 +537,10 @@ internal struct SvgComputedStyle
     /// </summary>
     /// <param name="value">The specified length.</param>
     /// <param name="fontSize">The computed font size of the element.</param>
-    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="units">The document values that length units refer to.</param>
     /// <returns>The computed length.</returns>
-    private static SvgLength ToComputedLength(SvgLength value, float fontSize, float dpi)
-        => value.Unit == SvgLengthUnit.Percent ? value : new SvgLength(SvgUnits.ToPixels(value, fontSize, dpi), SvgLengthUnit.Px);
+    private static SvgLength ToComputedLength(SvgLength value, float fontSize, SvgUnitBasis units)
+        => value.Unit == SvgLengthUnit.Percent ? value : new SvgLength(SvgUnits.ToPixels(value, fontSize, units), SvgLengthUnit.Px);
 
     /// <summary>
     /// Copies the value of one property from another style, for the <c>inherit</c> and <c>initial</c> keywords.
@@ -353,6 +605,55 @@ internal struct SvgComputedStyle
                 break;
             case SvgPropertyId.StopOpacity:
                 style.StopOpacity = source.StopOpacity;
+                break;
+            case SvgPropertyId.ClipPath:
+                style.ClipPath = source.ClipPath;
+                break;
+            case SvgPropertyId.ClipRule:
+                style.ClipRule = source.ClipRule;
+                break;
+            case SvgPropertyId.Mask:
+                style.Mask = source.Mask;
+                break;
+            case SvgPropertyId.MaskType:
+                style.MaskType = source.MaskType;
+                break;
+            case SvgPropertyId.MixBlendMode:
+                style.MixBlendMode = source.MixBlendMode;
+                break;
+            case SvgPropertyId.Isolation:
+                style.Isolation = source.Isolation;
+                break;
+            case SvgPropertyId.PaintOrder:
+                style.PaintOrder = source.PaintOrder;
+                break;
+            case SvgPropertyId.VectorEffect:
+                style.VectorEffect = source.VectorEffect;
+                break;
+            case SvgPropertyId.Overflow:
+                style.Overflow = source.Overflow;
+                break;
+            case SvgPropertyId.MarkerStart:
+                style.MarkerStart = source.MarkerStart;
+                break;
+            case SvgPropertyId.MarkerMid:
+                style.MarkerMid = source.MarkerMid;
+                break;
+            case SvgPropertyId.MarkerEnd:
+                style.MarkerEnd = source.MarkerEnd;
+                break;
+            case SvgPropertyId.ImageRendering:
+                style.ImageRendering = source.ImageRendering;
+                break;
+            case SvgPropertyId.ShapeRendering:
+                style.ShapeRendering = source.ShapeRendering;
+                break;
+            case SvgPropertyId.ColorInterpolation:
+                style.ColorInterpolation = source.ColorInterpolation;
+                break;
+            case SvgPropertyId.TransformOrigin:
+                style.TransformOriginX = source.TransformOriginX;
+                style.TransformOriginY = source.TransformOriginY;
                 break;
         }
     }

@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Numerics;
 using System.Text;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Svg;
@@ -321,5 +322,134 @@ public class SvgDocumentTests
 
         Assert.Equal(Color.Transparent.ToPixel<TPixel>(), image[7, 7]);
         Assert.Throws<ArgumentNullException>(() => image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(null!, PointF.Empty))));
+    }
+
+    [Fact]
+    public void Options_Phase2Defaults()
+    {
+        SvgLoadOptions options = new();
+        SvgLimits limits = new();
+
+        Assert.Null(options.UserStyleSheet);
+        Assert.Equal<string>(["en"], options.Languages);
+        Assert.Null(options.ResourceBaseDirectory);
+        Assert.Equal(64L * 1024 * 1024, limits.MaxImagePixels);
+        Assert.Equal(4096 * 4096, limits.MaxPatternTilePixels);
+    }
+
+    [Fact]
+    public void Options_RejectInvalidPhase2Values()
+    {
+        SvgLoadOptions options = new();
+        SvgLimits limits = new();
+
+        Assert.Throws<ArgumentNullException>(() => options.Languages = null!);
+        Assert.Throws<ArgumentException>(() => options.Languages = ["en", null!]);
+        Assert.Throws<ArgumentException>(() => options.Languages = [string.Empty]);
+        Assert.Throws<ArgumentException>(() => options.ResourceBaseDirectory = string.Empty);
+        Assert.Throws<ArgumentException>(() => options.ResourceBaseDirectory = "  ");
+        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxImagePixels = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxPatternTilePixels = -1);
+
+        // A failed set keeps the previous value.
+        Assert.Equal<string>(["en"], options.Languages);
+        Assert.Null(options.ResourceBaseDirectory);
+    }
+
+    [Fact]
+    public void Options_AcceptValidPhase2Values()
+    {
+        List<string> languages = ["de-CH", "fr"];
+        SvgLoadOptions options = new()
+        {
+            UserStyleSheet = "rect { fill: red }",
+            Languages = languages,
+            ResourceBaseDirectory = "images",
+        };
+
+        // The options keep a copy, so a later change to the source list has no effect.
+        languages.Add("it");
+
+        Assert.Equal("rect { fill: red }", options.UserStyleSheet);
+        Assert.Equal<string>(["de-CH", "fr"], options.Languages);
+        Assert.Equal("images", options.ResourceBaseDirectory);
+
+        options.Languages = [];
+        options.ResourceBaseDirectory = null;
+        options.UserStyleSheet = string.Empty;
+        Assert.Empty(options.Languages);
+        Assert.Null(options.ResourceBaseDirectory);
+    }
+
+    // Loading from a file must never enable reading other files.
+    [Fact]
+    public void Load_FromAPathDoesNotSetTheResourceBaseDirectory()
+    {
+        SvgLoadOptions options = new();
+
+        _ = SvgDocument.Load(TestFile.GetInputFileFullPath("Svg/Features/shapes.svg"), options);
+
+        Assert.Null(options.ResourceBaseDirectory);
+    }
+
+    // CSS Values 4: rem is the root font size, Q a quarter-millimeter, ch half the font size without font metrics, and the
+    // viewport units refer to the initial containing block, which is the intrinsic size of a standalone document.
+    [Theory]
+    [InlineData("width=\"2rem\" height=\"1rem\"", 40F, 20F)]
+    [InlineData("width=\"101.6Q\" height=\"50.8Q\"", 96F, 48F)]
+    [InlineData("width=\"3ch\" height=\"1ch\"", 15F, 5F)]
+    [InlineData("width=\"10vw\" height=\"10vh\"", 40F, 20F)]
+    [InlineData("width=\"10vmin\" height=\"10vmax\"", 20F, 40F)]
+    public void Units_ResolveTheCssUnits(string attributes, float width, float height)
+    {
+        SvgDocument document = SvgDocument.Parse(
+            SvgOpen + $" width=\"400\" height=\"200\" font-size=\"20\"><rect {attributes} font-size=\"10\"/></svg>");
+
+        RectangleF bounds = document.Nodes[0].Path!.Bounds;
+        Assert.Equal(width, bounds.Width, 3);
+        Assert.Equal(height, bounds.Height, 3);
+    }
+
+    // rem in the font size of the root element refers to the initial font size of 16px.
+    [Fact]
+    public void Units_RemOnTheRootFontSizeRefersToTheInitialFontSize()
+    {
+        SvgDocument document = SvgDocument.Parse(
+            SvgOpen + " width=\"1rem\" height=\"100\" font-size=\"2rem\"><rect width=\"1rem\" height=\"1rem\"/></svg>");
+
+        Assert.Equal(32F, document.Size.Width, 3);
+        Assert.Equal(32F, document.Nodes[0].Path!.Bounds.Width, 3);
+    }
+
+    // Without the encoding provider, the XML reader rejects the encoding name before it reads the root element.
+    [Fact]
+    public void Load_ReadsALegacyEncodingThatTheXmlDeclarationNames()
+    {
+        byte[] bytes = Encoding.ASCII.GetBytes("<?xml version=\"1.0\" encoding=\"windows-1251\"?>" + SvgOpen + " width=\"7\" height=\"5\"/>");
+        using MemoryStream stream = new(bytes);
+
+        SvgDocument document = SvgDocument.Load(stream);
+
+        Assert.Equal(new SizeF(7, 5), document.Size);
+    }
+
+    // Chromium resolves the percentages of transform-origin on a gradient in bounding box units against the viewport, the
+    // view-box reference box: in a 200 x 200 viewport, 50% and 100px give the same render, which differs from 0.5.
+    [Fact]
+    public void TransformOrigin_OfABoundingBoxGradientResolvesPercentagesAgainstTheViewport()
+    {
+        static Matrix4x4 GradientTransform(string origin)
+        {
+            SvgDocument document = SvgDocument.Parse(
+                SvgOpen + $" width=\"200\" height=\"200\"><radialGradient id=\"g\" gradientTransform=\"scale(2)\" transform-origin=\"{origin}\">"
+                + "<stop offset=\"0\" stop-color=\"black\"/><stop offset=\"1\" stop-color=\"green\"/></radialGradient>"
+                + "<rect x=\"20\" y=\"20\" width=\"160\" height=\"160\" fill=\"url(#g)\"/></svg>");
+
+            return ((RadialGradientBrush)document.Nodes[0].Fill!).GradientTransform;
+        }
+
+        Assert.Equal(GradientTransform("100px 100px"), GradientTransform("50% 50%"));
+        Assert.Equal(GradientTransform("100 100"), GradientTransform("center"));
+        Assert.NotEqual(GradientTransform("0.5 0.5"), GradientTransform("50% 50%"));
     }
 }

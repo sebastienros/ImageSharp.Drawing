@@ -17,7 +17,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 internal sealed class SvgPaintCache
 {
     private readonly SvgElementTree tree;
-    private readonly float dpi;
+    private readonly SvgUnitBasis units;
     private readonly SvgComputedStyle initialStyle;
     private readonly Dictionary<Color, SolidBrush> solidBrushes = [];
     private readonly Dictionary<SvgPenKey, Pen> pens = [];
@@ -31,12 +31,12 @@ internal sealed class SvgPaintCache
     /// Initializes a new instance of the <see cref="SvgPaintCache"/> class.
     /// </summary>
     /// <param name="tree">The element tree.</param>
-    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="units">The document values that length units refer to.</param>
     /// <param name="initialStyle">The initial computed style.</param>
-    public SvgPaintCache(SvgElementTree tree, float dpi, in SvgComputedStyle initialStyle)
+    public SvgPaintCache(SvgElementTree tree, SvgUnitBasis units, in SvgComputedStyle initialStyle)
     {
         this.tree = tree;
-        this.dpi = dpi;
+        this.units = units;
         this.initialStyle = initialStyle;
     }
 
@@ -80,7 +80,7 @@ internal sealed class SvgPaintCache
             if (paint.Reference is not null
                 && this.tree.TryGetElementById(paint.Reference, out int element)
                 && this.tree[element].Kind is SvgElementKind.LinearGradient or SvgElementKind.RadialGradient
-                && (this.GetGradient(element).Attributes.Units == SvgGradientUnits.UserSpaceOnUse
+                && (this.GetGradient(element).Attributes.Units == SvgCoordinateUnits.UserSpaceOnUse
                     || (bounds.Width > 0F && bounds.Height > 0F)))
             {
                 return this.GetGradientBrush(element, opacity, bounds, viewport, fontSize);
@@ -235,13 +235,20 @@ internal sealed class SvgPaintCache
     private Brush? GetGradientBrush(int element, float opacity, RectangleF bounds, SizeF viewport, float fontSize)
     {
         SvgResolvedGradient gradient = this.GetGradient(element);
-        bool userSpace = gradient.Attributes.Units == SvgGradientUnits.UserSpaceOnUse;
+        bool userSpace = gradient.Attributes.Units == SvgCoordinateUnits.UserSpaceOnUse;
         RectangleF box = userSpace ? new RectangleF(0F, 0F, viewport.Width, viewport.Height) : bounds;
 
-        SvgGradientKey key = new(element, box, fontSize, opacity);
+        // transform-origin applies to gradientTransform. Its percentages refer to the viewport, the reference box of
+        // transform-box: view-box, also in bounding box units, where the origin is then used in the unit square. Chromium
+        // does the same: there 50% and 100px give the same origin for a gradient painted in a 200 x 200 viewport.
+        Vector2 origin = gradient.Attributes.HasTransform
+            ? SvgComputedStyle.ResolveTransformOrigin(gradient.TransformOriginX, gradient.TransformOriginY, viewport)
+            : Vector2.Zero;
+
+        SvgGradientKey key = new(element, box, fontSize, opacity, origin);
         if (!this.gradientBrushes.TryGetValue(key, out Brush? brush))
         {
-            brush = this.CreateGradientBrush(gradient, userSpace, box, fontSize, opacity);
+            brush = this.CreateGradientBrush(gradient, userSpace, box, fontSize, opacity, origin);
             this.gradientBrushes.Add(key, brush);
         }
 
@@ -256,8 +263,9 @@ internal sealed class SvgPaintCache
     /// <param name="box">The viewport rectangle for user space units, or the bounding box for bounding box units.</param>
     /// <param name="fontSize">The computed font size of the painted element.</param>
     /// <param name="opacity">The opacity that multiplies the stop colors.</param>
+    /// <param name="origin">The <c>transform-origin</c> of the <c>gradientTransform</c>, in the units of the gradient geometry.</param>
     /// <returns>The brush, or <see langword="null"/> when the gradient paints nothing.</returns>
-    private Brush? CreateGradientBrush(SvgResolvedGradient gradient, bool userSpace, RectangleF box, float fontSize, float opacity)
+    private Brush? CreateGradientBrush(SvgResolvedGradient gradient, bool userSpace, RectangleF box, float fontSize, float opacity, Vector2 origin)
     {
         ColorStop[] stops = gradient.Stops;
 
@@ -280,7 +288,8 @@ internal sealed class SvgPaintCache
         float diagonal = userSpace ? SvgUnits.Diagonal(box.Size) : 1F;
 
         SvgGradientAttributes attributes = gradient.Attributes;
-        Matrix3x2 transform = attributes.HasTransform ? attributes.Transform : Matrix3x2.Identity;
+        Matrix3x2 transform = attributes.HasTransform ? SvgComputedStyle.ApplyTransformOrigin(attributes.Transform, origin) : Matrix3x2.Identity;
+
         if (!userSpace)
         {
             // The gradient transform applies in the unit square, before the mapping to the bounding box.
@@ -346,7 +355,7 @@ internal sealed class SvgPaintCache
     /// <param name="defaultValue">The value of an unspecified length.</param>
     /// <returns>The value.</returns>
     private float ToUser(SvgLength value, float percentBase, float fontSize, float defaultValue)
-        => SvgUnits.ToUser(value, percentBase, fontSize, this.dpi, defaultValue);
+        => SvgUnits.ToUser(value, percentBase, fontSize, this.units, defaultValue);
 
     /// <summary>
     /// Returns the resolved form of a gradient element, building it on first use.
@@ -401,13 +410,30 @@ internal sealed class SvgPaintCache
             SvgGradientAttributes merged = this.tree.GetGradient(index);
             ColorStop[]? stops = this.ReadStops(index);
 
+            // The transform origin belongs to the element whose gradientTransform applies, so it travels with the
+            // transform through the chain. Only an element that specifies transform-origin needs its computed style.
+            SvgLength originX = default;
+            SvgLength originY = default;
+            if (merged.HasTransform && this.tree.GetStyle(index).IsSpecified(SvgPropertyId.TransformOrigin))
+            {
+                SvgComputedStyle style = this.ComputeDocumentStyle(index);
+                originX = style.TransformOriginX;
+                originY = style.TransformOriginY;
+            }
+
             if (tail is not null)
             {
+                if (!merged.HasTransform)
+                {
+                    originX = tail.TransformOriginX;
+                    originY = tail.TransformOriginY;
+                }
+
                 merged = Merge(merged, tail.Attributes);
                 stops ??= tail.Stops;
             }
 
-            tail = new SvgResolvedGradient(this.tree[index].Kind == SvgElementKind.RadialGradient, merged, stops ?? []);
+            tail = new SvgResolvedGradient(this.tree[index].Kind == SvgElementKind.RadialGradient, merged, stops ?? [], originX, originY);
             this.gradients.Add(index, tail);
         }
 
@@ -433,7 +459,7 @@ internal sealed class SvgPaintCache
         merged.Fx = own.Fx.IsSpecified ? own.Fx : referenced.Fx;
         merged.Fy = own.Fy.IsSpecified ? own.Fy : referenced.Fy;
         merged.Fr = own.Fr.IsSpecified ? own.Fr : referenced.Fr;
-        merged.Units = own.Units != SvgGradientUnits.Unspecified ? own.Units : referenced.Units;
+        merged.Units = own.Units != SvgCoordinateUnits.Unspecified ? own.Units : referenced.Units;
         merged.SpreadMethod = own.SpreadMethod != SvgSpreadMethod.Unspecified ? own.SpreadMethod : referenced.SpreadMethod;
 
         if (!own.HasTransform && referenced.HasTransform)
@@ -468,7 +494,7 @@ internal sealed class SvgPaintCache
 
         // A stop takes stop-color and stop-opacity from its own style, inherit refers to the gradient element, and
         // currentColor refers to the color property that the stop inherits through its ancestors in the document.
-        SvgComputedStyle gradientStyle = this.ComputeStyle(element);
+        SvgComputedStyle gradientStyle = this.ComputeDocumentStyle(element);
         ColorStop[] stops = new ColorStop[count];
         float previous = 0F;
         int index = 0;
@@ -480,7 +506,8 @@ internal sealed class SvgPaintCache
                 continue;
             }
 
-            SvgComputedStyle style = SvgComputedStyle.Compute(in this.tree.GetStyle(child), in gradientStyle, in this.initialStyle, this.dpi);
+            ref readonly SvgSpecifiedStyle specified = ref this.tree.GetStyle(child);
+            SvgComputedStyle style = SvgComputedStyle.Compute(in specified, in gradientStyle, in this.initialStyle, this.units, SvgElementKind.Stop);
             Color color = style.StopColor.Kind == SvgPaintKind.CurrentColor ? style.Color : style.StopColor.Color;
 
             // Each offset is at least the offset of the stop before it.
@@ -493,12 +520,16 @@ internal sealed class SvgPaintCache
     }
 
     /// <summary>
-    /// Computes the style of an element through its ancestors in the document, as paint servers use it: a paint server
-    /// inherits from its place in the document, not from the element it paints.
+    /// Computes the style of an element through its ancestors in the document, as paint servers and other referenced
+    /// content use it: such content inherits from its place in the document, not from the element that references it.
     /// </summary>
+    /// <remarks>
+    /// The walk visits every ancestor, so its cost grows with the depth of the element. Callers compute the style once per
+    /// referenced element, not once per reference, where they can.
+    /// </remarks>
     /// <param name="element">The element index.</param>
     /// <returns>The computed style.</returns>
-    private SvgComputedStyle ComputeStyle(int element)
+    public SvgComputedStyle ComputeDocumentStyle(int element)
     {
         List<int> ancestors = this.ancestors;
         ancestors.Clear();
@@ -510,7 +541,10 @@ internal sealed class SvgPaintCache
         SvgComputedStyle style = this.initialStyle;
         for (int i = ancestors.Count - 1; i >= 0; i--)
         {
-            style = SvgComputedStyle.Compute(in this.tree.GetStyle(ancestors[i]), in style, in this.initialStyle, this.dpi);
+            // The root element computes with the root basis, as the resolver computes it.
+            int index = ancestors[i];
+            SvgUnitBasis units = index == 0 ? SvgUnitBasis.ForRoot(this.units.Dpi) : this.units;
+            style = SvgComputedStyle.Compute(in this.tree.GetStyle(index), in style, in this.initialStyle, units, this.tree[index].Kind);
         }
 
         return style;

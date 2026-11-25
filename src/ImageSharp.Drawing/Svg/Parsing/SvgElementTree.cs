@@ -19,8 +19,10 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="GetRect(int)"/>, <see cref="GetCircle(int)"/> for <see cref="SvgElementKind.Circle"/> and
 /// <see cref="SvgElementKind.Ellipse"/>, <see cref="GetLine(int)"/>, <see cref="GetPoints(int)"/> for
 /// <see cref="SvgElementKind.Polyline"/> and <see cref="SvgElementKind.Polygon"/>, <see cref="GetPath(int)"/>,
-/// <see cref="GetUse(int)"/>, <see cref="GetGradient(int)"/> for both gradient kinds, and <see cref="GetStopOffset(int)"/>.
-/// Calling an accessor for another kind is a caller error.
+/// <see cref="GetUse(int)"/>, <see cref="GetGradient(int)"/> for both gradient kinds, <see cref="GetStopOffset(int)"/>,
+/// <see cref="GetClipPathUnits(int)"/>, <see cref="GetMask(int)"/>, <see cref="GetPattern(int)"/>,
+/// <see cref="GetMarker(int)"/>, and <see cref="GetImage(int)"/>. Calling an accessor for another kind is a caller error.
+/// <see cref="TryGetConditionalAttributes(int, out SvgConditionalAttributes)"/> works for every element.
 /// </para>
 /// <para>
 /// <see cref="GetStyle(int)"/> returns the cascaded specified style: presentation attributes, style sheet rules, and the
@@ -50,6 +52,12 @@ internal sealed class SvgElementTree
     private readonly List<SvgUseAttributes> uses;
     private readonly List<SvgGradientAttributes> gradients;
     private readonly List<float> stopOffsets;
+    private readonly List<SvgCoordinateUnits> clipPathUnits;
+    private readonly List<SvgMaskAttributes> masks;
+    private readonly List<SvgPatternAttributes> patterns;
+    private readonly List<SvgMarkerAttributes> markers;
+    private readonly List<SvgImageAttributes> images;
+    private readonly Dictionary<int, SvgConditionalAttributes>? conditions;
     private readonly Dictionary<string, int> ids;
     private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> idLookup;
 
@@ -75,6 +83,12 @@ internal sealed class SvgElementTree
         this.uses = tables.Uses;
         this.gradients = tables.Gradients;
         this.stopOffsets = tables.StopOffsets;
+        this.clipPathUnits = tables.ClipPathUnits;
+        this.masks = tables.Masks;
+        this.patterns = tables.Patterns;
+        this.markers = tables.Markers;
+        this.images = tables.Images;
+        this.conditions = tables.Conditions;
         this.ids = tables.Ids;
         this.idLookup = this.ids.GetAlternateLookup<ReadOnlySpan<char>>();
         this.StyleRuleCount = styleRuleCount;
@@ -141,7 +155,9 @@ internal sealed class SvgElementTree
     }
 
     /// <summary>
-    /// Gets the <c>transform</c> attribute of an element.
+    /// Gets the transform of an element: the CSS <c>transform</c> property when a style sheet rule or the <c>style</c>
+    /// attribute sets it, otherwise the <c>transform</c> attribute. <c>transform-origin</c> is not applied; see
+    /// <see cref="SvgResolver.TryGetLocalTransform(int, in SvgComputedStyle, SizeF, out Matrix3x2)"/>.
     /// </summary>
     /// <param name="index">The element index.</param>
     /// <param name="transform">When this method returns <see langword="true"/>, contains the transform.</param>
@@ -253,4 +269,59 @@ internal sealed class SvgElementTree
     /// <param name="index">The element index.</param>
     /// <returns>The offset.</returns>
     public float GetStopOffset(int index) => this.stopOffsets[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the <c>clipPathUnits</c> of a <c>clipPath</c> element. The <c>transform</c> of the element comes from
+    /// <see cref="TryGetTransform(int, out Matrix3x2)"/>, as for any element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The units; <see cref="SvgCoordinateUnits.Unspecified"/> means the default, <c>userSpaceOnUse</c>.</returns>
+    public SvgCoordinateUnits GetClipPathUnits(int index) => this.clipPathUnits[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes of a <c>mask</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgMaskAttributes GetMask(int index) => ref CollectionsMarshal.AsSpan(this.masks)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes that a <c>pattern</c> element specifies itself, before the <c>href</c> chain is followed.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgPatternAttributes GetPattern(int index) => ref CollectionsMarshal.AsSpan(this.patterns)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes of a <c>marker</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgMarkerAttributes GetMarker(int index) => ref CollectionsMarshal.AsSpan(this.markers)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes of an <c>image</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgImageAttributes GetImage(int index) => ref CollectionsMarshal.AsSpan(this.images)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the conditional processing attributes of an element: <c>systemLanguage</c>, <c>requiredExtensions</c>, and
+    /// <c>requiredFeatures</c>, as written.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <param name="conditions">When this method returns <see langword="true"/>, contains the attributes.</param>
+    /// <returns><see langword="true"/> if the element has at least one of the attributes; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetConditionalAttributes(int index, out SvgConditionalAttributes conditions)
+    {
+        if (this[index].HasConditionalAttributes)
+        {
+            conditions = this.conditions![index];
+            return true;
+        }
+
+        conditions = default;
+        return false;
+    }
 }
