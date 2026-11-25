@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#d62728"/>
+    </marker>
+    <marker id="dot" refX="3" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="3" fill="#1f77b4"/>
+    </marker>
+    <marker id="square" refX="2" refY="2" markerWidth="4" markerHeight="4" orient="45">
+      <rect width="4" height="4" fill="#2ca02c"/>
+    </marker>
+    <marker id="clipped" refX="0" refY="0" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse">
+      <circle r="6" fill="#ff7f0e"/>
+    </marker>
+    <marker id="visible" refX="0" refY="0" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" overflow="visible">
+      <circle r="6" fill="#ff7f0e"/>
+    </marker>
+    <marker id="context" refX="4" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="context-stroke" stroke="context-fill" stroke-width="1"/>
+    </marker>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <path d="M15 40 L60 15 L100 40 Q130 70 160 20 C175 0 190 40 185 60" fill="none" stroke="#000000" stroke-width="2"
+        marker-start="url(#arrow)" marker-mid="url(#dot)" marker-end="url(#arrow)"/>
+  <polyline points="15,90 45,70 75,95 105,70" fill="none" stroke="#7f7f7f" stroke-width="3" marker-mid="url(#square)" marker-end="url(#square)"/>
+  <polygon points="130,70 185,80 170,115 125,105" fill="#c5b0d5" stroke="#9467bd" stroke-width="2" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)"/>
+  <line x1="15" y1="125" x2="90" y2="125" stroke="#000000" stroke-width="1" marker-start="url(#clipped)" marker-end="url(#visible)"/>
+  <path d="M110 125 L150 140 L190 125" fill="#aec7e8" stroke="#1f77b4" stroke-width="2" marker-mid="url(#context)" marker-end="url(#context)"/>
+  <path d="M20 180 A30 20 0 0 1 80 170" fill="none" stroke="#000000" stroke-width="2" marker-end="url(#arrow)" opacity="0.6"/>
+  <path d="M110 160 H180 V190 H110 Z" fill="#98df8a" stroke="#2ca02c" stroke-width="6" paint-order="stroke markers fill"
+        marker-start="url(#visible)" marker-mid="url(#visible)"/>
+</svg>

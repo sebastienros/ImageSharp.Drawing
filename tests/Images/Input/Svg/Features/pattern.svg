@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <pattern id="checker" patternUnits="userSpaceOnUse" width="12" height="12">
+      <rect width="6" height="6" fill="#1f77b4"/>
+      <rect x="6" y="6" width="6" height="6" fill="#ff7f0e"/>
+    </pattern>
+    <pattern id="rotated" href="#checker" patternTransform="rotate(30)"/>
+    <pattern id="skewed" xlink:href="#checker" patternTransform="skewX(30) scale(1.5)"/>
+    <pattern id="box" width="0.25" height="0.5" patternContentUnits="objectBoundingBox">
+      <circle cx="0.125" cy="0.25" r="0.1" fill="#2ca02c"/>
+    </pattern>
+    <pattern id="viewbox" patternUnits="userSpaceOnUse" width="20" height="10" viewBox="0 0 10 10" preserveAspectRatio="xMidYMid meet">
+      <path d="M0 10 L5 0 L10 10 Z" fill="#9467bd"/>
+    </pattern>
+    <pattern id="nested" patternUnits="userSpaceOnUse" width="24" height="24" x="2" y="2">
+      <rect width="20" height="20" fill="url(#checker)" stroke="#d62728" stroke-width="2"/>
+    </pattern>
+    <pattern id="stripes" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+      <rect width="4" height="8" fill="#17becf"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <rect x="5" y="5" width="60" height="60" fill="url(#checker)"/>
+  <rect x="70" y="5" width="60" height="60" fill="url(#rotated)"/>
+  <rect x="135" y="5" width="60" height="60" fill="url(#skewed)"/>
+  <ellipse cx="35" cy="100" rx="30" ry="25" fill="url(#box)" stroke="#000000"/>
+  <rect x="70" y="75" width="60" height="50" fill="url(#viewbox)" fill-opacity="0.6"/>
+  <rect x="135" y="75" width="60" height="50" fill="url(#nested)"/>
+  <path d="M10 140 C60 120 80 200 130 160" fill="none" stroke="url(#stripes)" stroke-width="14"/>
+  <g transform="translate(165 165) rotate(-20) scale(1.2 0.8)">
+    <rect x="-25" y="-25" width="50" height="50" fill="url(#checker)" opacity="0.7"/>
+  </g>
+</svg>

@@ -356,28 +356,39 @@ internal static partial class SvgEmitter
                 key = this.GetAliasedKey(key);
             }
 
+            Brush? fill = node.Fill;
+            Pen? stroke = node.Stroke;
+            if (fill is SvgDeferredPaint || stroke?.StrokeFill is SvgDeferredPaint)
+            {
+                // Pattern and image paints build their brush for the device transform of this render.
+                Matrix4x4 transform = this.GetOptions(key).Transform;
+                fill = SvgDeferredPaint.Resolve(fill, in transform);
+                stroke = SvgDeferredPaint.Resolve(stroke, in transform);
+            }
+
             if ((node.Flags & SvgDrawFlags.StrokeFirst) != 0)
             {
-                this.StrokeNode(in node, key);
-                this.FillNode(in node, key);
+                this.StrokeNode(in node, stroke, key);
+                this.FillNode(in node, fill, key);
                 return;
             }
 
-            this.FillNode(in node, key);
-            this.StrokeNode(in node, key);
+            this.FillNode(in node, fill, key);
+            this.StrokeNode(in node, stroke, key);
         }
 
         /// <summary>
         /// Records the fill of a draw node.
         /// </summary>
         /// <param name="node">The draw node.</param>
+        /// <param name="fill">The fill brush of this render, or <see langword="null"/> for no fill.</param>
         /// <param name="key">The options key of the node.</param>
-        private void FillNode(in SvgRenderNode node, int key)
+        private void FillNode(in SvgRenderNode node, Brush? fill, int key)
         {
-            if (node.Fill is not null)
+            if (fill is not null)
             {
                 this.SetState(key);
-                this.canvas.Fill(node.Fill, node.Path!);
+                this.canvas.Fill(fill, node.Path!);
             }
         }
 
@@ -385,10 +396,10 @@ internal static partial class SvgEmitter
         /// Records the stroke of a draw node.
         /// </summary>
         /// <param name="node">The draw node.</param>
+        /// <param name="stroke">The pen of this render, or <see langword="null"/> for no stroke.</param>
         /// <param name="key">The options key of the node.</param>
-        private void StrokeNode(in SvgRenderNode node, int key)
+        private void StrokeNode(in SvgRenderNode node, Pen? stroke, int key)
         {
-            Pen? stroke = node.Stroke;
             if (stroke is null)
             {
                 return;
