@@ -26,6 +26,16 @@
     <PackageReference Update="GeoJSON.Net" Version="1.4.1" />
     <PackageReference Update="SkiaSharp" Version="2.88.9" />
     <PackageReference Update="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" Condition="'$(IsLinux)'=='true'"/>
+    <!--
+      SVG reference renderers for the SVG benchmarks.
+      Svg.Skia 4.8.0 is the newest release that depends on SkiaSharp 2.88.9. Svg.Skia 4.9.0 and later need SkiaSharp 3.x.
+      NetVips.Native.* carry libvips with librsvg for the current operating system.
+    -->
+    <PackageReference Update="Svg.Skia" Version="4.8.0" />
+    <PackageReference Update="NetVips" Version="3.2.0" />
+    <PackageReference Update="NetVips.Native.linux-x64" Version="8.18.7" Condition="'$(IsLinux)'=='true'" />
+    <PackageReference Update="NetVips.Native.win-x64" Version="8.18.7" Condition="'$(IsWindows)'=='true'" />
+    <PackageReference Update="NetVips.Native.osx-arm64" Version="8.18.7" Condition="'$(IsOSX)'=='true'" />
     <PackageReference Update="ZXing.Net" Version="0.16.11" />
     <PackageReference Update="ZXingCpp" Version="0.5.3" />
   </ItemGroup>

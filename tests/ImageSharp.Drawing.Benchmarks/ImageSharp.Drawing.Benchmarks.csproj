@@ -41,6 +41,11 @@
     <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Condition="'$(IsOSX)'=='true'" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Condition="'$(IsLinux)'=='true'"/>
+    <PackageReference Include="Svg.Skia" />
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native.linux-x64" Condition="'$(IsLinux)'=='true'" />
+    <PackageReference Include="NetVips.Native.win-x64" Condition="'$(IsWindows)'=='true'" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Condition="'$(IsOSX)'=='true'" />
   </ItemGroup>
 
   <ItemGroup>
