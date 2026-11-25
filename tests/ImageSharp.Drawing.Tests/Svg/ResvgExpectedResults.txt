@@ -114,26 +114,26 @@ filters/feConvolveMatrix/bias=-0.5.svg skip undefined behavior: results.csv mark
 filters/feConvolveMatrix/bias=0.5.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/bias=9999.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/custom-divisor.svg fail filters: phase 4
-filters/feConvolveMatrix/divisor=0.svg pass
+filters/feConvolveMatrix/divisor=0.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/edgeMode=none.svg fail filters: phase 4
 filters/feConvolveMatrix/edgeMode=wrap-with-matrix-larger-than-target.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/edgeMode=wrap.svg fail filters: phase 4
-filters/feConvolveMatrix/empty-kernelMatrix.svg pass
-filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg pass
-filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg pass
+filters/feConvolveMatrix/empty-kernelMatrix.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/kernelMatrix-with-zero-sum-and-no-divisor.svg fail filters: phase 4
-filters/feConvolveMatrix/no-kernelMatrix.svg pass
-filters/feConvolveMatrix/order-with-a-negative-value-1.svg pass
-filters/feConvolveMatrix/order-with-a-negative-value-2.svg pass
-filters/feConvolveMatrix/order=0.svg pass
+filters/feConvolveMatrix/no-kernelMatrix.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order-with-a-negative-value-1.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order-with-a-negative-value-2.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
+filters/feConvolveMatrix/order=0.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/order=4-2.svg fail filters: phase 4
 filters/feConvolveMatrix/order=4-4.svg fail filters: phase 4
 filters/feConvolveMatrix/order=4.svg fail filters: phase 4
 filters/feConvolveMatrix/preserveAlpha=true.svg fail filters: phase 4
-filters/feConvolveMatrix/targetX=-1.svg pass
+filters/feConvolveMatrix/targetX=-1.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/targetX=0.svg fail filters: phase 4
 filters/feConvolveMatrix/targetX=2.svg fail filters: phase 4
-filters/feConvolveMatrix/targetX=3.svg pass
+filters/feConvolveMatrix/targetX=3.svg fail filters: phase 4; the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/unset-order.svg fail filters: phase 4
 filters/feDiffuseLighting/complex-transform.svg fail filters: phase 4
 filters/feDiffuseLighting/diffuseConstant=-1.svg fail filters: phase 4
