@@ -47,8 +47,8 @@ internal readonly struct SvgReaderOptions
 
     /// <summary>
     /// Gets the CSS text of the user style sheet from <see cref="SvgLoadOptions.UserStyleSheet"/>, or
-    /// <see langword="null"/> for none. The reader does not apply it yet; the user origin of the cascade comes with the
-    /// full CSS support of phase 2.
+    /// <see langword="null"/> for none. The reader parses it before the first element and applies its rules with the
+    /// user origin of the cascade.
     /// </summary>
     public string? UserStyleSheet { get; }
 }

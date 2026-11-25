@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The combinator between a compound selector and the compound to its left. Later phases add the sibling combinators.
+/// The combinator between a compound selector and the compound to its left (Selectors Level 4, section 16).
 /// </summary>
 internal enum SvgCssCombinator : byte
 {
@@ -21,5 +21,15 @@ internal enum SvgCssCombinator : byte
     /// <summary>
     /// The child combinator <c>&gt;</c>.
     /// </summary>
-    Child
+    Child,
+
+    /// <summary>
+    /// The next-sibling combinator <c>+</c>: the left compound matches the previous element sibling.
+    /// </summary>
+    NextSibling,
+
+    /// <summary>
+    /// The subsequent-sibling combinator <c>~</c>: the left compound matches any earlier element sibling.
+    /// </summary>
+    SubsequentSibling
 }

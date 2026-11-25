@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Phase 2 selectors. Every cell is red unless its selector applies; the expected result is a green grid. The main
+       style element comes last, so attribute selectors also test elements that precede their style sheet. -->
+  <style media="print">#c15 .t { fill: #ff0000; }</style>
+  <g id="c1" transform="translate(2 2)"><rect width="0" height="0"/><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c2" transform="translate(52 2)"><circle r="0"/><desc>d</desc><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c3" transform="translate(102 2)"><rect class="t" data-k="a b c" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c4" transform="translate(152 2)"><rect class="t" lang="en-GB" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c5" transform="translate(2 52)"><rect class="t" data-k="abxyz" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c6" transform="translate(52 52)"><rect class="t" data-k="xxmidxx" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c7" transform="translate(102 52)"><rect class="t" width="46" height="46" fill="red"/></g>
+  <g id="c8" transform="translate(152 52)"><rect width="0" height="0"/><circle r="0"/><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c9" transform="translate(2 102)"><circle r="0"/><rect width="0" height="0"/><circle r="0"/><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c10" transform="translate(52 102)"><rect width="0" height="0"/><rect class="t" width="46" height="46" fill="#ff0000"/><circle r="0"/></g>
+  <g id="c11" transform="translate(102 102)"><rect class="x" width="0" height="0"/><rect data-k="1" width="0" height="0"/><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c12" transform="translate(152 102)"><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c13" transform="translate(2 152)"><g></g><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c14" transform="translate(52 152)"><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c15" transform="translate(102 152)"><rect class="t" width="46" height="46" fill="#ff0000"/></g>
+  <g id="c16" transform="translate(152 152)"><rect class="16" width="46" height="46" fill="#ff0000"/></g>
+  <style>
+    #c1 rect + .t { fill: #008000; }
+    #c2 circle ~ .t { fill: #008000; }
+    #c3 [data-k~="b"] { fill: #008000; }
+    #c4 [lang|="en"] { fill: #008000; }
+    #c5 [data-k^="ab"][data-k$="yz"] { fill: #008000; }
+    #c6 [data-k*="mid"] { fill: #008000; }
+    #c7 [fill="RED" i] { fill: #008000; }
+    #c8 > :nth-child(3) { fill: #008000; }
+    #c9 > rect:nth-of-type(2) { fill: #008000; }
+    #c10 > :nth-last-child(1 of rect) { fill: #008000; }
+    #c11 > rect:not(.x, [data-k]) { fill: #008000; }
+    #c12 rect { fill: #ff0000; }
+    :is(#c12, .nope) .t { fill: #008000; }
+    :where(#c12) .t.t { fill: #ff0000; }
+    #c13 g:empty + .t { fill: #008000; }
+    @media (min-width: 150px) { #c14 .t { fill: #008000; } }
+    #c15 .t { fill: #008000; }
+    #c16 .\31 6 { fill: gr\65 en; }
+    rect:hover, ::before { fill: #ff0000; }
+  </style>
+</svg>

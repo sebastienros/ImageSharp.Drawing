@@ -1166,7 +1166,7 @@ structure/style-attribute/comments.svg pass
 structure/style-attribute/non-presentational-attribute.svg pass
 structure/style-attribute/simple-case.svg pass
 structure/style-attribute/transform.svg pass
-structure/style/attribute-selector.svg fail CSS selectors: attribute selectors come with the full selector set in phase 2
+structure/style/attribute-selector.svg pass
 structure/style/class-selector.svg pass
 structure/style/combined-selectors.svg pass
 structure/style/external-CSS.svg fail external resources: not loaded by design; the Chromium oracle does not load them either

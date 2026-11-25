@@ -41,6 +41,7 @@ public class SvgRenderTests
     [WithBlankImage(300, 300, PixelTypes.Rgba32, "gradient-transformed")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "opacity")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "css")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "css-selectors")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "current-color")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "units")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "display-visibility")]

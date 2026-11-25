@@ -18,7 +18,17 @@ internal readonly struct SvgCssRule
     /// <param name="order">The position of the rule in the style sheets, in document order.</param>
     /// <param name="normalStyle">The index of the normal declarations in the style table, or -1.</param>
     /// <param name="importantStyle">The index of the <c>!important</c> declarations in the style table, or -1.</param>
-    public SvgCssRule(int compoundStart, int compoundCount, int specificity, int order, int normalStyle, int importantStyle)
+    /// <param name="isUser">Whether the rule comes from the user style sheet.</param>
+    /// <param name="media">The index of the media condition of the rule in the style sheet, or -1 for none.</param>
+    public SvgCssRule(
+        int compoundStart,
+        int compoundCount,
+        int specificity,
+        int order,
+        int normalStyle,
+        int importantStyle,
+        bool isUser = false,
+        int media = -1)
     {
         this.CompoundStart = compoundStart;
         this.CompoundCount = compoundCount;
@@ -26,6 +36,8 @@ internal readonly struct SvgCssRule
         this.Order = order;
         this.NormalStyle = normalStyle;
         this.ImportantStyle = importantStyle;
+        this.IsUser = isUser;
+        this.Media = media;
     }
 
     /// <summary>
@@ -58,4 +70,16 @@ internal readonly struct SvgCssRule
     /// Gets the index of the <c>!important</c> declarations in the style table, or -1 when there are none.
     /// </summary>
     public int ImportantStyle { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the rule comes from the user style sheet. User rules have the user origin of
+    /// CSS Cascade Level 4: their normal declarations rank below every author declaration, presentation attributes
+    /// included, and their <c>!important</c> declarations rank above every author declaration.
+    /// </summary>
+    public bool IsUser { get; }
+
+    /// <summary>
+    /// Gets the index of the media condition that the rule depends on, or -1 when it applies on every medium.
+    /// </summary>
+    public int Media { get; }
 }

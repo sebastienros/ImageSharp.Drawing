@@ -2,24 +2,24 @@
 // Licensed under the Six Labors Split License.
 
 using System.Runtime.InteropServices;
-using SixLabors.ImageSharp.Drawing.Helpers;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The rules of every <c>style</c> element of a document, in flat tables, with an index for matching.
+/// The rules of the user style sheet and of every <c>style</c> element of a document, in flat tables, with an index for
+/// matching.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="SvgCssParser"/> appends rules in document order. <see cref="Complete"/> then sorts them by specificity and
-/// order of appearance, so a rule index is its cascade rank, and indexes each rule by its rightmost compound selector: by
-/// id when the compound has one, else by its first class, else by type, else as universal. Matching an element then
-/// tests only the rules in the buckets of its id, classes, and type, and the universal bucket, not every rule.
+/// <see cref="SvgCssParser"/> appends rules in document order. <see cref="Complete(SizeF)"/> drops the rules whose media
+/// condition is false, then sorts the rest by origin (user rules first), specificity, and order of appearance, so a rule
+/// index is its cascade rank. It then indexes each rule by its rightmost compound selector: by id when the compound has
+/// one, else by its first class, else by type, else as universal. Matching an element then tests only the rules in the
+/// buckets of its id, classes, and type, and the universal bucket, not every rule. A rule whose rightmost compound can
+/// never match, such as one with a pseudo-element, is in no bucket.
 /// </para>
 /// <para>
-/// Selector matching runs right to left with the result kinds of the Servo matcher: a failed descendant search that has
-/// reached the root fails the whole selector, so matching stays linear in the tree depth for each compound instead of
-/// backtracking exponentially.
+/// <see cref="SvgCssMatcher"/> matches the rules against the element tree.
 /// </para>
 /// </remarks>
 internal sealed class SvgStyleSheet
@@ -30,35 +30,32 @@ internal sealed class SvgStyleSheet
     /// </summary>
     public const int MaxCompoundsPerSelector = 64;
 
+    /// <summary>
+    /// The maximum nesting depth of functional pseudo-classes such as <c>:not(:is(...))</c>. Parsing and matching recurse
+    /// once per level, so deeper selectors are invalid, which bounds the stack.
+    /// </summary>
+    public const int MaxSelectorNesting = 8;
+
+    /// <summary>
+    /// The maximum nesting depth of <c>@media</c> rules. Deeper rules are skipped.
+    /// </summary>
+    public const int MaxMediaNesting = 8;
+
     private static readonly int[] NoRules = [];
 
     private readonly List<SvgCssRule> rules = [];
+    private List<string>? mediaQueries;
+    private List<int>? mediaParents;
+    private List<SvgCssComplexSelector>? arguments;
+    private List<SvgCssAttributeSelector>? attributeSelectors;
+    private List<SvgCssFunctionalSelector>? functionalSelectors;
+    private HashSet<string>? attributeNames;
+    private List<SvgCssSimpleSelector>? scratchSimples;
     private Dictionary<string, int[]>? rulesById;
     private Dictionary<string, int[]>? rulesByClass;
     private Dictionary<string, int[]>? rulesByType;
     private int[] universalRules = NoRules;
     private int order;
-
-    /// <summary>
-    /// The result of matching part of a selector.
-    /// </summary>
-    private enum MatchResult : byte
-    {
-        /// <summary>
-        /// The selector matches.
-        /// </summary>
-        Matched,
-
-        /// <summary>
-        /// This placement fails; the nearest descendant combinator may try a higher ancestor.
-        /// </summary>
-        RestartFromClosestDescendant,
-
-        /// <summary>
-        /// No placement can match, so the whole selector fails for this element.
-        /// </summary>
-        NotMatchedGlobally
-    }
 
     /// <summary>
     /// Gets the simple selector table.
@@ -71,6 +68,21 @@ internal sealed class SvgStyleSheet
     public List<SvgCssCompoundSelector> Compounds { get; } = [];
 
     /// <summary>
+    /// Gets the argument selector table of the functional pseudo-classes.
+    /// </summary>
+    public List<SvgCssComplexSelector> Arguments => this.arguments ??= [];
+
+    /// <summary>
+    /// Gets the side table of attribute selectors, which <see cref="SvgCssSimpleSelector.Data"/> indexes.
+    /// </summary>
+    public List<SvgCssAttributeSelector> AttributeSelectors => this.attributeSelectors ??= [];
+
+    /// <summary>
+    /// Gets the side table of functional pseudo-classes, which <see cref="SvgCssSimpleSelector.Data"/> indexes.
+    /// </summary>
+    public List<SvgCssFunctionalSelector> FunctionalSelectors => this.functionalSelectors ??= [];
+
+    /// <summary>
     /// Gets the declaration blocks that the rules point to.
     /// </summary>
     public List<SvgSpecifiedStyle> Styles { get; } = [];
@@ -81,9 +93,45 @@ internal sealed class SvgStyleSheet
     public int Count => this.rules.Count;
 
     /// <summary>
-    /// Gets the rules. After <see cref="Complete"/> they are in ascending cascade precedence.
+    /// Gets the number of user rules. After <see cref="Complete(SizeF)"/> they are the first rules.
+    /// </summary>
+    public int UserRuleCount { get; private set; }
+
+    /// <summary>
+    /// Gets the rules. After <see cref="Complete(SizeF)"/> they are in ascending cascade precedence.
     /// </summary>
     public ReadOnlySpan<SvgCssRule> Rules => CollectionsMarshal.AsSpan(this.rules);
+
+    /// <summary>
+    /// Gets the local names that attribute selectors test, or <see langword="null"/> when no selector tests one. The
+    /// reader keeps the raw values of these attributes only.
+    /// </summary>
+    public IReadOnlyCollection<string>? AttributeNames => this.attributeNames;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a selector uses <c>:empty</c>, which needs the text content of elements.
+    /// </summary>
+    public bool UsesEmpty { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether a rule depends on a media condition.
+    /// </summary>
+    public bool HasMediaQueries => this.mediaQueries is not null;
+
+    /// <summary>
+    /// Gets the scratch list that <see cref="SvgCssSelectorParser"/> builds compounds in. It is empty between parses.
+    /// </summary>
+    internal List<SvgCssSimpleSelector> ScratchSimples => this.scratchSimples ??= [];
+
+    /// <summary>
+    /// Gets a value indicating whether any rule is indexed by a class name.
+    /// </summary>
+    public bool HasClassRules => this.rulesByClass!.Count > 0;
+
+    /// <summary>
+    /// Gets the rules whose rightmost compound has no id, class, or type.
+    /// </summary>
+    public int[] UniversalRules => this.universalRules;
 
     /// <summary>
     /// Returns the order value for the next rule of the style sheets and advances it.
@@ -98,14 +146,62 @@ internal sealed class SvgStyleSheet
     public void Add(in SvgCssRule rule) => this.rules.Add(rule);
 
     /// <summary>
-    /// Sorts the rules into cascade order and builds the match index. Call once, after the last style sheet is parsed.
+    /// Records the local name of an attribute that a selector tests.
     /// </summary>
-    public void Complete()
+    /// <param name="name">The name.</param>
+    public void AddAttributeName(string name) => (this.attributeNames ??= new HashSet<string>(StringComparer.Ordinal)).Add(name);
+
+    /// <summary>
+    /// Adds a media condition: the media query list of a <c>media</c> attribute or an <c>@media</c> rule.
+    /// </summary>
+    /// <param name="query">The media query list text.</param>
+    /// <param name="parent">The condition of the enclosing <c>@media</c> rule or style sheet, or -1.</param>
+    /// <returns>The index of the condition.</returns>
+    public int AddMedia(string query, int parent)
     {
-        // Ascending precedence: lower specificity first, and for equal specificity the earlier rule first.
+        (this.mediaQueries ??= []).Add(query);
+        (this.mediaParents ??= []).Add(parent);
+        return this.mediaQueries.Count - 1;
+    }
+
+    /// <summary>
+    /// Sorts the rules into cascade order and builds the match index, with media conditions evaluated against the default
+    /// viewport of 300 by 150 pixels.
+    /// </summary>
+    public void Complete() => this.Complete(new SizeF(300F, 150F));
+
+    /// <summary>
+    /// Drops the rules whose media condition is false, sorts the rest into cascade order, and builds the match index. Call
+    /// once, after the last style sheet is parsed.
+    /// </summary>
+    /// <param name="viewport">The size in CSS pixels that the width and height media features test.</param>
+    public void Complete(SizeF viewport)
+    {
+        if (this.mediaQueries is not null)
+        {
+            // A condition holds when its own query list and every enclosing one hold. Parents precede their children, so
+            // one forward pass resolves the chain.
+            bool[] holds = new bool[this.mediaQueries.Count];
+            for (int i = 0; i < holds.Length; i++)
+            {
+                int parent = this.mediaParents![i];
+                holds[i] = (parent < 0 || holds[parent]) && SvgCssMediaQuery.Evaluate(this.mediaQueries[i], viewport);
+            }
+
+            _ = this.rules.RemoveAll(rule => rule.Media >= 0 && !holds[rule.Media]);
+        }
+
+        // Ascending precedence: user rules before author rules, then lower specificity first, and for equal specificity
+        // the earlier rule first. The cascade splits the user rules off by rank.
         this.rules.Sort(static (a, b) =>
         {
-            int result = a.Specificity.CompareTo(b.Specificity);
+            int result = b.IsUser.CompareTo(a.IsUser);
+            if (result != 0)
+            {
+                return result;
+            }
+
+            result = a.Specificity.CompareTo(b.Specificity);
             return result != 0 ? result : a.Order.CompareTo(b.Order);
         });
 
@@ -114,12 +210,19 @@ internal sealed class SvgStyleSheet
         Dictionary<string, List<int>> byType = new(StringComparer.Ordinal);
         List<int> universal = [];
         ReadOnlySpan<SvgCssRule> rules = this.Rules;
+        int userRules = 0;
         for (int i = 0; i < rules.Length; i++)
         {
+            if (rules[i].IsUser)
+            {
+                userRules++;
+            }
+
             SvgCssCompoundSelector last = this.Compounds[rules[i].CompoundStart + rules[i].CompoundCount - 1];
             string? id = null;
             string? className = null;
             string? type = null;
+            bool never = false;
             for (int s = last.SimpleStart; s < last.SimpleStart + last.SimpleCount; s++)
             {
                 SvgCssSimpleSelector simple = this.SimpleSelectors[s];
@@ -134,10 +237,18 @@ internal sealed class SvgStyleSheet
                     case SvgCssSimpleSelectorKind.Type:
                         type = simple.Name;
                         break;
+                    case SvgCssSimpleSelectorKind.Never:
+                        never = true;
+                        break;
                 }
             }
 
             // Ranks are added in ascending order, so every bucket is sorted.
+            if (never)
+            {
+                continue;
+            }
+
             if (id is not null)
             {
                 AddToBucket(byId, id, i);
@@ -156,6 +267,7 @@ internal sealed class SvgStyleSheet
             }
         }
 
+        this.UserRuleCount = userRules;
         this.rulesById = ToBuckets(byId);
         this.rulesByClass = ToBuckets(byClass);
         this.rulesByType = ToBuckets(byType);
@@ -163,76 +275,28 @@ internal sealed class SvgStyleSheet
     }
 
     /// <summary>
-    /// Collects the ranks of the rules that match an element, in ascending cascade precedence.
+    /// Gets the rules indexed by an id.
     /// </summary>
-    /// <param name="elements">The elements of the document.</param>
-    /// <param name="classNames">The class table that the elements index into.</param>
-    /// <param name="element">The index of the element to match.</param>
-    /// <param name="matches">
-    /// An empty builder that receives the matching rule ranks. Only the first values, as many as the return value, are the
-    /// result; the builder may hold more values after them.
-    /// </param>
-    /// <returns>The number of matching rules.</returns>
-    public int CollectMatches(ReadOnlySpan<SvgElement> elements, ReadOnlySpan<string> classNames, int element, ref ValueListBuilder<int> matches)
-    {
-        ref readonly SvgElement e = ref elements[element];
-        if (e.Id is not null && this.rulesById!.TryGetValue(e.Id, out int[]? idRules))
-        {
-            this.AddMatches(idRules, elements, classNames, element, ref matches);
-        }
-
-        if (e.ClassCount > 0 && this.rulesByClass!.Count > 0)
-        {
-            foreach (string className in classNames.Slice(e.ClassStart, e.ClassCount))
-            {
-                if (this.rulesByClass.TryGetValue(className, out int[]? classRules))
-                {
-                    this.AddMatches(classRules, elements, classNames, element, ref matches);
-                }
-            }
-        }
-
-        if (this.rulesByType!.TryGetValue(e.LocalName, out int[]? typeRules))
-        {
-            this.AddMatches(typeRules, elements, classNames, element, ref matches);
-        }
-
-        this.AddMatches(this.universalRules, elements, classNames, element, ref matches);
-
-        // The buckets are each sorted, but their union is not. A rule sits in one bucket, but an element can repeat a
-        // class name, so equal ranks are removed after sorting.
-        Span<int> found = matches.AsSpan();
-        if (found.Length < 2)
-        {
-            return found.Length;
-        }
-
-        found.Sort();
-        int unique = 1;
-        for (int i = 1; i < found.Length; i++)
-        {
-            if (found[i] != found[unique - 1])
-            {
-                found[unique++] = found[i];
-            }
-        }
-
-        return unique;
-    }
+    /// <param name="id">The id.</param>
+    /// <param name="candidates">The rule ranks, in ascending order.</param>
+    /// <returns><see langword="true"/> if rules are indexed by the id; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetIdRules(string id, out int[] candidates) => this.rulesById!.TryGetValue(id, out candidates!);
 
     /// <summary>
-    /// Returns whether a rule selector matches an element.
+    /// Gets the rules indexed by a class name.
     /// </summary>
-    /// <param name="rule">The rule rank.</param>
-    /// <param name="elements">The elements of the document.</param>
-    /// <param name="classNames">The class table that the elements index into.</param>
-    /// <param name="element">The index of the element.</param>
-    /// <returns><see langword="true"/> if the selector matches; otherwise, <see langword="false"/>.</returns>
-    public bool Matches(int rule, ReadOnlySpan<SvgElement> elements, ReadOnlySpan<string> classNames, int element)
-    {
-        SvgCssRule r = this.rules[rule];
-        return this.MatchFrom(r.CompoundStart, r.CompoundStart + r.CompoundCount - 1, elements, classNames, element) == MatchResult.Matched;
-    }
+    /// <param name="className">The class name.</param>
+    /// <param name="candidates">The rule ranks, in ascending order.</param>
+    /// <returns><see langword="true"/> if rules are indexed by the class; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetClassRules(string className, out int[] candidates) => this.rulesByClass!.TryGetValue(className, out candidates!);
+
+    /// <summary>
+    /// Gets the rules indexed by an element type.
+    /// </summary>
+    /// <param name="type">The local name.</param>
+    /// <param name="candidates">The rule ranks, in ascending order.</param>
+    /// <returns><see langword="true"/> if rules are indexed by the type; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetTypeRules(string type, out int[] candidates) => this.rulesByType!.TryGetValue(type, out candidates!);
 
     /// <summary>
     /// Adds a name bucket entry.
@@ -265,103 +329,5 @@ internal sealed class SvgStyleSheet
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Appends the rules of a bucket whose selectors match the element.
-    /// </summary>
-    /// <param name="candidates">The candidate rule ranks.</param>
-    /// <param name="elements">The elements of the document.</param>
-    /// <param name="classNames">The class table.</param>
-    /// <param name="element">The element index.</param>
-    /// <param name="matches">The builder that receives the matching ranks.</param>
-    private void AddMatches(
-        int[] candidates,
-        ReadOnlySpan<SvgElement> elements,
-        ReadOnlySpan<string> classNames,
-        int element,
-        ref ValueListBuilder<int> matches)
-    {
-        foreach (int rule in candidates)
-        {
-            if (this.Matches(rule, elements, classNames, element))
-            {
-                matches.Append(rule);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Matches the compounds from <paramref name="compound"/> leftward against <paramref name="element"/> and its
-    /// ancestors.
-    /// </summary>
-    /// <param name="first">The index of the leftmost compound of the selector.</param>
-    /// <param name="compound">The index of the compound to match against <paramref name="element"/>.</param>
-    /// <param name="elements">The elements of the document.</param>
-    /// <param name="classNames">The class table.</param>
-    /// <param name="element">The element index.</param>
-    /// <returns>The match result.</returns>
-    private MatchResult MatchFrom(int first, int compound, ReadOnlySpan<SvgElement> elements, ReadOnlySpan<string> classNames, int element)
-    {
-        if (!this.MatchCompound(this.Compounds[compound], elements[element], classNames))
-        {
-            // The nearest descendant combinator to the right may still find a match at a higher ancestor.
-            return MatchResult.RestartFromClosestDescendant;
-        }
-
-        if (compound == first)
-        {
-            return MatchResult.Matched;
-        }
-
-        int parent = elements[element].Parent;
-        if (this.Compounds[compound].Combinator == SvgCssCombinator.Child)
-        {
-            return parent < 0
-                ? MatchResult.NotMatchedGlobally
-                : this.MatchFrom(first, compound - 1, elements, classNames, parent);
-        }
-
-        for (int ancestor = parent; ancestor >= 0; ancestor = elements[ancestor].Parent)
-        {
-            MatchResult result = this.MatchFrom(first, compound - 1, elements, classNames, ancestor);
-            if (result != MatchResult.RestartFromClosestDescendant)
-            {
-                return result;
-            }
-        }
-
-        // No ancestor matched the left part. A higher placement of this compound has fewer ancestors, so it cannot match
-        // either.
-        return MatchResult.NotMatchedGlobally;
-    }
-
-    /// <summary>
-    /// Returns whether every simple selector of a compound matches an element.
-    /// </summary>
-    /// <param name="compound">The compound selector.</param>
-    /// <param name="element">The element.</param>
-    /// <param name="classNames">The class table.</param>
-    /// <returns><see langword="true"/> if the compound matches; otherwise, <see langword="false"/>.</returns>
-    private bool MatchCompound(in SvgCssCompoundSelector compound, in SvgElement element, ReadOnlySpan<string> classNames)
-    {
-        ReadOnlySpan<SvgCssSimpleSelector> simples = CollectionsMarshal.AsSpan(this.SimpleSelectors).Slice(compound.SimpleStart, compound.SimpleCount);
-        foreach (ref readonly SvgCssSimpleSelector simple in simples)
-        {
-            bool matched = simple.Kind switch
-            {
-                SvgCssSimpleSelectorKind.Type => string.Equals(simple.Name, element.LocalName, StringComparison.Ordinal),
-                SvgCssSimpleSelectorKind.Id => string.Equals(simple.Name, element.Id, StringComparison.Ordinal),
-                SvgCssSimpleSelectorKind.Class => classNames.Slice(element.ClassStart, element.ClassCount).Contains(simple.Name!),
-                _ => true
-            };
-
-            if (!matched)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
