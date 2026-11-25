@@ -152,6 +152,7 @@ Phase 1 properties:
 - Specificity is (ids, classes, types). Order of appearance breaks ties.
 - Index rules by the rightmost compound selector (id, then class, then type, then universal) so matching does not test every rule against every element.
 - When the document has no rule, skip matching entirely.
+- The Jint project (`sebastienros/jint`, directory `Jint.HtmlParser/Css/`, BSD 2-Clause) has a CSS Syntax Level 3 tokenizer and a Selectors Level 4 compiler. The repository owner permits reuse. Phase 1 may adapt its tokenizing and error-recovery logic. Phase 2 ports its selector grammar and matching logic for the full selector set. Its matcher is bound to an HTML DOM and to browser state, so the port targets the flat element tree and leaves out CSSOM, media queries, pseudo-elements, and form states. Adapted code follows this repository's conventions and gets a notice in `THIRD-PARTY-NOTICES`.
 
 ### 4.6 Cascade
 
