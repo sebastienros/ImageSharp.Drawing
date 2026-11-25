@@ -6398,6 +6398,7 @@ internal static class WebGPUSceneEncoder
 
                         gradientRamps.Add(new GpuGradientRampDescriptor(
                             gradientRamp.ColorStops,
+                            gradientRamp.AlphaInterpolation,
                             gradientRowOffset + gradientRamp.RowIndex));
                     }
 
@@ -9229,7 +9230,7 @@ internal static class WebGPUSceneEncoder
     {
         uint indexMode = ((uint)gradientRowCount << 2) | MapExtendMode(brush.RepetitionMode);
         AppendGradientRamp(ref gradientPixels);
-        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), gradientRowCount));
+        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), brush.AlphaInterpolation, gradientRowCount));
         gradientRowCount++;
 
         drawData.Add(indexMode);
@@ -9280,7 +9281,7 @@ internal static class WebGPUSceneEncoder
     {
         uint indexMode = ((uint)gradientRowCount << 2) | MapExtendMode(brush.RepetitionMode);
         AppendGradientRamp(ref gradientPixels);
-        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), gradientRowCount));
+        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), brush.AlphaInterpolation, gradientRowCount));
         gradientRowCount++;
 
         PointF center0;
@@ -9330,7 +9331,7 @@ internal static class WebGPUSceneEncoder
     {
         uint indexMode = ((uint)gradientRowCount << 2) | MapExtendMode(brush.RepetitionMode);
         AppendGradientRamp(ref gradientPixels);
-        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), gradientRowCount));
+        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), brush.AlphaInterpolation, gradientRowCount));
         gradientRowCount++;
 
         // Brushes reach the encoder after batcher normalization, so gradient payload points are
@@ -9369,7 +9370,7 @@ internal static class WebGPUSceneEncoder
     {
         uint indexMode = ((uint)gradientRowCount << 2) | MapExtendMode(brush.RepetitionMode);
         AppendGradientRamp(ref gradientPixels);
-        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), gradientRowCount));
+        gradientRamps.Add(new GpuGradientRampDescriptor(brush.ColorStops.ToArray(), brush.AlphaInterpolation, gradientRowCount));
         gradientRowCount++;
 
         float sweepDegrees = brush.EndAngleDegrees - brush.StartAngleDegrees;
@@ -9478,9 +9479,10 @@ internal static class WebGPUSceneEncoder
     /// Evaluates the premultiplied gradient color at the normalized parameter.
     /// </summary>
     /// <param name="colorStops">The gradient color stops, ordered by ratio.</param>
+    /// <param name="alphaInterpolation">How alpha is interpolated between two stops, from <see cref="GradientBrush.AlphaInterpolation"/>.</param>
     /// <param name="t">The normalized sample position in the range [0, 1].</param>
     /// <returns>The associated floating-point sample.</returns>
-    public static Vector4 EvaluateGradientColor(ReadOnlySpan<ColorStop> colorStops, float t)
+    public static Vector4 EvaluateGradientColor(ReadOnlySpan<ColorStop> colorStops, GradientAlphaInterpolation alphaInterpolation, float t)
     {
         // Walk the stop list once to find the enclosing interval, then interpolate within it.
         ColorStop from = colorStops[0];
@@ -9502,6 +9504,21 @@ internal static class WebGPUSceneEncoder
         }
 
         float localT = (t - from.Ratio) / (to.Ratio - from.Ratio);
+
+        if (alphaInterpolation == GradientAlphaInterpolation.Unpremultiplied)
+        {
+            // Unpremultiplied interpolation interpolates straight colors, then associates the result like the CPU renderer does,
+            // so every ramp texel stays associated.
+            Vector4 color = Vector4.Lerp(
+                from.Color.ToScaledVector4(PixelAlphaRepresentation.Unassociated),
+                to.Color.ToScaledVector4(PixelAlphaRepresentation.Unassociated),
+                localT);
+
+            float alpha = color.W;
+            color *= alpha;
+            color.W = alpha;
+            return color;
+        }
 
         // CSS Color 4 requires alpha premultiplication before interpolation. The ramp stores
         // associated RGBA16Float directly, matching the fine shader's internal composition space.
@@ -10488,7 +10505,7 @@ internal sealed class WebGPUEncodedScene : IDisposable
             for (int x = 0; x < WebGPUSceneEncoder.GradientWidth; x++)
             {
                 float t = x / (float)(WebGPUSceneEncoder.GradientWidth - 1);
-                Vector4 color = WebGPUSceneEncoder.EvaluateGradientColor(descriptor.ColorStops, t);
+                Vector4 color = WebGPUSceneEncoder.EvaluateGradientColor(descriptor.ColorStops, descriptor.AlphaInterpolation, t);
                 if (alphaRepresentation == PixelAlphaRepresentation.Associated)
                 {
                     color = TPixel.FromScaledVector4(color).ToScaledVector4();
@@ -10749,10 +10766,12 @@ internal readonly struct GpuGradientRampDescriptor
     /// Initializes a new instance of the <see cref="GpuGradientRampDescriptor"/> struct.
     /// </summary>
     /// <param name="colorStops">The gradient color stops, ordered by ratio.</param>
+    /// <param name="alphaInterpolation">How alpha is interpolated between two stops.</param>
     /// <param name="rowIndex">The ramp texture row the gradient occupies.</param>
-    public GpuGradientRampDescriptor(ColorStop[] colorStops, int rowIndex)
+    public GpuGradientRampDescriptor(ColorStop[] colorStops, GradientAlphaInterpolation alphaInterpolation, int rowIndex)
     {
         this.ColorStops = colorStops;
+        this.AlphaInterpolation = alphaInterpolation;
         this.RowIndex = rowIndex;
     }
 
@@ -10760,6 +10779,11 @@ internal readonly struct GpuGradientRampDescriptor
     /// Gets the gradient color stops, ordered by ratio.
     /// </summary>
     public ColorStop[] ColorStops { get; }
+
+    /// <summary>
+    /// Gets how alpha is interpolated between two stops, from <see cref="GradientBrush.AlphaInterpolation"/>.
+    /// </summary>
+    public GradientAlphaInterpolation AlphaInterpolation { get; }
 
     /// <summary>
     /// Gets the ramp texture row the gradient occupies.
