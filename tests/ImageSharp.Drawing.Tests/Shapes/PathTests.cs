@@ -112,6 +112,17 @@ public class PathTests
     public void TryParseSvgPath_ReturnsFalseForInvalidPathDataBoundaries(string svgPath)
         => Assert.False(Path.TryParseSvgPath(svgPath, out _));
 
+    // SVG path numbers allow an exponent, as in "1e1". The number scanner used to stop at the exponent marker.
+    [Theory]
+    [InlineData("M 1e1 0 L 2E1 1e-0")]
+    [InlineData("M1e1,0L2e+1,1")]
+    [InlineData("M 100e-1 0 h 10 v 1")]
+    public void TryParseSvgPath_ReadsNumbersWithExponents(string svgPath)
+    {
+        Assert.True(Path.TryParseSvgPath(svgPath, out IPath path));
+        Assert.Equal(new RectangleF(10, 0, 10, 1), path.Bounds);
+    }
+
     [Fact]
     public void PathCollection_EnumerableConstructor_PreservesPaths()
     {
