@@ -112,3 +112,68 @@ Version 2.0. The full license text is available in the gs1-syntax-dictionary
 repository LICENSE file.
 
 ================================================================================
+
+Test and benchmark input files
+================================================================================
+
+The files below are inputs for tests and benchmarks under tests/Images/Input/Svg.
+They are not part of the SixLabors.ImageSharp.Drawing package. Each folder holds
+a copy of the license of its files.
+
+================================================================================
+
+Feather (https://github.com/feathericons/feather)
+License: MIT
+
+24 icons from the feather-icons 4.29.2 npm package, unchanged.
+Location: tests/Images/Input/Svg/Icons/Feather
+
+Copyright (c) 2013-2023 Cole Bemis
+
+Feather is distributed under the MIT License. The full license text is in
+tests/Images/Input/Svg/Icons/Feather/LICENSE.
+
+================================================================================
+
+Bootstrap Icons (https://github.com/twbs/icons)
+License: MIT
+
+16 icons from the bootstrap-icons 1.13.2 npm package, unchanged.
+Location: tests/Images/Input/Svg/Icons/Bootstrap
+
+Copyright (c) 2019-2024 The Bootstrap Authors
+
+Bootstrap Icons are distributed under the MIT License. The full license text
+is in tests/Images/Input/Svg/Icons/Bootstrap/LICENSE.
+
+================================================================================
+
+Fluent Emoji (https://github.com/microsoft/fluentui-emoji)
+License: MIT
+
+Two "Color" style emoji from commit 1ffb34c752ecf5d402f04cfb4b392c77f57c54bc.
+Location: tests/Images/Input/Svg/Illustrations
+  - fluent-moose.svg: assets/Moose/Color/moose_color.svg, unchanged.
+  - fluent-soft-ice-cream.svg: assets/Soft ice cream/Color/soft_ice_cream_color.svg,
+    modified: the blurred highlight group and its filter definition are removed.
+
+Copyright (c) Microsoft Corporation.
+
+Fluent Emoji is distributed under the MIT License. The full license text is in
+tests/Images/Input/Svg/Illustrations/LICENSE-Fluent-Emoji.
+
+================================================================================
+
+Carbon Design System pictograms (https://github.com/carbon-design-system/carbon)
+License: Apache-2.0
+
+One pictogram source file from the @carbon/pictograms 12.88.0 npm package
+(src/svg/crab.svg), unchanged.
+Location: tests/Images/Input/Svg/DesignTool/carbon-crab.svg
+
+Copyright 2015 IBM Corp.
+
+The Carbon pictograms are distributed under the Apache License, Version 2.0.
+The full license text is in tests/Images/Input/Svg/DesignTool/LICENSE-Carbon.
+
+================================================================================
