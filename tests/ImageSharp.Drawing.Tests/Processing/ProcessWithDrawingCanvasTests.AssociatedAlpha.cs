@@ -4,6 +4,8 @@
 using System.Numerics;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Drawing.Processing.Backends;
+using SixLabors.ImageSharp.Drawing.Tests.TestUtilities.ImageComparison;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -91,6 +93,170 @@ public partial class ProcessWithDrawingCanvasTests
         // The straight destination unassociates that value to (1, 0, 0, 0.5).
         Assert.Equal(new Rgba32(255, 0, 0, 128), unassociated[0, 0]);
         Assert.Equal(new Rgba32P(128, 0, 0, 128), associated[0, 0]);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="GradientAlphaInterpolation.Unpremultiplied"/> at the exact midpoint of a linear gradient that
+    /// fades color and alpha together, on straight and associated destinations, and in the WebGPU gradient ramp.
+    /// </summary>
+    [Fact]
+    public void LinearGradientMidpointWithUnpremultipliedInterpolation()
+    {
+        ColorStop[] stops =
+        [
+            new(0F, Color.FromPixel(new Rgba32(255, 0, 0, 255))),
+            new(1F, Color.FromPixel(new Rgba32(0, 0, 255, 0)))
+        ];
+        LinearGradientBrush brush = new(
+            new PointF(0, 0),
+            new PointF(1, 0),
+            GradientRepetitionMode.None,
+            Matrix4x4.Identity,
+            GradientAlphaInterpolation.Unpremultiplied,
+            stops);
+
+        using Image<Rgba32> unassociated = new(1, 1);
+        using Image<Rgba32P> associated = new(1, 1);
+        unassociated.Mutate(context => context.Paint(canvas => canvas.Fill(brush)));
+        associated.Mutate(context => context.Paint(canvas => canvas.Fill(brush)));
+
+        // Straight interpolation between opaque red (1, 0, 0, 1) and transparent blue (0, 0, 1, 0) at t = 0.5 gives
+        // (0.5, 0, 0.5, 0.5): the color of the transparent stop shows. The associated destination stores
+        // (0.25, 0, 0.25, 0.5).
+        Assert.Equal(new Rgba32(128, 0, 128, 128), unassociated[0, 0]);
+        Assert.Equal(new Rgba32P(64, 0, 64, 128), associated[0, 0]);
+
+        // The WebGPU backend bakes the same interpolation into its associated ramp texels.
+        Assert.Equal(new Vector4(0.25F, 0F, 0.25F, 0.5F), WebGPUSceneEncoder.EvaluateGradientColor(stops, GradientAlphaInterpolation.Unpremultiplied, 0.5F));
+        Assert.Equal(new Vector4(0.5F, 0F, 0F, 0.5F), WebGPUSceneEncoder.EvaluateGradientColor(stops, GradientAlphaInterpolation.Premultiplied, 0.5F));
+    }
+
+    /// <summary>
+    /// Verifies <see cref="GradientAlphaInterpolation"/> on every gradient brush type, directly and under a command
+    /// transform, which replaces the brush through <see cref="Brush.Transform(Matrix4x4, Rectangle, Rectangle)"/>.
+    /// </summary>
+    /// <remarks>
+    /// The gradient fades opaque red to transparent blue. With premultiplied interpolation, the default, every pixel is red
+    /// with alpha <c>1 - t</c>, so the alpha of a pixel gives its gradient position <c>t</c>. With unpremultiplied
+    /// interpolation the same pixel must be <c>((1 - t) red + t blue)</c> with the same alpha.
+    /// </remarks>
+    /// <param name="kind">The brush type.</param>
+    /// <param name="transformed">Whether the fill runs under a rotating and scaling command transform.</param>
+    [Theory]
+    [InlineData("linear", false)]
+    [InlineData("radial", false)]
+    [InlineData("radial-two-circle", false)]
+    [InlineData("elliptic", false)]
+    [InlineData("sweep", false)]
+    [InlineData("linear-three-point", false)]
+    [InlineData("linear", true)]
+    [InlineData("radial", true)]
+    [InlineData("radial-two-circle", true)]
+    [InlineData("elliptic", true)]
+    [InlineData("sweep", true)]
+    [InlineData("linear-three-point", true)]
+    public void GradientAlphaInterpolationAppliesToEveryGradientBrush(string kind, bool transformed)
+    {
+        ColorStop[] stops =
+        [
+            new(0F, Color.FromPixel(new Rgba32(255, 0, 0, 255))),
+            new(1F, Color.FromPixel(new Rgba32(0, 0, 255, 0)))
+        ];
+
+        GradientBrush Create(GradientAlphaInterpolation? mode)
+        {
+            GradientAlphaInterpolation value = mode ?? GradientAlphaInterpolation.Premultiplied;
+            Matrix4x4 identity = Matrix4x4.Identity;
+            PointF center = new(16, 16);
+            return (kind, mode is null) switch
+            {
+                ("linear", true) => new LinearGradientBrush(new PointF(2, 0), new PointF(30, 0), GradientRepetitionMode.None, stops),
+                ("linear", _) => new LinearGradientBrush(new PointF(2, 0), new PointF(30, 0), GradientRepetitionMode.None, identity, value, stops),
+                ("linear-three-point", true) => new LinearGradientBrush(
+                    new PointF(2, 2), new PointF(30, 30), new PointF(2, 30), GradientRepetitionMode.None, stops),
+                ("linear-three-point", _) => new LinearGradientBrush(
+                    new PointF(2, 2), new PointF(30, 30), new PointF(2, 30), GradientRepetitionMode.None, identity, value, stops),
+                ("radial", true) => new RadialGradientBrush(center, 15, GradientRepetitionMode.None, stops),
+                ("radial", _) => new RadialGradientBrush(center, 15, GradientRepetitionMode.None, identity, value, stops),
+                ("radial-two-circle", true) => new RadialGradientBrush(new PointF(12, 14), 2, center, 15, GradientRepetitionMode.None, stops),
+                ("radial-two-circle", _) => new RadialGradientBrush(
+                    new PointF(12, 14), 2, center, 15, GradientRepetitionMode.None, identity, value, stops),
+                ("elliptic", true) => new EllipticGradientBrush(center, new PointF(30, 16), 0.6F, GradientRepetitionMode.None, stops),
+                ("elliptic", _) => new EllipticGradientBrush(center, new PointF(30, 16), 0.6F, GradientRepetitionMode.None, identity, value, stops),
+                ("sweep", true) => new SweepGradientBrush(center, 0, 300, GradientRepetitionMode.None, stops),
+                _ => new SweepGradientBrush(center, 0, 300, GradientRepetitionMode.None, identity, value, stops),
+            };
+        }
+
+        GradientBrush byDefault = Create(null);
+        GradientBrush premultiplied = Create(GradientAlphaInterpolation.Premultiplied);
+        GradientBrush unpremultiplied = Create(GradientAlphaInterpolation.Unpremultiplied);
+
+        // The default is premultiplied, and the mode takes part in equality.
+        Assert.Equal(GradientAlphaInterpolation.Premultiplied, byDefault.AlphaInterpolation);
+        Assert.Equal<Brush>(byDefault, premultiplied);
+        Assert.Equal(byDefault.GetHashCode(), premultiplied.GetHashCode());
+        Assert.NotEqual<Brush>(premultiplied, unpremultiplied);
+
+        DrawingOptions options = new()
+        {
+            Transform = transformed
+                ? new Matrix4x4(Matrix3x2.CreateScale(0.8F) * Matrix3x2.CreateRotation(0.4F, new Vector2(16)))
+                : Matrix4x4.Identity
+        };
+
+        if (transformed)
+        {
+            // The canvas replaces the brush through Brush.Transform; the replacement must keep the mode.
+            Brush replaced = unpremultiplied.Transform(options.Transform, new Rectangle(0, 0, 32, 32), new Rectangle(0, 0, 32, 32));
+            Assert.Equal(GradientAlphaInterpolation.Unpremultiplied, Assert.IsType<GradientBrush>(replaced, exactMatch: false).AlphaInterpolation);
+        }
+
+        using Image<Rgba32> defaultImage = new(32, 32);
+        using Image<Rgba32> premultipliedImage = new(32, 32);
+        using Image<Rgba32> unpremultipliedImage = new(32, 32);
+
+        // The area covers the whole image under the transform too, so no pixel has partial coverage.
+        RectanglePolygon area = new(-64, -64, 160, 160);
+        defaultImage.Mutate(context => context.Paint(options, canvas => canvas.Fill(byDefault, area)));
+        premultipliedImage.Mutate(context => context.Paint(options, canvas => canvas.Fill(premultiplied, area)));
+        unpremultipliedImage.Mutate(context => context.Paint(options, canvas => canvas.Fill(unpremultiplied, area)));
+
+        ImageComparer.Exact.VerifySimilarity(defaultImage, premultipliedImage);
+
+        int checkedPixels = 0;
+        int blendedPixels = 0;
+        for (int y = 0; y < 32; y++)
+        {
+            for (int x = 0; x < 32; x++)
+            {
+                Rgba32 reference = premultipliedImage[x, y];
+                Rgba32 actual = unpremultipliedImage[x, y];
+                Assert.Equal(reference.A, actual.A);
+
+                // Almost transparent pixels carry too little alpha to measure the color precisely.
+                if (reference.A < 16)
+                {
+                    continue;
+                }
+
+                // Premultiplied: red at alpha 1 - t. Unpremultiplied: red (1 - t), blue t, at the same alpha.
+                Assert.Equal(255, reference.R);
+                Assert.Equal(0, reference.B);
+                float t = 1F - (reference.A / 255F);
+                Assert.InRange(actual.R, (int)((1F - t) * 255F) - 3, (int)((1F - t) * 255F) + 3);
+                Assert.InRange(actual.B, (int)(t * 255F) - 3, (int)(t * 255F) + 3);
+                Assert.Equal(0, actual.G);
+                checkedPixels++;
+                if (t > 0.25F)
+                {
+                    blendedPixels++;
+                }
+            }
+        }
+
+        // The checks must cover a real part of the fade, not only the opaque start.
+        Assert.True(blendedPixels > 20, $"Only {blendedPixels} of {checkedPixels} checked pixels lie inside the fade.");
     }
 
     /// <summary>

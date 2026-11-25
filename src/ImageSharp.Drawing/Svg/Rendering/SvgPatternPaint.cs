@@ -15,11 +15,16 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// through <c>tile to user × user to device</c>, and the lengths of the mapped tile axes give the pixel size, rounded up
 /// to whole pixels. The brush then maps the pixels of that render back to the tile rectangle, so the rounding only
 /// changes the sampling density and the tiles meet exactly. Rotation and skew stay in the brush transform, so they are
-/// exact; only the tile resolution follows the scale. A tile that would exceed
-/// <see cref="SvgLimits.MaxPatternTilePixels"/> renders at a lower resolution instead.
+/// exact; only the tile resolution follows the scale. A tile that would exceed its pixel budget
+/// (<see cref="SvgPatternTile.MaxPixels"/>) or a side of 16384 pixels renders at a lower resolution instead.
 /// </remarks>
 internal sealed class SvgPatternPaint : SvgDeferredPaint
 {
+    /// <summary>
+    /// The largest side of one tile render, in pixels.
+    /// </summary>
+    private const float MaxSide = 16384F;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgPatternPaint"/> class.
     /// </summary>
@@ -88,18 +93,23 @@ internal sealed class SvgPatternPaint : SvgDeferredPaint
             height *= factor;
         }
 
-        int pixelWidth = Math.Max(1, (int)MathF.Ceiling(width));
-        int pixelHeight = Math.Max(1, (int)MathF.Ceiling(height));
-        while ((long)pixelWidth * pixelHeight > maxPixels)
+        // A long, thin tile can stay within the pixel limit and still need a canvas whose row buffers exceed what the
+        // allocator gives, so each side is also limited; that axis alone loses resolution. Clamping in float keeps huge
+        // values out of the int conversion.
+        int pixelWidth = (int)Math.Clamp(MathF.Ceiling(width), 1F, MaxSide);
+        int pixelHeight = (int)Math.Clamp(MathF.Ceiling(height), 1F, MaxSide);
+        if ((long)pixelWidth * pixelHeight > maxPixels)
         {
-            // Rounding up can still exceed the limit by a row or a column.
+            // Rounding up can still exceed the limit by a row or a column. Shortening the longer side to the largest
+            // length that fits brings the product within the limit, because the shorter side is at most the square root
+            // of the limit plus one.
             if (pixelWidth >= pixelHeight)
             {
-                pixelWidth--;
+                pixelWidth = Math.Max(1, maxPixels / pixelHeight);
             }
             else
             {
-                pixelHeight--;
+                pixelHeight = Math.Max(1, maxPixels / pixelWidth);
             }
         }
 

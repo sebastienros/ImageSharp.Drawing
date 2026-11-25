@@ -16,6 +16,12 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </remarks>
 internal sealed class SvgPaintCache
 {
+    /// <summary>
+    /// The alpha interpolation of SVG gradients: SVG 1.1 interpolates the color and the opacity of the stops separately,
+    /// and browsers render SVG gradients that way.
+    /// </summary>
+    private const GradientAlphaInterpolation Interpolation = GradientAlphaInterpolation.Unpremultiplied;
+
     private readonly SvgElementTree tree;
     private readonly SvgUnitBasis units;
     private readonly SvgComputedStyle initialStyle;
@@ -157,6 +163,7 @@ internal sealed class SvgPaintCache
                     linear.EndPoint,
                     linear.RepetitionMode,
                     linear.GradientTransform,
+                    linear.AlphaInterpolation,
                     MultiplyAlpha(linear.ColorStops, opacity));
             case RadialGradientBrush radial when radial.IsTwoCircle:
                 return new RadialGradientBrush(
@@ -166,6 +173,7 @@ internal sealed class SvgPaintCache
                     radial.Radius1!.Value,
                     radial.RepetitionMode,
                     radial.GradientTransform,
+                    radial.AlphaInterpolation,
                     MultiplyAlpha(radial.ColorStops, opacity));
             case RadialGradientBrush radial:
                 return new RadialGradientBrush(
@@ -173,6 +181,7 @@ internal sealed class SvgPaintCache
                     radial.Radius0,
                     radial.RepetitionMode,
                     radial.GradientTransform,
+                    radial.AlphaInterpolation,
                     MultiplyAlpha(radial.ColorStops, opacity));
             default:
                 return brush;
@@ -320,7 +329,7 @@ internal sealed class SvgPaintCache
                 return this.GetSolidBrush(lastColor);
             }
 
-            return new LinearGradientBrush(start, end, mode, new Matrix4x4(transform), MultiplyAlpha(stops, opacity));
+            return new LinearGradientBrush(start, end, mode, new Matrix4x4(transform), Interpolation, MultiplyAlpha(stops, opacity));
         }
 
         Vector2 center = new(
@@ -341,11 +350,19 @@ internal sealed class SvgPaintCache
 
         if (focus == center && focalRadius == 0F)
         {
-            return new RadialGradientBrush(center, radius, mode, new Matrix4x4(transform), MultiplyAlpha(stops, opacity));
+            return new RadialGradientBrush(center, radius, mode, new Matrix4x4(transform), Interpolation, MultiplyAlpha(stops, opacity));
         }
 
         // The start circle is the focal circle and the end circle is the outer circle, as in the SVG 2 definition.
-        return new RadialGradientBrush(focus, focalRadius, center, radius, mode, new Matrix4x4(transform), MultiplyAlpha(stops, opacity));
+        return new RadialGradientBrush(
+            focus,
+            focalRadius,
+            center,
+            radius,
+            mode,
+            new Matrix4x4(transform),
+            Interpolation,
+            MultiplyAlpha(stops, opacity));
     }
 
     /// <summary>

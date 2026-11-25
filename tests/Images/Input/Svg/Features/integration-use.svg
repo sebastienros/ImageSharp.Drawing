@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <clipPath id="diamond"><path d="M40 0 L80 40 L40 80 L0 40 Z"/></clipPath>
+    <linearGradient id="fade"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#333333"/></linearGradient>
+    <mask id="fadeMask"><rect width="80" height="80" fill="url(#fade)"/></mask>
+    <g id="tile" clip-path="url(#diamond)" mask="url(#fadeMask)">
+      <rect width="80" height="80" fill="#1f77b4"/>
+      <circle cx="40" cy="40" r="20" fill="#ff7f0e"/>
+    </g>
+    <clipPath id="bbox" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>
+    <rect id="boxed" width="60" height="40" clip-path="url(#bbox)"/>
+    <marker id="dot" refX="3" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="3" fill="#d62728"/>
+    </marker>
+    <mask id="half"><rect width="30" height="60" fill="#ffffff"/></mask>
+    <symbol id="sym" viewBox="0 0 60 60">
+      <path d="M5 55 L30 5 L55 55" fill="none" stroke="#000000" stroke-width="3" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)" mask="url(#half)"/>
+    </symbol>
+    <clipPath id="bboxSmall" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.3"/></clipPath>
+    <use id="inner" xlink:href="#tile" clip-path="url(#bboxSmall)"/>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <use xlink:href="#tile" x="10" y="10"/>
+  <use xlink:href="#tile" transform="translate(150 10) rotate(30)"/>
+  <use xlink:href="#boxed" x="10" y="110" fill="#2ca02c"/>
+  <use xlink:href="#boxed" transform="translate(30 150) scale(1.2 0.8)" fill="#9467bd"/>
+  <use xlink:href="#sym" x="100" y="100" width="45" height="45"/>
+  <use xlink:href="#inner" x="110" y="115" opacity="0.8"/>
+</svg>

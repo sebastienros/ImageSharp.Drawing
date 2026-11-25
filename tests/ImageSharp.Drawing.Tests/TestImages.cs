@@ -423,6 +423,18 @@ public static class TestImages
         public const string StyledLandscape = "Svg/DesignTool/styled-landscape-synthetic.svg";
 
         /// <summary>
+        /// A synthetic dashboard of 20 cards for the phase 2 features: geometry and coverage clips in bounding box units,
+        /// luminance masks with gradients, and blend modes.
+        /// </summary>
+        public const string CompositingDashboard = "Svg/Compositing/compositing-dashboard-synthetic.svg";
+
+        /// <summary>
+        /// A synthetic chart for the phase 2 features: rotated hatch patterns, a bounding box pattern, line series with
+        /// markers at every point, and an embedded PNG image repeated through <c>use</c> with clips and masks.
+        /// </summary>
+        public const string PatternChart = "Svg/Compositing/pattern-chart-synthetic.svg";
+
+        /// <summary>
         /// Stroked Feather icons. MIT license.
         /// </summary>
         public static readonly string[] FeatherIcons =

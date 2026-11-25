@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: accepted. The implementation plan for phases 0 and 1 is in `SVG_IMPLEMENTATION.md`.
+Status: accepted. Phases 0, 1, and 2 are implemented; section 14 lists the phase 2 results and the known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1) and `SVG_IMPLEMENTATION_PHASE2.md`.
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -44,37 +44,37 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 
 ### 4.2 Feature comparison
 
-"Phase" is the phase in section 11 where this proposal adds the feature. "—" means not supported.
+"Phase" is the phase in section 11 where this proposal adds the feature. "Implemented" is the state after phase 2. "—" means not supported.
 
-| Feature | librsvg (NetVips) | Skia `SkSVGDOM` | Svg.Skia | Phase |
-|---|---|---|---|---|
-| `svg`, `g`, `defs`, `use` | Yes | Yes (`xlink:href` only) | Yes | 1 |
-| `symbol` | Yes | — | Yes | 1 |
-| `switch` | Partial | — | Yes | 2 |
-| Nested `svg`, `viewBox`, `preserveAspectRatio` | Yes | Yes | Yes | 1 |
-| Basic shapes and paths | Yes | Yes | Yes | 1 |
-| Fill, stroke, dashes, caps, joins, miter limit | Yes | Yes | Yes | 1 |
-| `paint-order` | Yes | — | Partial | 2 |
-| `vector-effect: non-scaling-stroke` | Paths only | — | Partial | 2 |
-| Markers | Yes | — | Partial | 2 |
-| Linear and radial gradients, spread, transform, href | Yes | Yes | Yes | 1 |
-| Patterns | Yes | Yes | Yes | 2 |
-| `clipPath`, `clip-rule` | Partial | Yes | Partial | 2 |
-| `mask`, `mask-type` | Yes | Luminance only | Yes | 2 |
-| `opacity`, `fill-opacity`, `stroke-opacity` | Yes | Yes | Yes | 1 |
-| `mix-blend-mode`, `isolation` | Yes (style only) | — | Yes (style only) | 2 |
-| Presentation attributes and inline `style` | Yes | Yes | Yes | 1 |
-| `<style>` element with selectors | Yes (full selector engine) | — | Yes (ExCSS) | 1 (simple), 2 (full) |
-| User stylesheet | Yes | — | Yes | 2 |
-| `image` (raster, data URIs) | Yes | Yes | Yes | 2 |
-| `image` (nested SVG file) | Yes | — | Yes | 2 |
-| `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 |
-| `textPath` | — | Yes | Yes | 3 |
-| Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 |
-| Filters | 17 primitives and `feDropShadow` | 14 primitives | All primitives modelled, partial parity | 4 |
-| CSS filter functions | Yes | — | Not stated | 4 |
-| Animation, scripting | — | — | Opt-in runtime | Never |
-| SVG fonts | — | — | Not stated | Never |
+| Feature | librsvg (NetVips) | Skia `SkSVGDOM` | Svg.Skia | Phase | Implemented |
+|---|---|---|---|---|---|
+| `svg`, `g`, `defs`, `use` | Yes | Yes (`xlink:href` only) | Yes | 1 | Yes |
+| `symbol` | Yes | — | Yes | 1 | Yes |
+| `switch` | Partial | — | Yes | 2 | Yes |
+| Nested `svg`, `viewBox`, `preserveAspectRatio` | Yes | Yes | Yes | 1 | Yes |
+| Basic shapes and paths | Yes | Yes | Yes | 1 | Yes |
+| Fill, stroke, dashes, caps, joins, miter limit | Yes | Yes | Yes | 1 | Yes (`miter-clip` and `arcs` fall back to `miter`) |
+| `paint-order` | Yes | — | Partial | 2 | Yes |
+| `vector-effect: non-scaling-stroke` | Paths only | — | Partial | 2 | Yes |
+| Markers | Yes | — | Partial | 2 | Yes (path, line, polyline, polygon, as Chromium) |
+| Linear and radial gradients, spread, transform, href | Yes | Yes | Yes | 1 | Yes |
+| Patterns | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
+| `clipPath`, `clip-rule` | Partial | Yes | Partial | 2 | Yes (no CSS basic shapes) |
+| `mask`, `mask-type` | Yes | Luminance only | Yes | 2 | Yes |
+| `opacity`, `fill-opacity`, `stroke-opacity` | Yes | Yes | Yes | 1 | Yes |
+| `mix-blend-mode`, `isolation` | Yes (style only) | — | Yes (style only) | 2 | Yes |
+| Presentation attributes and inline `style` | Yes | Yes | Yes | 1 | Yes |
+| `<style>` element with selectors | Yes (full selector engine) | — | Yes (ExCSS) | 1 (simple), 2 (full) | Yes (full selectors, `media`) |
+| User stylesheet | Yes | — | Yes | 2 | Yes |
+| `image` (raster, data URIs) | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
+| `image` (nested SVG file) | Yes | — | Yes | 2 | Yes |
+| `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 | — |
+| `textPath` | — | Yes | Yes | 3 | — |
+| Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 | — |
+| Filters | 17 primitives and `feDropShadow` | 14 primitives | All primitives modelled, partial parity | 4 | — |
+| CSS filter functions | Yes | — | Not stated | 4 | — |
+| Animation, scripting | — | — | Opt-in runtime | Never | — |
+| SVG fonts | — | — | Not stated | Never | — |
 
 ### 4.3 Published conformance numbers
 
@@ -217,13 +217,13 @@ A layer costs an extra buffer and a composite pass. Most SVG files use `opacity`
 
 ### 7.2 Known gaps to confirm with prototypes
 
-These points come from reading the source. They are not tested.
+These points came from reading the source before phase 1. The results after phase 2:
 
-- Layer compositing with `PixelAlphaCompositionMode.DestIn` inside a parent layer, for masks.
-- A custom CPU `LayerEffect` on the WebGPU backend. The expected result is a CPU fallback.
-- Per-path `clip-rule` when several clip paths combine in one `Clip` call.
-- Stroke bounding boxes for bounded layers. `IPath.Bounds` covers the fill only.
-- The cost of `Save`/`Restore` per node against reusing shared `DrawingOptions` instances.
+- Layer compositing with `PixelAlphaCompositionMode.DestIn` inside a parent layer, for masks: works on the CPU backend (`SvgMaskLayerPrototypeTests`). Masks use it with a luminance `LayerEffect`.
+- A custom CPU `LayerEffect` on the WebGPU backend: not verified; the test container has no GPU.
+- Per-path `clip-rule` when several clip paths combine in one `Clip` call: one call combines its paths with the non-zero rule, so a clip with several children, or with an even-odd child that is not a basic shape, draws as an alpha mask layer instead.
+- Stroke bounding boxes for bounded layers: the resolve stage widens the bounds of stroked nodes itself.
+- The cost of `Save`/`Restore` per node: not measured separately.
 
 ## 8. Performance Design
 
@@ -255,7 +255,7 @@ No number in this section is a measured result. Each decision has a benchmark in
 Three BenchmarkDotNet classes under `tests/ImageSharp.Drawing.Benchmarks/Svg/`, all with `MemoryDiagnoser`:
 
 | Benchmark | Measures | ImageSharp.Drawing | Svg.Skia | NetVips |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | `LoadSvg` | Bytes to render-ready document | `SvgDocument.Load` | `SKSvg.Load` (parse, scene, picture) | Not separable |
 | `RenderSvg` | Render-ready document to pixels | `DrawSvg`, CPU and WebGPU, fresh and retained scene | `DrawPicture` | Not separable |
 | `LoadAndRenderSvg` | Bytes to pixels | Both stages | Both stages | `SvgloadBuffer(...)` forced with `WriteToMemory()` |
@@ -270,9 +270,11 @@ Sizes: 100, 1000, and 4000 pixels on the long edge. Small sizes expose fixed ove
 |---|---|---|
 | Ghostscript Tiger | Path fills and strokes | In `tests/Images/Input/Svg` |
 | Paris 30k | 30,000 paths, parse throughput, culling | In `tests/Images/Input/Svg` |
-| Icon set (several hundred small files) | Per-document overhead | To add, permissive license |
-| Illustration with gradients and group opacity | Layers and paint servers | To add |
-| Design-tool export with a `<style>` block | CSS cascade | To add |
+| Icon set | Per-document overhead | 40 Feather and Bootstrap icons, MIT |
+| Illustration with gradients and group opacity | Layers and paint servers | Fluent Emoji Moose and Soft Ice Cream, MIT |
+| Design-tool export with a `<style>` block | CSS cascade | `styled-landscape-synthetic.svg`, synthetic |
+| Clips, masks, and blend modes | Phase 2 compositing layers | `compositing-dashboard-synthetic.svg`, synthetic |
+| Patterns, markers, and an embedded image | Phase 2 paint and content | `pattern-chart-synthetic.svg`, synthetic |
 | Text-heavy document | Shaping and glyph drawing | To add in phase 3 |
 | Filter-heavy document | Blur and filter graph | To add in phase 4 |
 
@@ -335,6 +337,53 @@ Each phase ships with conformance results and benchmark numbers.
 4. **CSS depth for phase 1.** Simple selectors cover most design-tool exports. A full selector engine is a larger piece of work.
 5. **Text fonts.** Which default font and fallback rules apply when the document names a font that is not installed?
 6. **Phase 1 cut.** Decided: the phase 1 list in section 11 is the first release.
+
+## 14. Phase 2 Results
+
+### 14.1 Conformance
+
+`SvgResvgConformanceTests` over the resvg test suite (1618 tests that are not undefined behavior). The renderer columns are the manual results in `results.csv`, which use a different criterion.
+
+| Category | Run | Phase 1 | After package D | Phase 2 | resvg | Chrome | librsvg |
+|---|---|---|---|---|---|---|---|
+| filters | 380 | 65 | 65 | 55 | 337 | 303 | 280 |
+| masking | 91 | 4 | 4 | 82 | 86 | 87 | 68 |
+| paint-servers | 141 | 113 | 113 | 139 | 139 | 141 | 125 |
+| painting | 298 | 148 | 150 | 258 | 294 | 264 | 268 |
+| shapes | 128 | 118 | 120 | 120 | 123 | 126 | 118 |
+| structure | 240 | 143 | 158 | 212 | 233 | 225 | 169 |
+| text | 340 | 5 | 5 | 5 | 310 | 279 | 142 |
+| total | 1618 | 596 | 615 | 871 | 1522 | 1425 | 1170 |
+
+The phase 1 and package D columns count the tests listed as passing at those commits. Ten `feConvolveMatrix` tests passed in phase 1 only because pattern fills drew nothing; they are now listed as failing (phase 4). Every failing test has a reason in `ResvgExpectedResults.txt`.
+
+### 14.2 Measured performance
+
+BenchmarkDotNet short job on a shared 4-core Intel Xeon 2.10 GHz container, .NET 10.0.15. The error columns are wide; a difference counts only where the error intervals do not overlap.
+
+- Phase 1 documents (Tiger, Paris 30k, Icons, Moose, Soft Ice Cream, Styled Landscape; `LoadSvg`, `RenderSvg`, and `LoadAndRenderSvg` at 100, 1000, and 4000 pixels): every mean is within the error interval of the phase 1 build (commit f3524dd) measured on the same machine. A medium-job rerun of the cases that moved most (Tiger and Soft Ice Cream render at 4000 pixels, Moose load and render at 4000 pixels, Paris load) gave equal means within 5%. Allocations are equal or lower; `LoadSvg` of the icon set allocates 17.5% less and is faster (654 ± 36 µs before, 589 ± 29 µs now).
+- Phase 2 documents, load and render, against Svg.Skia and NetVips (librsvg):
+
+| Document | Long edge | Svg.Skia | NetVips | ImageSharp.Drawing | ImageSharp.Drawing, one thread |
+|---|---|---|---|---|---|
+| Dashboard (clips, masks, blend modes) | 100 | 6.4 ± 13.9 ms | 14.7 ± 9.5 ms | 8.5 ± 6.7 ms | 6.6 ± 7.0 ms |
+| Dashboard | 1000 | 14.4 ± 14.0 ms | 1034 ± 1587 ms | 102 ± 79 ms | 70 ± 53 ms |
+| PatternChart (patterns, markers, image) | 100 | 12.9 ± 10.0 ms | 7.7 ± 5.9 ms | 3.4 ± 4.5 ms | 3.2 ± 6.5 ms |
+| PatternChart | 1000 | 91 ± 668 ms | 195 ± 131 ms | 17.1 ± 3.2 ms | 38 ± 42 ms |
+
+The Dashboard renders about 240 layers (each mask, blend mode, and coverage clip is a layer). ImageSharp.Drawing renders it about 7 times slower than Svg.Skia at 1000 pixels, and the multi-threaded render is slower than the single-threaded one. `--profile svg` puts 75% of the Dashboard time at 1000 pixels in the scene render and 16% in the scene build; for the PatternChart the scene build (46%) and the scene render (43%) dominate. Loading alone is 5 to 10 times faster than Svg.Skia for both documents. Before the numbers were taken, the outputs of all three renderers were compared with the Chromium oracle at 1000 pixels: total differences of 0.09% to 0.50%.
+
+### 14.3 Known gaps
+
+- WebGPU backend: the scene encoder lowers only the brush types it knows (`IsSupportedBrush` in `WebGPUSceneEncoder`) and skips the others without an error. The SVG pattern and image paints use an internal texture brush, so patterns and raster images do not draw on that backend. Masks use a custom CPU `LayerEffect`, whose behavior on that backend is not verified.
+- Text, filters, and CSS basic shapes in `clip-path` are not supported (phases 3 and 4).
+- Markers apply to `path`, `line`, `polyline`, and `polygon` only, as in Chromium; SVG 2 adds every basic shape.
+- The SVG 2 keywords of `refX` and `refY` (`left`, `center`, `right`, `top`, `bottom`) act as 0, as in Chromium.
+- A mask under a rotated or skewed canvas transform: the luminance effect runs over the layer rectangle, so mask content between the rotated rectangle and its bounding box can skip the effect (reported by the mask implementation; not reproduced here).
+- Layer memory: each nested mask, blend mode, opacity group, or coverage clip is a layer of the size of its content, so memory grows with nesting depth times layer area. 400 nested masks with coverage clips need about 1.8 GB at 1000 pixels; the nesting depth is bounded by `SvgLimits.MaxNestingDepth`, the layer area is not bounded.
+- Pattern tiles render on first use per output size and stay cached in the document (four sizes per tile), so a document drawn at large sizes keeps the tile pixels alive. Tiles of patterns nested more than three levels deep get half the pixel budget per further level.
+- Arcs in path data (`A` commands) and the core `RoundedRectanglePolygon` flatten their arcs once, in their own coordinate space, so they look polygonal when a small shape is scaled up. SVG rounded rectangles avoid this by using cubic Bézier corners.
+- The deprecated CSS `clip` property, external style sheets, and network references are not supported; file references load only from `SvgLoadOptions.ResourceBaseDirectory`.
 
 ## Sources
 

@@ -42,7 +42,10 @@ internal sealed class SvgPatternTile
     /// Initializes a new instance of the <see cref="SvgPatternTile"/> class.
     /// </summary>
     /// <param name="content">The content as a document whose mapped box is the tile rectangle.</param>
-    /// <param name="maxPixels">The largest number of pixels of one tile render, from <see cref="SvgLimits.MaxPatternTilePixels"/>.</param>
+    /// <param name="maxPixels">
+    /// The largest number of pixels of one tile render: <see cref="SvgLimits.MaxPatternTilePixels"/>, lowered for a tile
+    /// of a deeply nested pattern.
+    /// </param>
     public SvgPatternTile(SvgDocument content, int maxPixels)
     {
         this.content = content;

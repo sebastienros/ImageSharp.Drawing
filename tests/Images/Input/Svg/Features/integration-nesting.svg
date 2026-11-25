@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <marker id="dot" refX="4" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="4" fill="#d62728"/>
+    </marker>
+    <path id="zig" d="M10 20 L30 5 L50 20 L70 5" stroke="#000000" stroke-width="6" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)"/>
+    <clipPath id="useClip"><use xlink:href="#zig" x="10" y="20"/></clipPath>
+    <pattern id="dots" patternUnits="userSpaceOnUse" width="6" height="6">
+      <circle cx="3" cy="3" r="2" fill="#1f77b4"/>
+    </pattern>
+    <marker id="patterned" refX="6" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="url(#dots)" stroke="#000000"/>
+    </marker>
+    <mask id="inner"><circle cx="5" cy="5" r="5" fill="#ffffff"/></mask>
+    <pattern id="innerPattern" patternUnits="userSpaceOnUse" width="10" height="10">
+      <rect width="10" height="10" fill="#2ca02c" mask="url(#inner)"/>
+    </pattern>
+    <mask id="patternMask"><rect x="105" y="5" width="90" height="90" fill="url(#innerPattern)"/></mask>
+    <pattern id="outer" patternUnits="userSpaceOnUse" width="30" height="30">
+      <rect width="30" height="30" fill="#ff7f0e" mask="url(#patternMask2)"/>
+    </pattern>
+    <mask id="patternMask2"><rect width="30" height="30" fill="url(#innerPattern)"/></mask>
+    <pattern id="imagePattern" patternUnits="userSpaceOnUse" width="32" height="24">
+      <image width="32" height="24" image-rendering="pixelated" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAMCAYAAABr5z2BAAABI0lEQVR42hXQoXEDMQBE0WshyPxQkIlakEsIC1YDBmpBM65A1FAdeNRAgIAbOGymFpR34JEFH+y2bd/ri51A3P7WD4lMsVUanWE7mCy27SLATiBeBEhkiq3S6AzbwWRdzsBVgJ1AvAqQyBRbpdEZtoPJup6BmwA7gXgTIJEptkqjM2wHk3U7A79/64udQPz9Xj8kMsVWaXSG7WCy2La7ADuBeBcgkSm2SqMzbAeTdT8DDwF2AvEhQCJTbJVGZ9gOJutxBp4C7ATiU4BEptgqjc6wHUzW8wy8nMhOIL6cSCJTbJVGZ9gOJut1nvgWYCcQ3wIkMsVWaXSG7WCy3mfgI8BOIH4ESGSKrdLoDNvBZH3OwBJgJxCXAIlMsVUanWE7mCz+AYlX2EAgS/7zAAAAAElFTkSuQmCC"/>
+    </pattern>
+    <pattern id="markerPattern" patternUnits="userSpaceOnUse" width="40" height="20">
+      <path d="M5 10 L20 5 L35 10" fill="none" stroke="#000000" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <rect x="5" y="5" width="90" height="60" fill="#9467bd" clip-path="url(#useClip)"/>
+  <polyline points="15,80 50,70 85,80" fill="none" stroke="#7f7f7f" stroke-width="2" marker-start="url(#patterned)" marker-mid="url(#patterned)" marker-end="url(#patterned)"/>
+  <rect x="105" y="5" width="90" height="40" fill="#17becf" mask="url(#patternMask)"/>
+  <rect x="105" y="50" width="90" height="45" fill="url(#outer)"/>
+  <rect x="5" y="105" width="90" height="90" fill="url(#imagePattern)" transform="rotate(10 50 150)"/>
+  <rect x="105" y="105" width="90" height="90" fill="url(#markerPattern)" stroke="#000000"/>
+</svg>

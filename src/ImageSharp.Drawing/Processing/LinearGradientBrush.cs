@@ -44,7 +44,29 @@ public sealed class LinearGradientBrush : GradientBrush
         GradientRepetitionMode repetitionMode,
         Matrix4x4 gradientTransform,
         params ColorStop[] colorStops)
-        : base(repetitionMode, gradientTransform, colorStops)
+        : this(p0, p1, repetitionMode, gradientTransform, GradientAlphaInterpolation.Premultiplied, colorStops)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LinearGradientBrush"/> class using
+    /// a start and end point defined in the gradient's own coordinate space.
+    /// The stops interpolate alpha as <paramref name="alphaInterpolation"/> defines.
+    /// </summary>
+    /// <param name="p0">The start point of the gradient.</param>
+    /// <param name="p1">The end point of the gradient.</param>
+    /// <param name="repetitionMode">Defines how the colors are repeated.</param>
+    /// <param name="gradientTransform">The transform from the gradient's coordinate space to the drawing.</param>
+    /// <param name="alphaInterpolation">Defines how alpha is interpolated between two color stops.</param>
+    /// <param name="colorStops">The ordered color stops of the gradient.</param>
+    public LinearGradientBrush(
+        PointF p0,
+        PointF p1,
+        GradientRepetitionMode repetitionMode,
+        Matrix4x4 gradientTransform,
+        GradientAlphaInterpolation alphaInterpolation,
+        params ColorStop[] colorStops)
+        : base(repetitionMode, gradientTransform, alphaInterpolation, colorStops)
     {
         this.StartPoint = p0;
         this.EndPoint = p1;
@@ -90,7 +112,33 @@ public sealed class LinearGradientBrush : GradientBrush
         GradientRepetitionMode repetitionMode,
         Matrix4x4 gradientTransform,
         params ColorStop[] colorStops)
-        : base(repetitionMode, gradientTransform, colorStops)
+        : this(p0, p1, rotationPoint, repetitionMode, gradientTransform, GradientAlphaInterpolation.Premultiplied, colorStops)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LinearGradientBrush"/> class using
+    /// three points, defined in the gradient's own coordinate space, to define a rotated gradient axis.
+    /// The stops interpolate alpha as <paramref name="alphaInterpolation"/> defines.
+    /// </summary>
+    /// <param name="p0">The first point (start of the gradient).</param>
+    /// <param name="p1">The second point (gradient vector endpoint).</param>
+    /// <param name="rotationPoint">
+    /// The rotation reference point. This defines the rotation of the gradient axis.
+    /// </param>
+    /// <param name="repetitionMode">Defines how the colors are repeated.</param>
+    /// <param name="gradientTransform">The transform from the gradient's coordinate space to the drawing.</param>
+    /// <param name="alphaInterpolation">Defines how alpha is interpolated between two color stops.</param>
+    /// <param name="colorStops">The ordered color stops of the gradient.</param>
+    public LinearGradientBrush(
+        PointF p0,
+        PointF p1,
+        PointF rotationPoint,
+        GradientRepetitionMode repetitionMode,
+        Matrix4x4 gradientTransform,
+        GradientAlphaInterpolation alphaInterpolation,
+        params ColorStop[] colorStops)
+        : base(repetitionMode, gradientTransform, alphaInterpolation, colorStops)
     {
         ResolveAxis(p0, p1, rotationPoint, out PointF start, out PointF end);
         this.StartPoint = start;
@@ -117,10 +165,12 @@ public sealed class LinearGradientBrush : GradientBrush
                 PointF.Transform(this.StartPoint, gradientTransform),
                 PointF.Transform(this.EndPoint, gradientTransform),
                 this.RepetitionMode,
+                Matrix4x4.Identity,
+                this.AlphaInterpolation,
                 this.ColorStopsArray);
         }
 
-        return new LinearGradientBrush(this.StartPoint, this.EndPoint, this.RepetitionMode, gradientTransform, this.ColorStopsArray);
+        return new LinearGradientBrush(this.StartPoint, this.EndPoint, this.RepetitionMode, gradientTransform, this.AlphaInterpolation, this.ColorStopsArray);
     }
 
     /// <inheritdoc/>

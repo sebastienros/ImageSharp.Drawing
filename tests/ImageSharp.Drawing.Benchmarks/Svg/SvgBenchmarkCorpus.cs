@@ -36,7 +36,9 @@ internal static class SvgBenchmarkCorpus
         "Icons",
         "SoftIceCream",
         "Moose",
-        "StyledLandscape"
+        "StyledLandscape",
+        "Dashboard",
+        "PatternChart"
     ];
 
     /// <summary>
@@ -52,6 +54,8 @@ internal static class SvgBenchmarkCorpus
         "SoftIceCream" => [TestImages.Svg.FluentSoftIceCream],
         "Moose" => [TestImages.Svg.FluentMoose],
         "StyledLandscape" => [TestImages.Svg.StyledLandscape],
+        "Dashboard" => [TestImages.Svg.CompositingDashboard],
+        "PatternChart" => [TestImages.Svg.PatternChart],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 
