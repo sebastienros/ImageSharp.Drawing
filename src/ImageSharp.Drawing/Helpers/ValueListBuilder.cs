@@ -124,6 +124,13 @@ internal ref struct ValueListBuilder<T>
     public readonly Span<T> AsSpan() => this.values[..this.position];
 
     /// <summary>
+    /// Removes the values from <paramref name="length"/> on and keeps the buffer, so one builder can serve as a stack or
+    /// collect several lists in turn.
+    /// </summary>
+    /// <param name="length">The new number of values, at most <see cref="Length"/>.</param>
+    public void Truncate(int length) => this.position = length;
+
+    /// <summary>
     /// Returns the pooled array, if the builder rented one. An array of references is cleared first so
     /// the pool does not keep them alive.
     /// </summary>
