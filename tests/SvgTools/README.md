@@ -133,3 +133,5 @@ dotnet artifacts/bin/tests/ImageSharp.Drawing.Benchmarks/Release/net10.0/ImageSh
 - A `--job` argument replaces the default long job of the benchmark project.
 
 The corpus entries (`SvgBenchmarkCorpus`) are `Tiger`, `Paris30k`, `Icons` (all 40 icons in one operation), `SoftIceCream`, `Moose`, and `StyledLandscape`. The benchmarks give `paris-30k.svg` a 1096 x 1060 viewport in memory, because the file has none. The long-edge sizes are 100, 1000, and 4000 pixels.
+
+Run time: the short job runs all 78 SVG benchmarks in about 45 minutes on a 4-core machine. `Paris30k` takes most of it: at the 4000 pixel size one Svg.Skia operation takes about a minute. The default job (3 launches, 40 warmup and 40 measured iterations) multiplies that time, so filter the run, for example with `--filter "*LoadAndRenderSvg*"`, when you do not need every case.
