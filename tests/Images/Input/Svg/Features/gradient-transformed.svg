@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bbox" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f77b4"/>
+      <stop offset="0.5" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d62728"/>
+    </linearGradient>
+    <radialGradient id="user" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="18" fx="-6" fy="-6">
+      <stop offset="0" stop-color="#ffff00"/>
+      <stop offset="1" stop-color="#2ca02c"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(28 28) rotate(30)">
+    <rect x="-20" y="-15" width="40" height="30" fill="url(#bbox)"/>
+  </g>
+  <g transform="translate(72 28) scale(1 0.6) rotate(-20)">
+    <circle r="18" fill="url(#user)"/>
+  </g>
+  <g transform="matrix(0.8 0.3 -0.4 0.9 30 60)">
+    <rect width="40" height="30" fill="none" stroke="url(#bbox)" stroke-width="6"/>
+  </g>
+</svg>

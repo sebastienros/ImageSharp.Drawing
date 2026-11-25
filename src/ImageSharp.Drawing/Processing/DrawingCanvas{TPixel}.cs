@@ -2021,6 +2021,9 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
         return result;
     }
 
+    /// <inheritdoc />
+    internal override DrawingOptions GetActiveOptions() => this.ResolveState().Options;
+
     /// <summary>
     /// Resolves the currently active drawing state.
     /// </summary>

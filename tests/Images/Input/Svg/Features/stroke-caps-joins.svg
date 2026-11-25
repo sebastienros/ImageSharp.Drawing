@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <g stroke="#1f77b4" stroke-width="12" fill="none">
+    <line x1="20" y1="20" x2="60" y2="20"/>
+    <line x1="80" y1="20" x2="120" y2="20" stroke-linecap="round"/>
+    <line x1="140" y1="20" x2="180" y2="20" stroke-linecap="square"/>
+    <polyline points="15 80 40 50 65 80" stroke="#d62728"/>
+    <polyline points="80 80 105 50 130 80" stroke="#d62728" stroke-linejoin="round"/>
+    <polyline points="145 80 170 50 195 80" stroke="#d62728" stroke-linejoin="bevel"/>
+    <polyline points="12 150 27 105 42 150" stroke="#2ca02c" stroke-width="6"/>
+    <polyline points="55 150 70 105 85 150" stroke="#2ca02c" stroke-width="6" stroke-miterlimit="1"/>
+    <polyline points="100 150 107 105 114 150" stroke="#2ca02c" stroke-width="6"/>
+    <polyline points="135 150 142 105 149 150" stroke="#2ca02c" stroke-width="6" stroke-miterlimit="8"/>
+    <polyline points="170 150 177 105 184 150" stroke="#2ca02c" stroke-width="6" stroke-linejoin="miter-clip"/>
+    <rect x="20" y="170" width="160" height="20" stroke="#9467bd" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+</svg>

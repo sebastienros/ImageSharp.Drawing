@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bbox">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#1f77b4"/>
+    </radialGradient>
+    <radialGradient id="focal" fx="0.3" fy="0.3">
+      <stop offset="0" stop-color="#ffff00"/>
+      <stop offset="0.6" stop-color="#d62728"/>
+      <stop offset="1" stop-color="#000000"/>
+    </radialGradient>
+    <radialGradient id="user" gradientUnits="userSpaceOnUse" cx="150" cy="50" r="40" fx="130" fy="40">
+      <stop offset="0" stop-color="#2ca02c"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </radialGradient>
+    <radialGradient id="reflect" r="0.2" spreadMethod="reflect">
+      <stop offset="0" stop-color="#9467bd"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </radialGradient>
+    <radialGradient id="repeat" r="0.2" spreadMethod="repeat">
+      <stop offset="0" stop-color="#9467bd"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </radialGradient>
+    <radialGradient id="fr" fr="0.2">
+      <stop offset="0" stop-color="#ff7f0e"/>
+      <stop offset="1" stop-color="#17becf"/>
+    </radialGradient>
+    <radialGradient id="transformed" gradientTransform="translate(0.5 0.5) scale(0.5 1) translate(-0.5 -0.5)">
+      <stop offset="0" stop-color="#e377c2"/>
+      <stop offset="1" stop-color="#000000"/>
+    </radialGradient>
+    <radialGradient id="zero" r="0"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#8c564b"/></radialGradient>
+  </defs>
+  <rect x="10" y="10" width="80" height="80" fill="url(#bbox)"/>
+  <rect x="110" y="10" width="80" height="80" fill="url(#user)"/>
+  <ellipse cx="50" cy="130" rx="40" ry="25" fill="url(#focal)"/>
+  <rect x="110" y="105" width="35" height="35" fill="url(#reflect)"/>
+  <rect x="155" y="105" width="35" height="35" fill="url(#repeat)"/>
+  <rect x="10" y="160" width="50" height="35" fill="url(#fr)"/>
+  <rect x="70" y="160" width="60" height="35" fill="url(#transformed)"/>
+  <rect x="140" y="160" width="50" height="35" fill="url(#zero)"/>
+</svg>

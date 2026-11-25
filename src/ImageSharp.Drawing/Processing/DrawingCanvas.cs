@@ -495,6 +495,17 @@ public abstract partial class DrawingCanvas : IDisposable
     public abstract void Flush();
 
     /// <summary>
+    /// Returns the drawing options of the active state, so that high-level drawing such as SVG rendering can compose its
+    /// own transforms with the caller's transform and keep the caller's graphics options.
+    /// </summary>
+    /// <remarks>
+    /// The returned instance belongs to the active state. Callers must not change it. A canvas implementation that does
+    /// not track options returns the defaults.
+    /// </remarks>
+    /// <returns>The drawing options of the active state.</returns>
+    internal virtual DrawingOptions GetActiveOptions() => new();
+
+    /// <summary>
     /// Releases the canvas. Disposing the root canvas closes any open layers and clips and
     /// replays the recorded command timeline into the target frame; child region canvases
     /// share the root's command stream and do not flush on disposal.

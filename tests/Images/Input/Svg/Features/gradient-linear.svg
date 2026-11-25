@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bbox">
+      <stop offset="0" stop-color="#1f77b4"/>
+      <stop offset="0.5" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d62728"/>
+    </linearGradient>
+    <linearGradient id="vertical" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2ca02c"/>
+      <stop offset="100%" stop-color="#ff7f0e"/>
+    </linearGradient>
+    <linearGradient id="user" gradientUnits="userSpaceOnUse" x1="110" y1="0" x2="190" y2="0">
+      <stop offset="0" stop-color="#9467bd"/>
+      <stop offset="1" stop-color="#ffff00"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0.4" x2="0.6">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="1" stop-color="#17becf"/>
+    </linearGradient>
+    <linearGradient id="reflect" x1="0.4" x2="0.6" spreadMethod="reflect">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="1" stop-color="#17becf"/>
+    </linearGradient>
+    <linearGradient id="repeat" x1="0.4" x2="0.6" spreadMethod="repeat">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="1" stop-color="#17becf"/>
+    </linearGradient>
+    <linearGradient id="rotated" gradientTransform="rotate(45 0.5 0.5)">
+      <stop offset="0" stop-color="#e377c2"/>
+      <stop offset="0.5" stop-color="#e377c2"/>
+      <stop offset="0.5" stop-color="#7f7f7f"/>
+      <stop offset="1" stop-color="#bcbd22"/>
+    </linearGradient>
+    <linearGradient id="userPercent" gradientUnits="userSpaceOnUse" x1="0%" x2="100%">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="single"><stop offset="0.3" stop-color="#8c564b"/></linearGradient>
+    <linearGradient id="none"/>
+    <linearGradient id="degenerate" x1="0.5" x2="0.5"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient>
+  </defs>
+  <rect x="10" y="10" width="80" height="40" fill="url(#bbox)"/>
+  <rect x="110" y="10" width="80" height="40" fill="url(#user)"/>
+  <rect x="10" y="60" width="40" height="60" fill="url(#vertical)"/>
+  <circle cx="80" cy="90" r="28" fill="none" stroke="url(#bbox)" stroke-width="8"/>
+  <rect x="120" y="60" width="70" height="60" fill="url(#rotated)"/>
+  <rect x="10" y="130" width="55" height="20" fill="url(#pad)"/>
+  <rect x="72" y="130" width="55" height="20" fill="url(#reflect)"/>
+  <rect x="134" y="130" width="55" height="20" fill="url(#repeat)"/>
+  <rect x="10" y="160" width="180" height="10" fill="url(#userPercent)"/>
+  <rect x="10" y="175" width="40" height="20" fill="url(#single)"/>
+  <rect x="60" y="175" width="40" height="20" fill="url(#none) #000000"/>
+  <rect x="110" y="175" width="40" height="20" fill="url(#degenerate)"/>
+  <rect x="160" y="175" width="30" height="20" fill="url(#missing) #17becf"/>
+</svg>

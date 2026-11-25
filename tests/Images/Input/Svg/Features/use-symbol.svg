@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <g id="badge">
+      <circle cx="20" cy="20" r="18"/>
+      <rect x="12" y="12" width="16" height="16" fill="#ffffff"/>
+    </g>
+    <symbol id="icon" viewBox="0 0 10 10">
+      <path d="M1 9 L5 1 L9 9 Z" stroke-width="1"/>
+    </symbol>
+    <rect id="bar" width="40" height="8" fill="currentColor"/>
+  </defs>
+  <use href="#badge" fill="#1f77b4"/>
+  <use xlink:href="#badge" x="50" fill="#d62728"/>
+  <use href="#badge" x="100" fill="#2ca02c" transform="rotate(10 120 20)"/>
+  <use href="#badge" x="150" fill="#ff7f0e" opacity="0.5"/>
+  <use href="#icon" x="10" y="60" width="40" height="40" fill="#9467bd" stroke="#000"/>
+  <use href="#icon" x="60" y="60" width="80" height="40" fill="#8c564b"/>
+  <use href="#icon" x="150" y="60" fill="#e377c2"/>
+  <g style="color: #17becf">
+    <use href="#bar" x="10" y="120"/>
+    <use href="#bar" x="60" y="120" style="color: #bcbd22"/>
+  </g>
+  <use id="second" href="#badge" x="10" y="140" fill="#7f7f7f"/>
+  <use href="#second" x="60" fill="#000000"/>
+  <use href="#missing" x="110" y="140"/>
+  <g id="loop"><use href="#loop" x="150" y="140"/><rect x="150" y="150" width="20" height="20" fill="#d62728"/></g>
+</svg>

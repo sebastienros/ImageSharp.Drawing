@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <style type="text/css">
+    rect { fill: #7f7f7f; }
+    .blue { fill: #1f77b4; }
+    .outline { stroke: #000000; stroke-width: 4px; }
+    #special { fill: #d62728 !important; }
+    g.panel > circle { fill: #2ca02c; }
+    g.panel circle.deep { fill: #9467bd; }
+    .panel .inner rect { fill: #ff7f0e; }
+    * { stroke-linejoin: round; }
+    @media print { rect { fill: #000000; } }
+    .bad:hover { fill: #000000; }
+  </style>
+  <style type="text/plain">rect { fill: #ff0000; }</style>
+  <rect x="10" y="10" width="50" height="40"/>
+  <rect x="75" y="10" width="50" height="40" class="blue"/>
+  <rect x="140" y="10" width="50" height="40" class="blue outline"/>
+  <rect id="special" x="10" y="60" width="50" height="40" class="blue" style="fill: #000000"/>
+  <rect x="75" y="60" width="50" height="40" class="blue" style="fill: #17becf"/>
+  <rect x="140" y="60" width="50" height="40" fill="#ff0000" class="bad"/>
+  <g class="panel">
+    <circle cx="35" cy="135" r="20"/>
+    <g>
+      <circle cx="100" cy="135" r="20" class="deep"/>
+      <circle cx="165" cy="135" r="20"/>
+    </g>
+    <g class="inner">
+      <rect x="10" y="165" width="80" height="25"/>
+    </g>
+  </g>
+  <rect x="110" y="165" width="80" height="25" fill="#e377c2" style="stroke: #000; stroke-width: 6; stroke-opacity: .5"/>
+</svg>
