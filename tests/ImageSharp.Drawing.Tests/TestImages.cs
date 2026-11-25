@@ -399,5 +399,86 @@ public static class TestImages
     {
         public const string GhostscriptTiger = "Svg/Ghostscript_Tiger.svg";
         public const string Paris30k = "Svg/paris-30k.svg";
+
+        /// <summary>
+        /// A Fluent Emoji illustration with linear and radial gradients and a group with opacity.
+        /// MIT license. The blurred highlight group was removed because it uses a filter.
+        /// </summary>
+        public const string FluentSoftIceCream = "Svg/Illustrations/fluent-soft-ice-cream.svg";
+
+        /// <summary>
+        /// A Fluent Emoji illustration with 71 gradients. MIT license.
+        /// </summary>
+        public const string FluentMoose = "Svg/Illustrations/fluent-moose.svg";
+
+        /// <summary>
+        /// A Carbon pictogram exported from a design tool, with a <c>&lt;style&gt;</c> block. Apache-2.0 license.
+        /// </summary>
+        public const string CarbonCrab = "Svg/DesignTool/carbon-crab.svg";
+
+        /// <summary>
+        /// A synthetic file in the structure of a design-tool export: a <c>&lt;style&gt;</c> block with class,
+        /// compound, id, type, descendant, and child selectors, <c>!important</c>, and an at-rule.
+        /// </summary>
+        public const string StyledLandscape = "Svg/DesignTool/styled-landscape-synthetic.svg";
+
+        /// <summary>
+        /// Stroked Feather icons. MIT license.
+        /// </summary>
+        public static readonly string[] FeatherIcons =
+        [
+            "Svg/Icons/Feather/activity.svg",
+            "Svg/Icons/Feather/alert-octagon.svg",
+            "Svg/Icons/Feather/archive.svg",
+            "Svg/Icons/Feather/box.svg",
+            "Svg/Icons/Feather/camera.svg",
+            "Svg/Icons/Feather/compass.svg",
+            "Svg/Icons/Feather/cpu.svg",
+            "Svg/Icons/Feather/database.svg",
+            "Svg/Icons/Feather/feather.svg",
+            "Svg/Icons/Feather/gift.svg",
+            "Svg/Icons/Feather/globe.svg",
+            "Svg/Icons/Feather/heart.svg",
+            "Svg/Icons/Feather/image.svg",
+            "Svg/Icons/Feather/layers.svg",
+            "Svg/Icons/Feather/map-pin.svg",
+            "Svg/Icons/Feather/monitor.svg",
+            "Svg/Icons/Feather/settings.svg",
+            "Svg/Icons/Feather/star.svg",
+            "Svg/Icons/Feather/sun.svg",
+            "Svg/Icons/Feather/truck.svg",
+            "Svg/Icons/Feather/user.svg",
+            "Svg/Icons/Feather/wifi.svg",
+            "Svg/Icons/Feather/x-octagon.svg",
+            "Svg/Icons/Feather/zap.svg",
+        ];
+
+        /// <summary>
+        /// Filled Bootstrap Icons. MIT license.
+        /// </summary>
+        public static readonly string[] BootstrapIcons =
+        [
+            "Svg/Icons/Bootstrap/bell-fill.svg",
+            "Svg/Icons/Bootstrap/bookmark-star-fill.svg",
+            "Svg/Icons/Bootstrap/bug-fill.svg",
+            "Svg/Icons/Bootstrap/camera-fill.svg",
+            "Svg/Icons/Bootstrap/chat-dots-fill.svg",
+            "Svg/Icons/Bootstrap/cloud-fill.svg",
+            "Svg/Icons/Bootstrap/envelope-fill.svg",
+            "Svg/Icons/Bootstrap/gear-fill.svg",
+            "Svg/Icons/Bootstrap/geo-alt-fill.svg",
+            "Svg/Icons/Bootstrap/heart-fill.svg",
+            "Svg/Icons/Bootstrap/house-fill.svg",
+            "Svg/Icons/Bootstrap/lightning-fill.svg",
+            "Svg/Icons/Bootstrap/puzzle-fill.svg",
+            "Svg/Icons/Bootstrap/shield-fill-check.svg",
+            "Svg/Icons/Bootstrap/star-fill.svg",
+            "Svg/Icons/Bootstrap/trash-fill.svg",
+        ];
+
+        /// <summary>
+        /// Every icon in the corpus.
+        /// </summary>
+        public static readonly string[] Icons = [.. FeatherIcons, .. BootstrapIcons];
     }
 }

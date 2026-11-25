@@ -47,11 +47,22 @@ public class Program
                 case "paris":
                     Drawing.FillParis.VerifyOutput();
                     break;
+                case "svg":
+                    // Usage: --verify svg <longEdge>
+                    int longEdge = args.Length > 2 && int.TryParse(args[2], out int parsedLongEdge) ? parsedLongEdge : 1000;
+                    Svg.SvgReferenceRenderers.VerifyOutput(longEdge);
+                    break;
                 default:
-                    Console.WriteLine($"Unknown verify target: {target}. Use 'tiger', 'tiger-xform', 'tiger-baked', or 'paris'.");
+                    Console.WriteLine($"Unknown verify target: {target}. Use 'tiger', 'tiger-xform', 'tiger-baked', 'paris', or 'svg'.");
                     break;
             }
 
+            return;
+        }
+
+        if (args.Length > 0 && args[0] == "--svg-info")
+        {
+            Svg.SvgReferenceRenderers.PrintInfo();
             return;
         }
 
@@ -77,19 +88,30 @@ public class Program
             return;
         }
 
-        new BenchmarkSwitcher(typeof(Program).GetTypeInfo().Assembly).Run(args, new InProcessConfig());
+        // A job given on the command line, such as "--job short", replaces the default job instead of running beside it.
+        bool hasJobArgument = Array.Exists(args, static arg => arg is "--job" or "-j");
+        new BenchmarkSwitcher(typeof(Program).GetTypeInfo().Assembly).Run(args, new InProcessConfig(addDefaultJob: !hasJobArgument));
     }
 }
 
 public class InProcessConfig : ManualConfig
 {
-    public InProcessConfig()
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InProcessConfig"/> class.
+    /// </summary>
+    /// <param name="addDefaultJob">Whether to add the default long-running job. Pass <see langword="false"/> when the command line selects a job.</param>
+    public InProcessConfig(bool addDefaultJob = true)
     {
         this.AddLogger(ConsoleLogger.Default);
 
         this.AddColumnProvider(DefaultColumnProviders.Instance);
 
         this.AddExporter(DefaultExporters.Html, DefaultExporters.Csv);
+
+        if (!addDefaultJob)
+        {
+            return;
+        }
 
         // Use high warmup to ensure tiered JIT has fully promoted all hot paths.
         // Server GC reduces pause times for allocation-heavy rasterization benchmarks.
