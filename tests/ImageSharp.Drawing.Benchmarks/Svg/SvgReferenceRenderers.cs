@@ -1,6 +1,11 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Drawing.Processing.Backends;
+using SixLabors.ImageSharp.Drawing.Svg;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
 using Svg.Skia;
 using IOPath = System.IO.Path;
@@ -152,10 +157,14 @@ internal static class SvgReferenceRenderers
     }
 
     /// <summary>
-    /// Renders every corpus entry with each reference renderer at one size and writes PNG files,
-    /// so that the outputs can be compared with each other and with the Chromium oracle in
+    /// Renders every corpus entry with each reference renderer and with ImageSharp.Drawing at one size and writes PNG
+    /// files, so that the outputs can be compared with each other and with the Chromium oracle in
     /// <c>tests/SvgTools</c> before benchmark numbers count.
     /// </summary>
+    /// <remarks>
+    /// ImageSharp.Drawing renders each document twice, on a new canvas and through a retained scene, as the
+    /// <see cref="RenderSvg"/> methods do. The two outputs must be equal; the method reports whether they are.
+    /// </remarks>
     /// <param name="longEdge">The output length of the longer side, in pixels.</param>
     public static void VerifyOutput(int longEdge)
     {
@@ -193,8 +202,37 @@ internal static class SvgReferenceRenderers
                 image.WriteToFile(IOPath.Combine(outDir, $"{stem}-netvips.png"));
                 Console.WriteLine($"{name,-16} {stem,-28} NetVips  {image.Width} x {image.Height} (scale {vipsScale:0.######})");
 
-                // Package C: write the ImageSharp.Drawing output here, for example as
-                // "{stem}-imagesharp.png", rendered with SvgDocument.Load and canvas.DrawSvg(document, destination).
+                SvgDocument document = SvgImageSharpRenderer.Load(documents[i]);
+                Size isSize = SvgImageSharpRenderer.GetOutputSize(document, longEdge, out RectangleF destination);
+                using Image<Rgba32> fresh = new(isSize.Width, isSize.Height);
+                fresh.Mutate(c => c.Paint(canvas => canvas.DrawSvg(document, destination)));
+                fresh.SaveAsPng(IOPath.Combine(outDir, $"{stem}-imagesharp.png"));
+
+                using Image<Rgba32> retained = new(isSize.Width, isSize.Height);
+                DrawingBackendScene scene;
+                using (DrawingCanvas canvas = retained.Frames.RootFrame.CreateCanvas(retained.Configuration, new DrawingOptions()))
+                {
+                    canvas.DrawSvg(document, destination);
+                    scene = canvas.CreateScene();
+                }
+
+                retained.Mutate(c => c.Paint(canvas => canvas.RenderScene(scene)));
+                scene.Dispose();
+
+                // Large images do not have one contiguous buffer, so the rows are compared one by one.
+                bool equal = true;
+                fresh.ProcessPixelRows(retained, (a, b) =>
+                {
+                    for (int y = 0; y < a.Height && equal; y++)
+                    {
+                        equal = a.GetRowSpan(y).SequenceEqual(b.GetRowSpan(y));
+                    }
+                });
+
+                string sceneResult = equal ? "equal" : "DIFFERENT";
+                Console.WriteLine(
+                    $"{name,-16} {stem,-28} ImageSharp {isSize.Width} x {isSize.Height} " +
+                    $"(intrinsic {document.Size.Width} x {document.Size.Height}), retained scene {sceneResult}");
             }
         }
 

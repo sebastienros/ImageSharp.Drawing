@@ -2,6 +2,10 @@
 // Licensed under the Six Labors Split License.
 
 using BenchmarkDotNet.Attributes;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Drawing.Svg;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using SkiaSharp;
 using Svg.Skia;
 using Vips = NetVips.NetVips;
@@ -13,14 +17,22 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Each renderer allocates a new output for every document, as libvips always does.
-/// The output size of each document is computed in <see cref="Setup"/> from the intrinsic size that
-/// the renderer reports, so that size lookups are not part of the measured time.
+/// Each renderer allocates a new output for every document inside the measured time, as libvips always does.
+/// Svg.Skia and ImageSharp.Drawing compute the output size from the document they load, inside the measured time.
+/// libvips needs a scale before it loads, so its scale is computed in <see cref="Setup"/> from the intrinsic size that
+/// it reports; a size lookup there would load the document a second time.
+/// </para>
+/// <para>
+/// Allocation figures count managed memory only. The Skia surface and the libvips output are native memory.
+/// ImageSharp.Drawing takes the pixels of each new <see cref="Image{TPixel}"/> from the pools of its memory allocator,
+/// so after warmup the pixel buffer does not count either.
 /// </para>
 /// <para>
 /// Thread configurations: Svg.Skia loads and draws on one thread, so it has one method.
 /// libvips renders with a pool of worker threads; <see cref="NetVips"/> uses the default pool size and
 /// <see cref="NetVips_SingleThreaded"/> uses one thread. The libvips caches are off.
+/// ImageSharp.Drawing loads on one thread and rasterizes on every processor; <see cref="ImageSharp_SingleThreaded"/>
+/// uses a configuration with <see cref="Configuration.MaxDegreeOfParallelism"/> 1.
 /// </para>
 /// </remarks>
 [MemoryDiagnoser]
@@ -29,6 +41,7 @@ public class LoadAndRenderSvg
     private byte[][] documents;
     private double[] vipsScales;
     private int vipsDefaultConcurrency;
+    private Configuration singleThreadedConfiguration;
 
     /// <summary>
     /// Gets the corpus entry names for <see cref="Document"/>.
@@ -60,6 +73,9 @@ public class LoadAndRenderSvg
         {
             this.vipsScales[i] = SvgReferenceRenderers.GetNetVipsScale(this.documents[i], this.LongEdge);
         }
+
+        SvgImageSharpRenderer.WarmThreadPool();
+        this.singleThreadedConfiguration = SvgImageSharpRenderer.CreateSingleThreadedConfiguration();
     }
 
     /// <summary>
@@ -111,8 +127,31 @@ public class LoadAndRenderSvg
         }
     }
 
-    // Package C: add the ImageSharp.Drawing methods here, following FillTiger:
-    // - ImageSharp: for each document, SvgDocument.Load(stream) from a MemoryStream over the same bytes,
-    //   a new Image<Rgba32> of the output size, and image.Mutate(c => c.Paint(canvas => canvas.DrawSvg(document, destination))).
-    // - ImageSharp_SingleThreaded: the same with a cloned Configuration where MaxDegreeOfParallelism = 1.
+    /// <summary>
+    /// Loads every document of the entry with ImageSharp.Drawing and draws it into a new image, with the default
+    /// configuration.
+    /// </summary>
+    [Benchmark]
+    public void ImageSharp() => this.LoadAndRenderImageSharp(Configuration.Default);
+
+    /// <summary>
+    /// Loads every document of the entry with ImageSharp.Drawing and draws it into a new image, on one thread.
+    /// </summary>
+    [Benchmark]
+    public void ImageSharp_SingleThreaded() => this.LoadAndRenderImageSharp(this.singleThreadedConfiguration);
+
+    /// <summary>
+    /// Loads every document of the entry with ImageSharp.Drawing and draws it into a new image.
+    /// </summary>
+    /// <param name="configuration">The configuration of the images, which sets the rasterizer thread count.</param>
+    private void LoadAndRenderImageSharp(Configuration configuration)
+    {
+        foreach (byte[] bytes in this.documents)
+        {
+            SvgDocument document = SvgImageSharpRenderer.Load(bytes);
+            Size size = SvgImageSharpRenderer.GetOutputSize(document, this.LongEdge, out RectangleF destination);
+            using Image<Rgba32> image = new(configuration, size.Width, size.Height);
+            image.Mutate(c => c.Paint(canvas => canvas.DrawSvg(document, destination)));
+        }
+    }
 }
