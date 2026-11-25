@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -16,9 +17,15 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// The reader makes one forward pass over an <see cref="XmlReader"/>. It does not build an XML DOM and does not recurse on
 /// the XML depth. Element and attribute names are matched by reference, through a name table that returns the known names
 /// as constants (<see cref="SvgNameTable"/>). Attribute values are parsed from spans into typed fields as they are read;
-/// <c>style</c> element text is parsed into a style sheet. After
-/// the last element, the cascade combines presentation attributes, style sheet rules, and <c>style</c> attributes into one
-/// specified style per element.
+/// <c>style</c> element text and the user style sheet are parsed into a style sheet. After the last element, the cascade
+/// combines presentation attributes, style sheet rules, and <c>style</c> attributes into one specified style per element.
+/// </para>
+/// <para>
+/// Raw attribute values are not kept, except for the attributes whose names attribute selectors test. Those are recorded
+/// from the element where the reader learns the name on. A <c>style</c> element can follow the elements it selects, so
+/// when the style sheets need raw values of earlier elements, or the text content that <c>:empty</c> tests, the reader
+/// reads the input a second time after the first pass: up to the last element it needs for attributes, or whole for
+/// <c>:empty</c>. Documents whose style sheets use neither pay nothing for either.
 /// </para>
 /// <para>
 /// The XML reader resolves no external resource: DTD processing is on so that internal entities work, as Adobe
@@ -36,13 +43,22 @@ internal sealed class SvgReader
     private readonly SvgReaderOptions options;
     private readonly SvgPropertyParser properties = new();
     private readonly SvgStringPool names = new();
-    private readonly SvgStyleSheet styleSheet = new();
     private readonly Tables tables;
     private readonly List<SvgStyleSources> styleSources = [];
     private readonly List<int> openElements = [];
     private int styleElement = -1;
     private string? styleText;
+    private string? styleMedia;
     private StringBuilder? styleBuilder;
+
+    // The raw values of the attributes that attribute selectors test, and for each tested name the first element whose
+    // attributes were recorded while reading. Both stay null for documents without attribute selectors.
+    private Dictionary<string, int>? attributeCoverage;
+    private SvgCssAttributeValues? attributeValues;
+
+    // The style sheet is created by the first style sheet that the document or the options have, so documents without
+    // CSS allocate none.
+    private SvgStyleSheet? styleSheet;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgReader"/> class.
@@ -52,7 +68,19 @@ internal sealed class SvgReader
     {
         this.options = options;
         this.tables = new Tables(this.properties.DashLengths);
+
+        // The user style sheet is known before the first element, so its attribute names are recorded from the start.
+        if (!string.IsNullOrEmpty(options.UserStyleSheet))
+        {
+            SvgCssParser.ParseStyleSheet(options.UserStyleSheet, this.StyleSheet, this.properties, this.names, true, -1);
+            this.UpdateAttributeCoverage();
+        }
     }
+
+    /// <summary>
+    /// Gets the style sheet, creating it on first use.
+    /// </summary>
+    private SvgStyleSheet StyleSheet => this.styleSheet ??= new SvgStyleSheet();
 
     /// <summary>
     /// Reads an SVG document from a stream. The XML reader detects the encoding. The stream is not closed.
@@ -63,19 +91,66 @@ internal sealed class SvgReader
     /// <exception cref="InvalidImageContentException">The input is not a valid SVG document, or a limit is exceeded.</exception>
     public static SvgElementTree Read(Stream stream, in SvgReaderOptions options)
     {
+        if (!stream.CanSeek)
+        {
+            return ReadBuffered(stream, in options);
+        }
+
         SvgNameTable nameTable = new();
         XmlReaderSettings settings = CreateSettings(in options, nameTable);
         Encoding? legacyEncoding = DetectLegacyEncoding(stream);
+        Source source = new(null, stream, stream.Position, legacyEncoding);
         if (legacyEncoding is null)
         {
             using XmlReader xml = XmlReader.Create(stream, settings);
-            return new SvgReader(in options).ReadDocument(xml);
+            return new SvgReader(in options).ReadDocument(xml, in source);
         }
 
         // The XML reader ignores the encoding declaration when it reads characters, so the decoder chosen here applies.
         using StreamReader text = new(stream, legacyEncoding, false, -1, true);
         using XmlReader legacyXml = XmlReader.Create(text, settings);
-        return new SvgReader(in options).ReadDocument(legacyXml);
+        return new SvgReader(in options).ReadDocument(legacyXml, in source);
+    }
+
+    /// <summary>
+    /// Reads an SVG document from a stream that cannot seek. The stream is copied into pooled memory first, so that the
+    /// reader can read the start of the document a second time when a style sheet needs raw attribute values.
+    /// </summary>
+    /// <param name="stream">The stream to read.</param>
+    /// <param name="options">The input limits.</param>
+    /// <returns>The element tree.</returns>
+    private static SvgElementTree ReadBuffered(Stream stream, in SvgReaderOptions options)
+    {
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(16 * 1024);
+        int length = 0;
+        try
+        {
+            while (true)
+            {
+                if (length == buffer.Length)
+                {
+                    byte[] larger = ArrayPool<byte>.Shared.Rent(buffer.Length * 2);
+                    buffer.AsSpan(0, length).CopyTo(larger);
+                    ArrayPool<byte>.Shared.Return(buffer);
+                    buffer = larger;
+                }
+
+                int read = stream.Read(buffer, length, buffer.Length - length);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                length += read;
+            }
+
+            using MemoryStream copy = new(buffer, 0, length, false);
+            return Read(copy, in options);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     /// <summary>
@@ -90,9 +165,9 @@ internal sealed class SvgReader
     /// instead and the stream is decoded with the result.
     /// </para>
     /// <para>
-    /// The method reads the start of the stream and seeks back. A stream that cannot seek is left to the XML reader, so a
-    /// legacy encoding fails to load from it as before. A byte order mark or an encoding that the provider does not
-    /// supply, which includes UTF-8 and UTF-16, also leaves the stream to the XML reader.
+    /// The method reads the start of the stream and seeks back. A stream that cannot seek is copied into memory before it
+    /// gets here (see <see cref="ReadBuffered(Stream, in SvgReaderOptions)"/>). A byte order mark or an encoding that the
+    /// provider does not supply, which includes UTF-8 and UTF-16, leaves the stream to the XML reader.
     /// </para>
     /// </remarks>
     /// <param name="stream">The stream, at the start of the document.</param>
@@ -165,7 +240,8 @@ internal sealed class SvgReader
         SvgNameTable nameTable = new();
         using StringReader text = new(svg);
         using XmlReader xml = XmlReader.Create(text, CreateSettings(in options, nameTable));
-        return new SvgReader(in options).ReadDocument(xml);
+        Source source = new(svg, null, 0, null);
+        return new SvgReader(in options).ReadDocument(xml, in source);
     }
 
     /// <summary>
@@ -201,8 +277,9 @@ internal sealed class SvgReader
     /// Reads every node, then runs the cascade.
     /// </summary>
     /// <param name="xml">The XML reader.</param>
+    /// <param name="source">The input, for a second read.</param>
     /// <returns>The element tree.</returns>
-    private SvgElementTree ReadDocument(XmlReader xml)
+    private SvgElementTree ReadDocument(XmlReader xml, in Source source)
     {
         try
         {
@@ -239,20 +316,50 @@ internal sealed class SvgReader
             throw new InvalidImageContentException("The SVG document has no root element.");
         }
 
-        this.styleSheet.Complete();
+        SvgStyleSheet? sheet = this.styleSheet;
+        sheet?.Complete(sheet.HasMediaQueries ? this.ComputeMediaViewport() : default);
+        SvgCssMatcher? matcher = null;
+        if (sheet?.Count > 0)
+        {
+            bool[]? content = null;
+            if (sheet.UsesEmpty)
+            {
+                content = new bool[this.tables.Elements.Count];
+            }
+
+            // Elements read before a tested attribute name became known, and the text content that :empty tests, come
+            // from a second read of the input. Documents without such selectors never get here with work to do.
+            int backfillEnd = 0;
+            if (this.attributeCoverage is not null)
+            {
+                foreach (int from in this.attributeCoverage.Values)
+                {
+                    backfillEnd = Math.Max(backfillEnd, from);
+                }
+            }
+
+            if (backfillEnd > 0 || content is not null)
+            {
+                this.ReadAgain(in source, backfillEnd, content);
+            }
+
+            this.attributeValues?.Complete(this.tables.Elements.Count);
+            matcher = new SvgCssMatcher(sheet, this.tables.Elements, this.tables.ClassNames, this.attributeValues, content);
+        }
+
         SvgCascade.Apply(
             CollectionsMarshal.AsSpan(this.tables.Elements),
-            CollectionsMarshal.AsSpan(this.tables.ClassNames),
             CollectionsMarshal.AsSpan(this.styleSources),
             this.tables.Styles,
-            this.styleSheet);
+            sheet,
+            matcher);
 
         if (this.properties.HasTransformDeclarations)
         {
             this.ApplyTransformProperty();
         }
 
-        return new SvgElementTree(this.tables, this.styleSheet.Count);
+        return new SvgElementTree(this.tables, sheet?.Count ?? 0);
     }
 
     /// <summary>
@@ -412,11 +519,184 @@ internal sealed class SvgReader
 
             if (this.styleText is not null)
             {
-                SvgCssParser.ParseStyleSheet(this.styleText, this.styleSheet, this.properties, this.names);
+                SvgStyleSheet sheet = this.StyleSheet;
+                int media = this.styleMedia is null ? -1 : sheet.AddMedia(this.styleMedia, -1);
+                SvgCssParser.ParseStyleSheet(this.styleText, sheet, this.properties, this.names, false, media);
+                this.UpdateAttributeCoverage();
             }
 
             this.styleElement = -1;
             this.styleText = null;
+            this.styleMedia = null;
+        }
+    }
+
+    /// <summary>
+    /// Starts recording the attributes whose names the style sheets test and that are not recorded yet. Recording starts
+    /// at the next element; the elements read so far get the values from <see cref="ReadAgain(in Source, int, bool[])"/>.
+    /// </summary>
+    private void UpdateAttributeCoverage()
+    {
+        IReadOnlyCollection<string>? names = this.styleSheet?.AttributeNames;
+        if (names is null || names.Count == this.attributeCoverage?.Count)
+        {
+            return;
+        }
+
+        this.attributeCoverage ??= new Dictionary<string, int>(StringComparer.Ordinal);
+        this.attributeValues ??= new SvgCssAttributeValues();
+        foreach (string name in names)
+        {
+            _ = this.attributeCoverage.TryAdd(name, this.tables.Elements.Count);
+        }
+    }
+
+    /// <summary>
+    /// Computes the viewport that media queries test: the intrinsic size of the document in CSS pixels.
+    /// </summary>
+    /// <remarks>
+    /// The rules are those of <see cref="SvgResolver"/> for the intrinsic size: absolute <c>width</c> and <c>height</c>,
+    /// a missing or percentage side from the aspect ratio of the view box, and 300 x 150 without a view box. Relative
+    /// units use the initial font size, as media queries do. A browser tests the size that the image is drawn at; the
+    /// cascade runs once at load, before any drawing size is known, so it uses the intrinsic size, which is what a
+    /// browser draws at by default.
+    /// </remarks>
+    /// <returns>The viewport size.</returns>
+    private SizeF ComputeMediaViewport()
+    {
+        ref readonly SvgViewportAttributes root = ref CollectionsMarshal.AsSpan(this.tables.Viewports)[this.tables.Elements[0].DataIndex];
+        SvgUnitBasis units = SvgUnitBasis.ForRoot(96F);
+        bool hasWidth = root.Width.IsSpecified && root.Width.Unit != SvgLengthUnit.Percent;
+        bool hasHeight = root.Height.IsSpecified && root.Height.Unit != SvgLengthUnit.Percent;
+        float width = hasWidth ? SvgUnits.ToPixels(root.Width, SvgUnitBasis.InitialFontSize, units) : 0F;
+        float height = hasHeight ? SvgUnits.ToPixels(root.Height, SvgUnitBasis.InitialFontSize, units) : 0F;
+        if (root.HasViewBox && root.ViewBox.Width > 0F && root.ViewBox.Height > 0F)
+        {
+            RectangleF box = root.ViewBox;
+            if (!hasWidth && !hasHeight)
+            {
+                return box.Size;
+            }
+
+            if (!hasWidth)
+            {
+                width = height * box.Width / box.Height;
+            }
+            else if (!hasHeight)
+            {
+                height = width * box.Height / box.Width;
+            }
+
+            return new SizeF(width, height);
+        }
+
+        return new SizeF(hasWidth ? width : 300F, hasHeight ? height : 150F);
+    }
+
+    /// <summary>
+    /// Reads the input a second time to collect what the first read did not keep: the raw values of tested attributes
+    /// of the elements read before their name became known, and, for <c>:empty</c>, which elements have text content.
+    /// </summary>
+    /// <remarks>
+    /// The second read sees the same XML, so its elements come in the same order and the n-th element start has index n.
+    /// Without <paramref name="content"/> it stops after the last element it needs, which is usually close to the start:
+    /// a <c>style</c> element mostly sits near the top of the document. The text test needs every element and keeps
+    /// whitespace nodes, because Chromium counts whitespace text as content for <c>:empty</c>.
+    /// </remarks>
+    /// <param name="source">The input.</param>
+    /// <param name="end">The index after the last element whose attributes are needed.</param>
+    /// <param name="content">The array that receives, per element, whether it has text content; or <see langword="null"/>.</param>
+    private void ReadAgain(in Source source, int end, bool[]? content)
+    {
+        XmlReaderSettings settings = CreateSettings(in this.options, new SvgNameTable());
+        settings.IgnoreWhitespace = content is null;
+        StringReader? stringReader = null;
+        StreamReader? streamReader = null;
+        XmlReader xml;
+        long resume = 0;
+        if (source.Text is not null)
+        {
+            stringReader = new StringReader(source.Text);
+            xml = XmlReader.Create(stringReader, settings);
+        }
+        else
+        {
+            Stream stream = source.Stream!;
+            resume = stream.Position;
+            stream.Position = source.Position;
+            if (source.Encoding is null)
+            {
+                xml = XmlReader.Create(stream, settings);
+            }
+            else
+            {
+                streamReader = new StreamReader(stream, source.Encoding, false, -1, true);
+                xml = XmlReader.Create(streamReader, settings);
+            }
+        }
+
+        try
+        {
+            Dictionary<string, int>? coverage = this.attributeCoverage;
+            List<int> open = this.openElements;
+            open.Clear();
+            int next = 0;
+            while (xml.Read())
+            {
+                switch (xml.NodeType)
+                {
+                    case XmlNodeType.Element:
+                        int index = next++;
+                        if (index >= end && content is null)
+                        {
+                            return;
+                        }
+
+                        if (index < end && coverage is not null && xml.MoveToFirstAttribute())
+                        {
+                            do
+                            {
+                                if (coverage.TryGetValue(xml.LocalName, out int from) && index < from)
+                                {
+                                    this.attributeValues!.Add(index, xml.LocalName, xml.NamespaceURI.Length != 0, xml.Value);
+                                }
+                            }
+                            while (xml.MoveToNextAttribute());
+
+                            _ = xml.MoveToElement();
+                        }
+
+                        if (!xml.IsEmptyElement)
+                        {
+                            open.Add(index);
+                        }
+
+                        break;
+                    case XmlNodeType.EndElement:
+                        open.RemoveAt(open.Count - 1);
+                        break;
+                    case XmlNodeType.Text:
+                    case XmlNodeType.CDATA:
+                    case XmlNodeType.Whitespace:
+                    case XmlNodeType.SignificantWhitespace:
+                        if (content is not null && open.Count > 0)
+                        {
+                            content[open[^1]] = true;
+                        }
+
+                        break;
+                }
+            }
+        }
+        finally
+        {
+            xml.Dispose();
+            stringReader?.Dispose();
+            streamReader?.Dispose();
+            if (source.Stream is not null)
+            {
+                source.Stream.Position = resume;
+            }
         }
     }
 
@@ -433,8 +713,10 @@ internal sealed class SvgReader
         string? href = null;
         string? xlinkHref = null;
         bool isCss = true;
+        string? media = null;
         ref SvgElement element = ref CollectionsMarshal.AsSpan(this.tables.Elements)[index];
         SvgElementKind kind = element.Kind;
+        Dictionary<string, int>? coverage = this.attributeCoverage;
 
         if (xml.MoveToFirstAttribute())
         {
@@ -442,6 +724,13 @@ internal sealed class SvgReader
             {
                 string name = xml.LocalName;
                 string ns = xml.NamespaceURI;
+
+                // Attribute selectors test raw values. Only documents whose style sheets have them record any.
+                if (coverage is not null && coverage.ContainsKey(name))
+                {
+                    this.attributeValues!.Add(index, name, ns.Length != 0, xml.Value);
+                }
+
                 if (ns.Length == 0)
                 {
                     if (SvgNames.Attributes.TryGetValue(name, out SvgAttributeId attribute))
@@ -495,6 +784,12 @@ internal sealed class SvgReader
                     {
                         _ = this.properties.TryParse(property, xml.Value, ref presentation);
                     }
+                    else if (kind == SvgElementKind.Style && name == "media")
+                    {
+                        // The media query list of the style sheet. Only style elements read it, so the name needs no
+                        // entry in the name tables.
+                        media = xml.Value;
+                    }
                 }
                 else if (ReferenceEquals(ns, SvgNames.XLinkNamespace) && ReferenceEquals(name, SvgNames.Href))
                 {
@@ -517,6 +812,10 @@ internal sealed class SvgReader
         {
             // A style sheet of another type is ignored: the element keeps its kind but its text is not read.
             element.Kind = SvgElementKind.Unknown;
+        }
+        else if (kind == SvgElementKind.Style)
+        {
+            this.styleMedia = media;
         }
 
         this.styleSources.Add(new SvgStyleSources(
@@ -568,6 +867,47 @@ internal sealed class SvgReader
             rest = rest[length..];
             count++;
         }
+    }
+
+    /// <summary>
+    /// The input of a read, kept so that the reader can read it a second time.
+    /// </summary>
+    private readonly struct Source
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Source"/> struct.
+        /// </summary>
+        /// <param name="text">The document text, or <see langword="null"/> for a stream.</param>
+        /// <param name="stream">The seekable stream, or <see langword="null"/> for text.</param>
+        /// <param name="position">The position of the document in the stream.</param>
+        /// <param name="encoding">The legacy encoding that decodes the stream, or <see langword="null"/> when the XML reader detects it.</param>
+        public Source(string? text, Stream? stream, long position, Encoding? encoding)
+        {
+            this.Text = text;
+            this.Stream = stream;
+            this.Position = position;
+            this.Encoding = encoding;
+        }
+
+        /// <summary>
+        /// Gets the document text, or <see langword="null"/> for a stream.
+        /// </summary>
+        public string? Text { get; }
+
+        /// <summary>
+        /// Gets the seekable stream, or <see langword="null"/> for text.
+        /// </summary>
+        public Stream? Stream { get; }
+
+        /// <summary>
+        /// Gets the position of the document in the stream.
+        /// </summary>
+        public long Position { get; }
+
+        /// <summary>
+        /// Gets the legacy encoding that decodes the stream, or <see langword="null"/> when the XML reader detects it.
+        /// </summary>
+        public Encoding? Encoding { get; }
     }
 
     /// <summary>

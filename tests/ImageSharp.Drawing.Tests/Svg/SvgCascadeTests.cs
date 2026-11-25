@@ -175,12 +175,9 @@ public class SvgCascadeTests
         Assert.False(StyleOf(tree, "r").IsSpecified(SvgPropertyId.Fill));
     }
 
-    // A selector list with any invalid or unsupported selector drops the whole rule.
+    // A selector list with any invalid or unsupported selector drops the whole rule. SvgSelectorTests covers the
+    // selectors of phase 2.
     [Theory]
-    [InlineData("rect, a:hover { fill: red }")]
-    [InlineData("rect[x] { fill: red }")]
-    [InlineData("rect + rect { fill: red }")]
-    [InlineData("rect ~ rect { fill: red }")]
     [InlineData("svg|rect { fill: red }")]
     [InlineData("rect, { fill: red }")]
     [InlineData(", rect { fill: red }")]
@@ -190,8 +187,6 @@ public class SvgCascadeTests
     [InlineData("rect* { fill: red }")]
     [InlineData(". c { fill: red }")]
     [InlineData("#1 { fill: red }")]
-    [InlineData("rect::before { fill: red }")]
-    [InlineData(":not(circle) { fill: red }")]
     public void Selectors_InvalidListDropsTheRule(string css)
     {
         SvgElementTree tree = Read($$"""<style>{{css}} rect { stroke: blue }</style><rect id="r" class="c"/>""");

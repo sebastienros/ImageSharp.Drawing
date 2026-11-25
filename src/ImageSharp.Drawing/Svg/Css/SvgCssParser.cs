@@ -1,29 +1,51 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
+using System.Text;
 using SixLabors.ImageSharp.Drawing.Helpers;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Parses style sheets and declaration lists with the parser algorithms of CSS Syntax Level 3, section 5, and the phase 1
-/// selector subset.
+/// Parses style sheets and declaration lists with the parser algorithms of CSS Syntax Level 3, section 5.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The parser streams over <see cref="SvgCssTokenizer"/> tokens and builds no component value tree. Blocks that it does
-/// not use (at-rules, and nested blocks inside preludes and values) are skipped with a stack of the expected closing
-/// tokens, so input such as unbalanced brackets or deep nesting cannot overflow the call stack and the parser stays in
-/// sync. The recovery rules follow the CSS Syntax parser of the Jint project (BSD 2-Clause License, see
-/// THIRD-PARTY-NOTICES).
+/// not use (at-rules other than <c>@media</c>, and nested blocks inside preludes and values) are skipped with a stack of
+/// the expected closing tokens, so input such as unbalanced brackets or deep nesting cannot overflow the call stack and
+/// the parser stays in sync. The recovery rules follow the CSS Syntax parser of the Jint project (BSD 2-Clause License,
+/// see THIRD-PARTY-NOTICES).
 /// </para>
 /// <para>
-/// Phase 1 selectors are type, universal, class, and id selectors, compound selectors, the descendant and child
-/// combinators, and selector lists. A selector list with any other selector drops the whole rule, as CSS requires.
+/// Selectors are parsed by <see cref="SvgCssSelectorParser"/>. A selector list with an invalid selector drops the whole
+/// rule, as CSS requires. The rules of an <c>@media</c> block are kept with the media condition of the block, which
+/// <see cref="SvgStyleSheet.Complete(SizeF)"/> evaluates once the viewport is known. <c>@media</c> blocks nest up to
+/// <see cref="SvgStyleSheet.MaxMediaNesting"/> levels; deeper blocks are skipped.
+/// </para>
+/// <para>
+/// Escapes are decoded in property names, selectors, and declaration values. A value with an escape is rebuilt from its
+/// decoded tokens before the value parsers, which do not know CSS escapes, see it.
 /// </para>
 /// </remarks>
 internal static class SvgCssParser
 {
+    /// <summary>
+    /// The characters that a decoded URL cannot contain without escapes.
+    /// </summary>
+    private static readonly SearchValues<char> UrlTerminators = SearchValues.Create("()\"'\\ \t\n\r\f");
+
+    /// <summary>
+    /// Parses an author style sheet and appends its rules to <paramref name="sheet"/>.
+    /// </summary>
+    /// <param name="text">The style sheet text.</param>
+    /// <param name="sheet">The style sheet that receives the rules.</param>
+    /// <param name="properties">The property parser.</param>
+    /// <param name="names">The pool that interns class names.</param>
+    public static void ParseStyleSheet(ReadOnlySpan<char> text, SvgStyleSheet sheet, SvgPropertyParser properties, SvgStringPool names)
+        => ParseStyleSheet(text, sheet, properties, names, false, -1);
+
     /// <summary>
     /// Parses a style sheet and appends its rules to <paramref name="sheet"/>.
     /// </summary>
@@ -31,47 +53,10 @@ internal static class SvgCssParser
     /// <param name="sheet">The style sheet that receives the rules.</param>
     /// <param name="properties">The property parser.</param>
     /// <param name="names">The pool that interns class names.</param>
-    public static void ParseStyleSheet(ReadOnlySpan<char> text, SvgStyleSheet sheet, SvgPropertyParser properties, SvgStringPool names)
-    {
-        // CSS Syntax 5.4.1, consume a list of rules, with the top-level flag set.
-        SvgCssTokenizer tokenizer = new(text);
-        while (true)
-        {
-            SvgCssToken token = tokenizer.Next();
-            switch (token.Kind)
-            {
-                case SvgCssTokenKind.EndOfFile:
-                    return;
-                case SvgCssTokenKind.Whitespace:
-                case SvgCssTokenKind.Cdo:
-                case SvgCssTokenKind.Cdc:
-                    continue;
-                case SvgCssTokenKind.AtKeyword:
-                    // Phase 1 supports no at-rule. Skipping it whole drops @media and @import content.
-                    SkipAtRule(ref tokenizer);
-                    continue;
-            }
-
-            // CSS Syntax 5.4.3, consume a qualified rule: the prelude runs to the "{" of the block.
-            int preludeStart = token.Start;
-            while (token.Kind != SvgCssTokenKind.OpenCurly)
-            {
-                if (token.Kind == SvgCssTokenKind.EndOfFile)
-                {
-                    // A rule without a block is a parse error and is dropped.
-                    return;
-                }
-
-                SkipComponentValue(ref tokenizer, token);
-                token = tokenizer.Next();
-            }
-
-            int preludeEnd = token.Start;
-            int blockStart = token.End;
-            int blockEnd = SkipBlock(ref tokenizer, SvgCssTokenKind.CloseCurly, text.Length);
-            AddRule(text[preludeStart..preludeEnd], text[blockStart..blockEnd], sheet, properties, names);
-        }
-    }
+    /// <param name="isUser">Whether the rules have the user origin.</param>
+    /// <param name="media">The media condition of the whole style sheet, or -1.</param>
+    public static void ParseStyleSheet(ReadOnlySpan<char> text, SvgStyleSheet sheet, SvgPropertyParser properties, SvgStringPool names, bool isUser, int media)
+        => ParseRules(text, sheet, properties, names, isUser, media, 0);
 
     /// <summary>
     /// Parses a declaration list, as in a <c>style</c> attribute or a rule block, into two styles: one for normal
@@ -113,6 +98,119 @@ internal static class SvgCssParser
     }
 
     /// <summary>
+    /// Parses a list of rules: the top level of a style sheet or the block of an <c>@media</c> rule.
+    /// </summary>
+    /// <param name="text">The rule list text.</param>
+    /// <param name="sheet">The style sheet that receives the rules.</param>
+    /// <param name="properties">The property parser.</param>
+    /// <param name="names">The pool that interns class names.</param>
+    /// <param name="isUser">Whether the rules have the user origin.</param>
+    /// <param name="media">The media condition of the rules, or -1.</param>
+    /// <param name="depth">The <c>@media</c> nesting depth.</param>
+    private static void ParseRules(
+        ReadOnlySpan<char> text,
+        SvgStyleSheet sheet,
+        SvgPropertyParser properties,
+        SvgStringPool names,
+        bool isUser,
+        int media,
+        int depth)
+    {
+        // CSS Syntax 5.4.1, consume a list of rules. CDO and CDC are skipped in nested lists too, as browsers do.
+        SvgCssTokenizer tokenizer = new(text);
+        while (true)
+        {
+            SvgCssToken token = tokenizer.Next();
+            switch (token.Kind)
+            {
+                case SvgCssTokenKind.EndOfFile:
+                    return;
+                case SvgCssTokenKind.Whitespace:
+                case SvgCssTokenKind.Cdo:
+                case SvgCssTokenKind.Cdc:
+                    continue;
+                case SvgCssTokenKind.AtKeyword:
+                    if (depth < SvgStyleSheet.MaxMediaNesting
+                        && Ascii.EqualsIgnoreCase(token.HasEscape ? token.GetValue(text) : token.GetRawValue(text), "media"))
+                    {
+                        ParseMediaRule(ref tokenizer, text, sheet, properties, names, isUser, media, depth);
+                    }
+                    else
+                    {
+                        // Other at-rules, such as @import, @font-face, and @supports, are not supported and are skipped
+                        // whole.
+                        SkipAtRule(ref tokenizer);
+                    }
+
+                    continue;
+            }
+
+            // CSS Syntax 5.4.3, consume a qualified rule: the prelude runs to the "{" of the block.
+            int preludeStart = token.Start;
+            while (token.Kind != SvgCssTokenKind.OpenCurly)
+            {
+                if (token.Kind == SvgCssTokenKind.EndOfFile)
+                {
+                    // A rule without a block is a parse error and is dropped.
+                    return;
+                }
+
+                SkipComponentValue(ref tokenizer, token);
+                token = tokenizer.Next();
+            }
+
+            int preludeEnd = token.Start;
+            int blockStart = token.End;
+            int blockEnd = SkipBlock(ref tokenizer, SvgCssTokenKind.CloseCurly, text.Length);
+            AddRule(text[preludeStart..preludeEnd], text[blockStart..blockEnd], sheet, properties, names, isUser, media);
+        }
+    }
+
+    /// <summary>
+    /// Parses an <c>@media</c> rule after its keyword: the media query list, then the rules of its block.
+    /// </summary>
+    /// <param name="tokenizer">The tokenizer, positioned after the at-keyword.</param>
+    /// <param name="text">The rule list text.</param>
+    /// <param name="sheet">The style sheet that receives the rules.</param>
+    /// <param name="properties">The property parser.</param>
+    /// <param name="names">The pool that interns class names.</param>
+    /// <param name="isUser">Whether the rules have the user origin.</param>
+    /// <param name="media">The media condition of the enclosing rules, or -1.</param>
+    /// <param name="depth">The <c>@media</c> nesting depth of the enclosing rules.</param>
+    private static void ParseMediaRule(
+        ref SvgCssTokenizer tokenizer,
+        ReadOnlySpan<char> text,
+        SvgStyleSheet sheet,
+        SvgPropertyParser properties,
+        SvgStringPool names,
+        bool isUser,
+        int media,
+        int depth)
+    {
+        int preludeStart = tokenizer.Position;
+        while (true)
+        {
+            SvgCssToken token = tokenizer.Next();
+            switch (token.Kind)
+            {
+                case SvgCssTokenKind.EndOfFile:
+                case SvgCssTokenKind.Semicolon:
+                    // An @media rule without a block has no rules.
+                    return;
+                case SvgCssTokenKind.OpenCurly:
+                    int blockStart = token.End;
+                    int blockEnd = SkipBlock(ref tokenizer, SvgCssTokenKind.CloseCurly, text.Length);
+                    int condition = sheet.AddMedia(text[preludeStart..token.Start].ToString(), media);
+                    ParseRules(text[blockStart..blockEnd], sheet, properties, names, isUser, condition, depth + 1);
+                    return;
+                default:
+                    SkipComponentValue(ref tokenizer, token);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
     /// Parses the selector list of a rule and, when it is valid, adds one rule per selector.
     /// </summary>
     /// <param name="prelude">The selector list text.</param>
@@ -120,19 +218,30 @@ internal static class SvgCssParser
     /// <param name="sheet">The style sheet that receives the rules.</param>
     /// <param name="properties">The property parser.</param>
     /// <param name="names">The pool that interns class names.</param>
-    private static void AddRule(ReadOnlySpan<char> prelude, ReadOnlySpan<char> block, SvgStyleSheet sheet, SvgPropertyParser properties, SvgStringPool names)
+    /// <param name="isUser">Whether the rule has the user origin.</param>
+    /// <param name="media">The media condition of the rule, or -1.</param>
+    private static void AddRule(
+        ReadOnlySpan<char> prelude,
+        ReadOnlySpan<char> block,
+        SvgStyleSheet sheet,
+        SvgPropertyParser properties,
+        SvgStringPool names,
+        bool isUser,
+        int media)
     {
         int simpleStart = sheet.SimpleSelectors.Count;
         int compoundStart = sheet.Compounds.Count;
+        int argumentStart = sheet.Arguments.Count;
         Span<int> selectorStorage = stackalloc int[16];
         ValueListBuilder<int> selectors = new(selectorStorage);
         try
         {
             // Each selector is stored as (first compound, compound count, specificity) in the builder.
-            if (!TryParseSelectorList(prelude, sheet, names, ref selectors))
+            if (!SvgCssSelectorParser.TryParse(prelude, sheet, names, ref selectors))
             {
                 sheet.SimpleSelectors.RemoveRange(simpleStart, sheet.SimpleSelectors.Count - simpleStart);
                 sheet.Compounds.RemoveRange(compoundStart, sheet.Compounds.Count - compoundStart);
+                sheet.Arguments.RemoveRange(argumentStart, sheet.Arguments.Count - argumentStart);
                 return;
             }
 
@@ -145,7 +254,7 @@ internal static class SvgCssParser
             ReadOnlySpan<int> parsed = selectors.AsSpan();
             for (int i = 0; i < parsed.Length; i += 3)
             {
-                sheet.Add(new SvgCssRule(parsed[i], parsed[i + 1], parsed[i + 2], order, normalIndex, importantIndex));
+                sheet.Add(new SvgCssRule(parsed[i], parsed[i + 1], parsed[i + 2], order, normalIndex, importantIndex, isUser, media));
             }
         }
         finally
@@ -169,143 +278,6 @@ internal static class SvgCssParser
 
         sheet.Styles.Add(style);
         return sheet.Styles.Count - 1;
-    }
-
-    /// <summary>
-    /// Parses a selector list into the style sheet tables.
-    /// </summary>
-    /// <param name="prelude">The selector list text.</param>
-    /// <param name="sheet">The style sheet that receives the simple and compound selectors.</param>
-    /// <param name="names">The pool that interns class names.</param>
-    /// <param name="selectors">The builder that receives (first compound, compound count, specificity) per selector.</param>
-    /// <returns><see langword="true"/> if every selector in the list is supported and valid; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseSelectorList(ReadOnlySpan<char> prelude, SvgStyleSheet sheet, SvgStringPool names, ref ValueListBuilder<int> selectors)
-    {
-        SvgCssTokenizer tokenizer = new(prelude);
-        int firstCompound = sheet.Compounds.Count;
-        int ids = 0;
-        int classes = 0;
-        int types = 0;
-
-        // The compound being read: its first simple selector, or -1 when no compound is open. A compound closes at
-        // whitespace or a combinator.
-        int openCompound = -1;
-        SvgCssCombinator combinator = SvgCssCombinator.None;
-        while (true)
-        {
-            SvgCssToken token = tokenizer.Next();
-            SvgCssSimpleSelectorKind kind;
-            string? name;
-            switch (token.Kind)
-            {
-                case SvgCssTokenKind.Whitespace:
-                    if (openCompound >= 0)
-                    {
-                        CloseCompound(sheet, ref openCompound, combinator);
-                        combinator = SvgCssCombinator.Descendant;
-                    }
-
-                    continue;
-                case SvgCssTokenKind.Comma:
-                case SvgCssTokenKind.EndOfFile:
-                    if (openCompound >= 0)
-                    {
-                        CloseCompound(sheet, ref openCompound, combinator);
-                    }
-                    else if (combinator == SvgCssCombinator.Child)
-                    {
-                        // A combinator needs a compound on its right.
-                        return false;
-                    }
-
-                    int count = sheet.Compounds.Count - firstCompound;
-                    if (count is 0 or > SvgStyleSheet.MaxCompoundsPerSelector)
-                    {
-                        return false;
-                    }
-
-                    selectors.Append(firstCompound);
-                    selectors.Append(count);
-                    selectors.Append((Math.Min(ids, 255) << 16) | (Math.Min(classes, 255) << 8) | Math.Min(types, 255));
-                    if (token.Kind == SvgCssTokenKind.EndOfFile)
-                    {
-                        return true;
-                    }
-
-                    firstCompound = sheet.Compounds.Count;
-                    ids = classes = types = 0;
-                    combinator = SvgCssCombinator.None;
-                    continue;
-                case SvgCssTokenKind.Delim when token.IsDelimiter(prelude, '>'):
-                    if (openCompound >= 0)
-                    {
-                        CloseCompound(sheet, ref openCompound, combinator);
-                    }
-                    else if (combinator != SvgCssCombinator.Descendant)
-                    {
-                        // ">" needs a compound on its left, and two combinators cannot follow each other.
-                        return false;
-                    }
-
-                    combinator = SvgCssCombinator.Child;
-                    continue;
-                case SvgCssTokenKind.Ident:
-                    kind = SvgCssSimpleSelectorKind.Type;
-                    name = token.GetValue(prelude);
-                    types++;
-                    break;
-                case SvgCssTokenKind.Delim when token.IsDelimiter(prelude, '*'):
-                    kind = SvgCssSimpleSelectorKind.Universal;
-                    name = null;
-                    break;
-                case SvgCssTokenKind.Hash when token.IsIdHash:
-                    kind = SvgCssSimpleSelectorKind.Id;
-                    name = token.GetValue(prelude);
-                    ids++;
-                    break;
-                case SvgCssTokenKind.Delim when token.IsDelimiter(prelude, '.'):
-                    // The class name must follow the dot directly.
-                    SvgCssToken className = tokenizer.Next();
-                    if (className.Kind != SvgCssTokenKind.Ident)
-                    {
-                        return false;
-                    }
-
-                    kind = SvgCssSimpleSelectorKind.Class;
-                    name = className.HasEscape ? names.Get(className.GetValue(prelude)) : names.Get(className.GetRawValue(prelude));
-                    classes++;
-                    break;
-                default:
-                    // Attribute selectors, pseudo-classes, sibling combinators, namespaces, and anything else are not
-                    // phase 1 selectors.
-                    return false;
-            }
-
-            // A type or universal selector must come first in its compound.
-            if (kind is SvgCssSimpleSelectorKind.Type or SvgCssSimpleSelectorKind.Universal && openCompound >= 0)
-            {
-                return false;
-            }
-
-            if (openCompound < 0)
-            {
-                openCompound = sheet.SimpleSelectors.Count;
-            }
-
-            sheet.SimpleSelectors.Add(new SvgCssSimpleSelector(kind, name));
-        }
-    }
-
-    /// <summary>
-    /// Closes the open compound selector and adds it to the compound table.
-    /// </summary>
-    /// <param name="sheet">The style sheet.</param>
-    /// <param name="openCompound">The first simple selector of the open compound; set to -1.</param>
-    /// <param name="combinator">The combinator before the compound.</param>
-    private static void CloseCompound(SvgStyleSheet sheet, ref int openCompound, SvgCssCombinator combinator)
-    {
-        sheet.Compounds.Add(new SvgCssCompoundSelector(openCompound, sheet.SimpleSelectors.Count - openCompound, combinator));
-        openCompound = -1;
     }
 
     /// <summary>
@@ -345,6 +317,7 @@ internal static class SvgCssParser
         SvgCssToken beforeLast = default;
         int lastCount = 0;
         bool hasGap = false;
+        bool hasEscape = false;
         int previousEnd = token.End;
         while (true)
         {
@@ -367,6 +340,7 @@ internal static class SvgCssParser
                 valueStart = token.Start;
             }
 
+            hasEscape |= token.HasEscape;
             beforeLast = last;
             last = token;
             lastCount++;
@@ -375,7 +349,7 @@ internal static class SvgCssParser
 
         bool isImportant = lastCount >= 2
             && last.Kind == SvgCssTokenKind.Ident
-            && last.GetRawValue(text).Equals("important", StringComparison.OrdinalIgnoreCase)
+            && Ascii.EqualsIgnoreCase(last.HasEscape ? last.GetValue(text) : last.GetRawValue(text), "important")
             && beforeLast.IsDelimiter(text, '!');
 
         if (isImportant)
@@ -390,14 +364,14 @@ internal static class SvgCssParser
 
         ReadOnlySpan<char> value = text[valueStart..valueEnd];
         ref SvgSpecifiedStyle target = ref isImportant ? ref important : ref normal;
-        if (!hasGap)
+        if (!hasGap && !hasEscape)
         {
             _ = isMarker ? properties.TryParseMarkerShorthand(value, ref target) : properties.TryParse(property, value, ref target);
             return;
         }
 
-        // A comment inside the value: rebuild the value with each comment replaced by a space, so the value parsers,
-        // which do not know CSS comments, see the tokens alone.
+        // A comment or an escape inside the value: rebuild the value with each comment replaced by a space and each
+        // escape decoded, so the value parsers, which know neither, see the tokens alone.
         ValueStringBuilder builder = new(stackalloc char[128]);
         try
         {
@@ -410,7 +384,7 @@ internal static class SvgCssParser
                     builder.Append(' ');
                 }
 
-                builder.Append(value[t.Start..t.End]);
+                AppendDecoded(ref builder, value, t);
                 end = t.End;
             }
 
@@ -422,6 +396,88 @@ internal static class SvgCssParser
         {
             builder.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Appends a token to a rebuilt value, with its escapes decoded.
+    /// </summary>
+    /// <remarks>
+    /// A decoded value is appended only when it keeps its meaning without escapes: an identifier must still read as one
+    /// identifier, a string must not contain its quote, and a URL must not contain characters that end it. Otherwise the
+    /// raw token is appended, which the value parsers reject, as an escaped character that changes the token can never
+    /// form a valid SVG property value.
+    /// </remarks>
+    /// <param name="builder">The builder.</param>
+    /// <param name="value">The value text.</param>
+    /// <param name="token">The token.</param>
+    private static void AppendDecoded(ref ValueStringBuilder builder, ReadOnlySpan<char> value, SvgCssToken token)
+    {
+        if (token.HasEscape)
+        {
+            string decoded = token.GetValue(value);
+            switch (token.Kind)
+            {
+                case SvgCssTokenKind.Ident when IsPlainName(decoded, true):
+                    builder.Append(decoded);
+                    return;
+                case SvgCssTokenKind.Function when IsPlainName(decoded, true):
+                    builder.Append(decoded);
+                    builder.Append('(');
+                    return;
+                case SvgCssTokenKind.Hash when IsPlainName(decoded, false):
+                    builder.Append('#');
+                    builder.Append(decoded);
+                    return;
+                case SvgCssTokenKind.Dimension when IsPlainName(decoded, true) && (decoded[0] | 0x20) != 'e':
+                    builder.Append(value[token.Start..token.ValueStart]);
+                    builder.Append(decoded);
+                    return;
+                case SvgCssTokenKind.String when decoded.AsSpan().IndexOfAny(value[token.Start], '\\', '\n') < 0:
+                    builder.Append(value[token.Start]);
+                    builder.Append(decoded);
+                    builder.Append(value[token.Start]);
+                    return;
+                case SvgCssTokenKind.Url when decoded.AsSpan().IndexOfAny(UrlTerminators) < 0:
+                    builder.Append("url(");
+                    builder.Append(decoded);
+                    builder.Append(')');
+                    return;
+            }
+        }
+
+        builder.Append(value[token.Start..token.End]);
+    }
+
+    /// <summary>
+    /// Returns whether a decoded name reads as the same name without escapes: it has only name characters and, for an
+    /// identifier, does not start like a number.
+    /// </summary>
+    /// <param name="name">The decoded name.</param>
+    /// <param name="identifier">Whether the name must start an identifier.</param>
+    /// <returns><see langword="true"/> if the name needs no escape; otherwise, <see langword="false"/>.</returns>
+    private static bool IsPlainName(string name, bool identifier)
+    {
+        if (name.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (char c in name)
+        {
+            if (!(char.IsAsciiLetterOrDigit(c) || c is '_' or '-' || c >= 0x80))
+            {
+                return false;
+            }
+        }
+
+        if (!identifier)
+        {
+            return true;
+        }
+
+        char first = name[0];
+        char second = name.Length > 1 ? name[1] : '\0';
+        return !char.IsAsciiDigit(first) && !(first == '-' && (char.IsAsciiDigit(second) || name.Length == 1));
     }
 
     /// <summary>
