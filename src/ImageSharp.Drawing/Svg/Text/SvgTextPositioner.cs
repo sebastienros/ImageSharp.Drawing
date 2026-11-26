@@ -36,7 +36,8 @@ internal static partial class SvgTextPositioner
 
     /// <summary>
     /// Hook of package T4: for a cluster of a vertical writing mode, sets <paramref name="vertical"/> and the advance of
-    /// the cluster along y. Without an implementation all text is horizontal.
+    /// the cluster along y; for a cluster of a cursive script, removes the letter spacing from the advance. Without an
+    /// implementation all text is horizontal.
     /// </summary>
     /// <param name="layout">The layout.</param>
     /// <param name="cluster">The cluster.</param>

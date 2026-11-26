@@ -61,6 +61,13 @@ internal static partial class SvgTextAnchoring
             return;
         }
 
+        bool handled = false;
+        ApplyVerticalAnchor(layout, chunk, anchor, ref handled);
+        if (handled)
+        {
+            return;
+        }
+
         float min = float.MaxValue;
         float max = float.MinValue;
         foreach (ref readonly SvgTextCluster cluster in chunk)
@@ -77,4 +84,14 @@ internal static partial class SvgTextAnchoring
             cluster.X += shift;
         }
     }
+
+    /// <summary>
+    /// Hook of package T4: shifts a chunk of vertical text along y for <c>middle</c> and <c>end</c>, and sets
+    /// <paramref name="handled"/>. Without an implementation every chunk shifts along x.
+    /// </summary>
+    /// <param name="layout">The layout.</param>
+    /// <param name="chunk">The clusters of the chunk.</param>
+    /// <param name="anchor">The anchor of the chunk, <c>middle</c> or <c>end</c>.</param>
+    /// <param name="handled">Whether the hook shifted the chunk; <see langword="false"/> on entry.</param>
+    static partial void ApplyVerticalAnchor(SvgTextLayout layout, Span<SvgTextCluster> chunk, SvgTextAnchor anchor, ref bool handled);
 }

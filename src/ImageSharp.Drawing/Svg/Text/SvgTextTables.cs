@@ -24,9 +24,10 @@ internal sealed class SvgTextTables
     public List<SvgTextPathAttributes> TextPaths { get; } = [];
 
     /// <summary>
-    /// Gets the referenced ids of <c>tref</c> elements, or <see langword="null"/> for a missing or external reference.
+    /// Gets the referenced ids of <c>tref</c> elements, by the index of their record in <see cref="TextAttributes"/>. A
+    /// missing or external reference has no entry.
     /// </summary>
-    public List<string?> TrefReferences { get; } = [];
+    public Dictionary<int, string> TrefReferences { get; } = [];
 
     /// <summary>
     /// Gets the lengths of the <c>x</c>, <c>y</c>, <c>dx</c>, and <c>dy</c> lists.

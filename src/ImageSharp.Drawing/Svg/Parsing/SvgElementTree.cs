@@ -309,7 +309,7 @@ internal sealed class SvgElementTree
     public ref readonly SvgImageAttributes GetImage(int index) => ref CollectionsMarshal.AsSpan(this.images)[this[index].DataIndex];
 
     /// <summary>
-    /// Gets the attributes of a <c>text</c> or <c>tspan</c> element.
+    /// Gets the attributes of a <c>text</c>, <c>tspan</c>, or <c>tref</c> element.
     /// </summary>
     /// <param name="index">The element index.</param>
     /// <returns>The attributes.</returns>
@@ -327,7 +327,7 @@ internal sealed class SvgElementTree
     /// </summary>
     /// <param name="index">The element index.</param>
     /// <returns>The id, or <see langword="null"/> for a missing or external reference.</returns>
-    public string? GetTrefReference(int index) => this.text!.TrefReferences[this[index].DataIndex];
+    public string? GetTrefReference(int index) => this.text!.TrefReferences.GetValueOrDefault(this[index].DataIndex);
 
     /// <summary>
     /// Gets the lengths of an <c>x</c>, <c>y</c>, <c>dx</c>, or <c>dy</c> list of a text element.

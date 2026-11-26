@@ -23,8 +23,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// none), and consecutive graphemes of one face form a segment.
 /// </para>
 /// <para>
-/// Each segment is shaped with <see cref="TextShaper.ShapeRun(Font, TextShapingBuffer, Tag[])"/> as one left-to-right
-/// run; the glyphs map to characters through <see cref="ShapedGlyph.StringIndex"/> and
+/// Each segment is shaped with <see cref="TextShaper.ShapeRun(Font, TextShapingBuffer, Tag[])"/> as one directional
+/// run, left to right unless package T4 sets another direction; the glyphs map to characters through <see cref="ShapedGlyph.StringIndex"/> and
 /// <see cref="ShapedGlyph.GraphemeIndex"/>. A cluster that holds several graphemes (a ligature) is shaped again one
 /// grapheme at a time when a character after its first grapheme has its own position value, when the cluster crosses a
 /// span boundary, or when <c>letter-spacing</c> is not zero, as CSS disables ligatures then.
@@ -67,6 +67,7 @@ internal sealed partial class SvgTextShaper
     public static SvgTextCluster[] Shape(SvgTextContent content, SvgFontMatcher matcher, out SvgShapedGlyph[] glyphs)
     {
         SvgTextShaper shaper = new(content, matcher);
+        shaper.PrepareDirections();
         int length = content.Text.Length;
         int start = 0;
         while (start < length)
@@ -81,6 +82,7 @@ internal sealed partial class SvgTextShaper
                 end++;
             }
 
+            shaper.LimitRun(start, ref end);
             shaper.ShapeRun(start, end, content.Spans[span].Style);
             start = end;
         }
@@ -224,12 +226,14 @@ internal sealed partial class SvgTextShaper
         buffer.KerningMode = KerningMode.Standard;
         List<Tag> features = this.features;
         features.Clear();
-        ConfigureDirection(buffer, style);
+        this.ConfigureDirection(buffer, style, start);
         ConfigureFeatures(buffer, style, features);
         TextShaper.ShapeRun(font, buffer, features.Count == 0 ? [] : [.. features]);
 
         // Breaking a ligature shapes again with the same buffer, so the glyphs are copied out first.
-        ReadOnlySpan<ShapedGlyph> shaped = buffer.Glyphs.ToArray();
+        ShapedGlyph[] shapedGlyphs = buffer.Glyphs.ToArray();
+        OrderShapedGlyphs(buffer, shapedGlyphs);
+        ReadOnlySpan<ShapedGlyph> shaped = shapedGlyphs;
 
         if (shaped.Length == 0)
         {
@@ -255,6 +259,7 @@ internal sealed partial class SvgTextShaper
         }
 
         bool breakLigatures = style.LetterSpacing.IsSpecified && style.LetterSpacing.Value != 0F;
+        this.KeepCursiveLigatures(start, end, ref breakLigatures);
         for (int c = 0; c < clusterCount; c++)
         {
             int glyphStart = clusterStarts[c];
@@ -294,7 +299,8 @@ internal sealed partial class SvgTextShaper
     /// </summary>
     /// <param name="buffer">The buffer that holds the text of the run.</param>
     /// <param name="style">The computed text style of the run.</param>
-    static partial void ConfigureDirection(TextShapingBuffer buffer, SvgTextStyle style);
+    /// <param name="start">The index of the first character of the run in <see cref="SvgTextContent.Text"/>.</param>
+    partial void ConfigureDirection(TextShapingBuffer buffer, SvgTextStyle style, int start);
 
     /// <summary>
     /// Hook of package T3: sets <see cref="TextShapingBuffer.KerningMode"/> from <c>font-kerning</c> and
@@ -387,6 +393,7 @@ internal sealed partial class SvgTextShaper
             advance += glyph.AdvanceWidth;
         }
 
+        this.PlaceUprightGlyphs(shaped, glyphStart, glyphEnd, charStart, first, ref advance);
         this.clusters.Add(new SvgTextCluster
         {
             CharStart = charStart,
@@ -399,4 +406,49 @@ internal sealed partial class SvgTextShaper
             ScaleX = 1F,
         });
     }
+
+    /// <summary>
+    /// Hook of package T4: computes the direction data of the characters (<see cref="SvgTextContent.Directions"/>) before
+    /// any run is shaped. Without an implementation all text is horizontal and left to right.
+    /// </summary>
+    partial void PrepareDirections();
+
+    /// <summary>
+    /// Hook of package T4: ends a shaping run earlier where the shaping direction or the glyph orientation changes, so
+    /// that each run has one direction and one orientation, as in Chromium.
+    /// </summary>
+    /// <param name="start">The first character of the run.</param>
+    /// <param name="end">The character after the run; the hook may lower it, never to <paramref name="start"/> or below.</param>
+    partial void LimitRun(int start, ref int end);
+
+    /// <summary>
+    /// Hook of package T4: brings the shaped glyphs into the order that the cluster grouping expects. A right-to-left run
+    /// comes back from shaping in visual order; the hook puts its graphemes into logical order and keeps the visual order
+    /// of the glyphs inside each grapheme.
+    /// </summary>
+    /// <param name="buffer">The buffer, with its direction and layout mode.</param>
+    /// <param name="glyphs">The glyphs, a copy that the hook changes in place.</param>
+    static partial void OrderShapedGlyphs(TextShapingBuffer buffer, ShapedGlyph[] glyphs);
+
+    /// <summary>
+    /// Hook of package T4: for a cluster of upright glyphs of vertical text, which shaping gives a vertical advance and no
+    /// horizontal one, rewrites the glyphs that <see cref="AddCluster"/> added so that they advance downward, and sets the
+    /// advance of the cluster to its vertical advance.
+    /// </summary>
+    /// <param name="shaped">The shaped glyphs.</param>
+    /// <param name="glyphStart">The first glyph of the cluster.</param>
+    /// <param name="glyphEnd">The glyph after the cluster.</param>
+    /// <param name="charStart">The first character of the cluster.</param>
+    /// <param name="first">The index of the first added glyph in the glyph list.</param>
+    /// <param name="advance">The advance of the cluster.</param>
+    partial void PlaceUprightGlyphs(ReadOnlySpan<ShapedGlyph> shaped, int glyphStart, int glyphEnd, int charStart, int first, ref float advance);
+
+    /// <summary>
+    /// Hook of package T4: keeps the ligatures of a segment of a cursive script, such as Arabic, when
+    /// <c>letter-spacing</c> is not zero, because CSS does not apply letter spacing to cursive scripts.
+    /// </summary>
+    /// <param name="start">The first character of the segment.</param>
+    /// <param name="end">The character after the segment.</param>
+    /// <param name="breakLigatures">Whether the ligatures of the segment break; the hook may clear it.</param>
+    partial void KeepCursiveLigatures(int start, int end, ref bool breakLigatures);
 }

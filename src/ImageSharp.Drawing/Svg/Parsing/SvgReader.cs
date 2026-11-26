@@ -1188,11 +1188,10 @@ internal sealed class SvgReader
                     return AddDefault(this.Images);
                 case SvgElementKind.Text:
                 case SvgElementKind.TSpan:
+                case SvgElementKind.Tref:
                     return AddDefault(this.GetOrCreateText().TextAttributes);
                 case SvgElementKind.TextPath:
                     return AddDefault(this.GetOrCreateText().TextPaths);
-                case SvgElementKind.Tref:
-                    return AddDefault(this.GetOrCreateText().TrefReferences);
                 default:
                     return -1;
             }
@@ -1230,6 +1229,9 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.TextPath:
                     CollectionsMarshal.AsSpan(this.Text!.TextPaths)[dataIndex].Href = id;
+                    break;
+                case SvgElementKind.Tref when id is null:
+                    _ = this.Text!.TrefReferences.Remove(dataIndex);
                     break;
                 case SvgElementKind.Tref:
                     this.Text!.TrefReferences[dataIndex] = id;
@@ -1346,6 +1348,7 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.Text:
                 case SvgElementKind.TSpan:
+                case SvgElementKind.Tref:
                     SetText(this.Text!, ref CollectionsMarshal.AsSpan(this.Text!.TextAttributes)[dataIndex], attribute, value);
                     break;
                 case SvgElementKind.TextPath:
@@ -1355,7 +1358,7 @@ internal sealed class SvgReader
         }
 
         /// <summary>
-        /// Parses a <c>text</c> or <c>tspan</c> attribute. The position lists go to the list tables.
+        /// Parses a <c>text</c>, <c>tspan</c>, or <c>tref</c> attribute. The position lists go to the list tables.
         /// </summary>
         /// <param name="tables">The text tables.</param>
         /// <param name="text">The record.</param>

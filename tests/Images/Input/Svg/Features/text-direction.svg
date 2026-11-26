@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" font-family="Open Sans" font-size="14">
+  <g stroke="#ccc" stroke-width="0.5">
+    <path d="M20 0V200M48 0V200M76 0V200M100 0V200M190 0V200M0 26H200M0 100H200"/>
+  </g>
+  <!-- Vertical text: upright CJK with vertical metrics, sideways Latin on the central baseline, vertical punctuation. -->
+  <text x="20" y="10" writing-mode="tb" font-family="Noto Sans KR">한국어 Text 「日本」</text>
+  <!-- Vertical anchor, letter-spacing, and a dy list in vertical text. -->
+  <text x="48" y="100" writing-mode="vertical-rl" text-anchor="middle" letter-spacing="2" font-family="Noto Sans KR">日本語<tspan dy="6" fill="green">ab</tspan></text>
+  <!-- sideways-rl turns every glyph and keeps the alphabetic baseline. -->
+  <text x="76" y="110" writing-mode="sideways-rl" font-family="Noto Sans KR">한 Side</text>
+  <!-- Right-to-left text runs leftward from x; text-anchor follows the direction. -->
+  <text x="190" y="26" direction="rtl" font-family="me_quran" font-size="18">بسم الله</text>
+  <text x="190" y="52" direction="rtl" text-anchor="end" font-family="me_quran" font-size="18">بسم الله</text>
+  <!-- Bidirectional reordering in a left-to-right text: the Arabic run reverses, position lists stay logical. -->
+  <text x="100" y="80" font-family="Open Sans, me_quran" dx="0 0 0 4">ab سلام cd</text>
+  <!-- bidi-override on a tspan reverses Latin letters. -->
+  <text x="100" y="100">abc <tspan direction="rtl" unicode-bidi="bidi-override" fill="blue">def</tspan> ghi</text>
+  <!-- Arabic ignores letter-spacing; Latin keeps it. -->
+  <text x="100" y="125" letter-spacing="4" font-family="Open Sans, me_quran">ab سلام</text>
+</svg>
