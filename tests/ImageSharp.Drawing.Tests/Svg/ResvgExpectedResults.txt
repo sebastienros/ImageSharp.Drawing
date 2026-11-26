@@ -1178,7 +1178,7 @@ structure/image/with-zero-width-and-height.svg pass
 structure/image/zero-height.svg pass
 structure/image/zero-width.svg pass
 structure/style-attribute/comments.svg pass
-structure/style-attribute/non-presentational-attribute.svg pass
+structure/style-attribute/non-presentational-attribute.svg fail specification: SVG 2 makes height a geometry property that CSS can set, so the red rect draws; the reference follows SVG 1.1, where the declaration is ignored; results.csv records Chrome, Firefox, Safari, and librsvg as failing it
 structure/style-attribute/simple-case.svg pass
 structure/style-attribute/transform.svg pass
 structure/style/attribute-selector.svg pass
@@ -1188,7 +1188,7 @@ structure/style/external-CSS.svg fail external resources: not loaded by design; 
 structure/style/iD-selector.svg pass
 structure/style/important.svg pass
 structure/style/invalid-type.svg pass
-structure/style/non-presentational-attribute.svg pass
+structure/style/non-presentational-attribute.svg fail specification: SVG 2 makes height a geometry property that CSS can set, so the red rect draws; the reference follows SVG 1.1, where the declaration is ignored; results.csv records Chrome, Firefox, Safari, and librsvg as failing it
 structure/style/resolve-order.svg pass
 structure/style/rule-specificity.svg pass
 structure/style/style-after-usage.svg pass
