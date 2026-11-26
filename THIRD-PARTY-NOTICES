@@ -113,6 +113,23 @@ repository LICENSE file.
 
 ================================================================================
 
+RichTextKit (https://github.com/toptensoftware/RichTextKit)
+License: Apache-2.0
+
+The Unicode bidirectional algorithm in src/ImageSharp.Drawing/Svg/Text/Bidi is
+a temporary copy of the internal implementation of SixLabors.Fonts 3.2.1
+(src/SixLabors.Fonts/Unicode/BidiAlgorithm.cs and the types it needs).
+SixLabors.Fonts has the same owner and license as this software. Its
+src/SixLabors.Fonts/Unicode/README.md names RichTextKit among the sources of
+its Unicode code, so this notice applies to the copied files.
+
+Copyright (c) 2019-2020 Topten Software. All Rights Reserved.
+
+RichTextKit is distributed under the Apache License, Version 2.0. The full
+license text is available in the RichTextKit repository LICENSE file.
+
+================================================================================
+
 Jint (https://github.com/sebastienros/jint)
 License: BSD-2-Clause
 

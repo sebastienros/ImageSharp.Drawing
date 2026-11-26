@@ -188,6 +188,37 @@ public class SvgTextDirectionTests
     }
 
     [Fact]
+    public void KnownGap_ArabicDoesNotJoinAcrossATspanBoundary()
+    {
+        // A limit of the public shaping API of SixLabors.Fonts, not of the bidirectional algorithm: TextShaper.ShapeRun
+        // takes no context characters, so the first letter, shaped alone in its span, takes its isolated form. Chromium
+        // gives HarfBuzz the next letter as context and draws the initial form.
+        SvgTextLayout split = Layout("<text id=\"t\" font-family=\"me_quran\">ب<tspan>ب</tspan></text>", "t");
+        SvgTextLayout joined = Layout("<text id=\"t\" font-family=\"me_quran\">بب</text>", "t");
+        SvgTextLayout isolated = Layout("<text id=\"t\" font-family=\"me_quran\">ب</text>", "t");
+        ushort first = split.Glyphs[split.Clusters[0].GlyphStart].GlyphId;
+
+        Assert.Equal(isolated.Glyphs[isolated.Clusters[0].GlyphStart].GlyphId, first);
+        Assert.NotEqual(joined.Glyphs[joined.Clusters[0].GlyphStart].GlyphId, first);
+    }
+
+    [Fact]
+    public void KnownGap_LetterSpacingKeepsArabicLigatures()
+    {
+        // A limit of the public shaping API of SixLabors.Fonts: TextShaper.ShapeRun can only turn features on. Latin
+        // ligatures break by shaping each grapheme again, but Arabic letters shaped one at a time would not join, so
+        // the me_quran ligature of beh and yeh stays one glyph. Chromium turns the ligature off under letter-spacing
+        // and draws the two joined letters.
+        SvgTextLayout plain = Layout("<text id=\"t\" font-family=\"me_quran\">بي</text>", "t");
+        SvgTextLayout spaced = Layout("<text id=\"t\" font-family=\"me_quran\" letter-spacing=\"4\">بي</text>", "t");
+
+        Assert.Equal(1, plain.Clusters.Length);
+        Assert.Equal(1, spaced.Clusters.Length);
+        Assert.Equal(1, spaced.Clusters[0].GlyphCount);
+        Assert.Equal(plain.Glyphs[0].GlyphId, spaced.Glyphs[0].GlyphId);
+    }
+
+    [Fact]
     public void Tref_AddsTheCharacterDataOfTheReferencedTextWithItsOwnPositions()
     {
         SvgTextLayout layout = Layout(

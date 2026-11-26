@@ -72,18 +72,25 @@ internal sealed partial class SvgTextShaper
         shaper.PrepareDirections();
         int length = content.Text.Length;
         int start = 0;
+        int spanEnd = 0;
         while (start < length)
         {
-            // A run ends at a span boundary and at an absolute position, which starts a new text chunk.
+            // A run ends at a span boundary and at an absolute position, which starts a new text chunk. The end of that
+            // range is found once: LimitRun can split it into many runs, and searching again from each run start would
+            // cost quadratic time in the length of the span.
             int span = content.Characters[start].Span;
-            int end = start + 1;
-            while (end < length
-                && (content.Characters[end].Flags & (SvgTextCharacterFlags.HasX | SvgTextCharacterFlags.HasY)) == 0
-                && content.Characters[end].Span == span)
+            if (start >= spanEnd)
             {
-                end++;
+                spanEnd = start + 1;
+                while (spanEnd < length
+                    && (content.Characters[spanEnd].Flags & (SvgTextCharacterFlags.HasX | SvgTextCharacterFlags.HasY)) == 0
+                    && content.Characters[spanEnd].Span == span)
+                {
+                    spanEnd++;
+                }
             }
 
+            int end = spanEnd;
             shaper.LimitRun(start, ref end);
             shaper.ShapeRun(start, end, content.Spans[span].Style);
             start = end;
@@ -416,8 +423,8 @@ internal sealed partial class SvgTextShaper
     partial void PrepareDirections();
 
     /// <summary>
-    /// Ends a shaping run earlier where the shaping direction or the glyph orientation changes, so
-    /// that each run has one direction and one orientation, as in Chromium.
+    /// Ends a shaping run earlier where the bidirectional embedding level or the glyph orientation
+    /// changes, so that each run has one level, and so one direction, and one orientation, as in Chromium.
     /// </summary>
     /// <param name="start">The first character of the run.</param>
     /// <param name="end">The character after the run; the hook may lower it, never to <paramref name="start"/> or below.</param>
