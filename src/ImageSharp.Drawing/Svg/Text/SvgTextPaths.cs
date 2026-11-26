@@ -8,7 +8,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="PlaceOnPaths"/> is in <c>SvgTextPaths.Placement.cs</c>. Contract: the stage runs after text anchoring.
+/// <see cref="PlaceOnPaths"/> is in <c>SvgTextPaths.OnPath.cs</c>. Contract: the stage runs after text anchoring.
 /// A cluster lies on a path when its span has <see cref="SvgTextSpan.TextPath"/>. Its <see cref="SvgTextCluster.X"/> is
 /// its anchored position along the line, which becomes a distance along the path; its <see cref="SvgTextCluster.Y"/> a
 /// distance perpendicular to it. The stage sets <see cref="SvgTextCluster.X"/>, <see cref="SvgTextCluster.Y"/>, and
