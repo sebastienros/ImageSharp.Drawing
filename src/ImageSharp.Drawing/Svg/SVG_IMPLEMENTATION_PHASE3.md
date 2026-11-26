@@ -17,6 +17,7 @@ Phase 3 scope (`SVG_DESIGN.md` section 11): `text`, `tspan`, `textPath`, anchors
 | T3 | `text-decoration`, baselines (`dominant-baseline`, `alignment-baseline`, `baseline-shift`), font features (`font-variant`, `font-kerning`, `kerning`). | T1 |
 | T4 | Vertical `writing-mode`, `direction`, `unicode-bidi`, complex scripts, `tref`, `text-rendering`. | T1 |
 | T5 | Integration: cross-feature tests, conformance totals, benchmarks with text, hostile documents, document status. | T2, T3, T4 |
+| T6 | The Unicode bidirectional algorithm as a local copy from SixLabors.Fonts, replacing the T4 workaround (section 9). | T5 |
 
 T2, T3, and T4 run at the same time in separate work trees. T1 therefore builds the pipeline as separate stages in separate files (section 4), parses everything all packages need, and leaves a documented hook for each later feature. T2, T3, and T4 each put their feature in new files and keep edits to shared files to short hooks, with new enum members and fields at the end. In the conformance expected-results list, a package changes only the lines of its own features.
 
@@ -126,3 +127,36 @@ Decisions:
 ## 8. Hand-back Report
 
 As in `SVG_IMPLEMENTATION.md` section 9. Do not commit and do not push; the main session reviews, commits, and merges.
+
+## 9. Package T6: The Bidirectional Algorithm (added after T5)
+
+T4 could not use the Unicode bidirectional algorithm, because it is internal in SixLabors.Fonts 3.2.1. It gets the visual order from one extra call of the public `TextShaper.Shape` per chunk and passes `direction` and `unicode-bidi` as control characters. A lone bracket between runs of the other direction is not mirrored.
+
+Decision of the user: copy the algorithm into this repository, with a comment that names the source, until SixLabors.Fonts makes it public. The user files the upstream issue; this package only drafts its text.
+
+### 9.1 The copy
+
+- Source: SixLabors.Fonts at tag `v3.2.1` (commit `50dae68`), the version this repository references. A clone at that tag is at `/home/user/sixlabors/fonts`. The files are in `src/SixLabors.Fonts/Unicode/`: `BidiAlgorithm.cs`, `BidiData.cs`, `BidiData.AsciiTables.Generated.cs`, `BidiRun.cs`, `BidiDictionary{T1,T2}.cs`, and the internal helper types they need (`ArraySlice<T>`, `ReadOnlyArraySlice<T>`, `ArrayBuilder<T>`, `MappedArraySlice<T>` in `src/SixLabors.Fonts/`).
+- Target: `src/ImageSharp.Drawing/Svg/Text/Bidi/`, all types internal, in the namespace of the other SVG types.
+- Copy only what the algorithm needs. Unicode data comes from the public API of SixLabors.Fonts (`CodePoint.GetBidiClass`, `BidiClass`, `BidiCharacterType`, `BidiPairedBracketType`, `CodePoint.TryGetBidiMirror`); do not copy data tries.
+- Keep the copied code as close to the source as it compiles, so that it can be compared with upstream and removed later. Allowed edits: namespace, visibility, replacing a helper by a span or an array where that removes a helper file, documentation that the analyzers of this repository require, and warnings. List every other edit in the hand-back report.
+- Each copied file starts its type remarks with: the source repository, the tag, the file path, a statement that it is a temporary copy until SixLabors.Fonts exposes the algorithm, and that it must then be removed.
+- Licenses: SixLabors.Fonts has the same owner and license as this repository. Its `src/SixLabors.Fonts/Unicode/README.md` credits RichTextKit (Apache 2.0) among the sources of its Unicode code. Check the `THIRD-PARTY-NOTICES` of SixLabors.Fonts and carry over the entries that apply to the copied files into the `THIRD-PARTY-NOTICES` of this repository.
+
+### 9.2 Use
+
+- Compute the embedding levels per text chunk (one chunk is one paragraph, as now) with the paragraph level from `direction`. Map `unicode-bidi` (`embed`, `bidi-override`, `isolate`, `isolate-override`, `plaintext`) as CSS Writing Modes defines, with the control characters or directly through the algorithm.
+- Derive the level runs and the visual order (rule L2) from the levels, shape each run in its direction with `TextShaper.ShapeRun`, and mirror characters at odd levels (rule L4). Verify whether the shaper already mirrors in a right-to-left run; do not mirror twice.
+- Remove the extra `TextShaper.Shape` call of the T4 workaround when nothing else needs it. Measure `LoadSvg` for the text documents before and after.
+- The two other known gaps stay, because they are limits of the shaping API and not of the bidirectional algorithm: Arabic letters do not join across a `tspan` boundary, and `letter-spacing` cannot turn ligatures off. Confirm that with a test each and say so in the report.
+
+### 9.3 Evidence
+
+- Unit tests of the visual order for the examples of UAX #9 and for brackets, isolates, overrides, and numbers in right-to-left text. Do not copy the Unicode conformance data files.
+- A feature document with mixed runs and brackets, with a reference image compared with the Chromium oracle and the same font.
+- The render tests of T4 and T5 stay green. Conformance counts for `text/direction`, `text/unicode-bidi`, and the whole text category before and after.
+- Hostile input: long runs of embedding and isolate controls, deep nesting beyond the depth limit of the algorithm, unmatched controls.
+
+### 9.4 Upstream issue draft
+
+Put a draft of the issue for SixLabors.Fonts in the hand-back report, and do not post it: what is internal today, the smallest public API that would remove the copy (levels for a span of text with a paragraph direction, and the level runs), and why run-level shaping needs it. Do not name this project's private details beyond "SVG text layout on top of `TextShaper.ShapeRun`". Mention the two shaping gaps of 9.2 as separate, optional requests.
