@@ -1077,7 +1077,7 @@ shapes/polyline/not-enough-points.svg pass
 shapes/polyline/simple-case.svg pass
 shapes/polyline/stop-processing-on-invalid-data.svg pass
 shapes/rect/cap-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-shapes/rect/ch-values.svg fail units: ch needs font metrics (phase 3); without them it is 0.5em, which differs from the Noto Sans glyph of the reference
+shapes/rect/ch-values.svg pass
 shapes/rect/em-values.svg pass
 shapes/rect/ex-values.svg pass
 shapes/rect/ic-values.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)

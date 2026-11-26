@@ -7,9 +7,10 @@ using System.Numerics;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Parses CSS color values: hexadecimal notation, the CSS named colors, <c>transparent</c>, and the
-/// <c>rgb()</c>, <c>rgba()</c>, <c>hsl()</c>, and <c>hsla()</c> functions in both the comma and the space syntax of
-/// CSS Color Level 4. Names and function names are ASCII case-insensitive. The parser never throws.
+/// Parses CSS color values: hexadecimal notation, the CSS named colors, <c>transparent</c>, the <c>rgb()</c>,
+/// <c>rgba()</c>, <c>hsl()</c>, and <c>hsla()</c> functions in both the comma and the space syntax of CSS Color Level 4,
+/// and the other color functions of CSS Color Levels 4 and 5 (see the other part of this class). Names and function names
+/// are ASCII case-insensitive. The parser never throws.
 /// </summary>
 /// <remarks>
 /// Hexadecimal and named colors go through <see cref="Color.TryParseHex(string, out Color, ColorHexFormat)"/> and
@@ -17,7 +18,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="SvgColorCache"/> keeps the results by source text and the common case of a repeated color does not allocate.
 /// The functional forms are parsed here, because ImageSharp does not parse them.
 /// </remarks>
-internal static class SvgColorParser
+internal static partial class SvgColorParser
 {
     /// <summary>
     /// The ASCII hexadecimal digits.
@@ -47,7 +48,12 @@ internal static class SvgColorParser
         /// <summary>
         /// An angle, converted to degrees.
         /// </summary>
-        Angle
+        Angle,
+
+        /// <summary>
+        /// The keyword <c>none</c>: a missing component, which the modern syntax allows.
+        /// </summary>
+        None
     }
 
     /// <summary>
@@ -79,7 +85,7 @@ internal static class SvgColorParser
 
         if (source[^1] == ')')
         {
-            return TryParseFunction(source, out value);
+            return TryParseFunction(source, 0, out value);
         }
 
         // ImageSharp falls back to hexadecimal when a name is unknown, so "bad" would parse as #bbaadd. No CSS color name
@@ -116,12 +122,14 @@ internal static class SvgColorParser
     }
 
     /// <summary>
-    /// Parses <c>rgb()</c>, <c>rgba()</c>, <c>hsl()</c>, or <c>hsla()</c>.
+    /// Parses a color function: <c>rgb()</c>, <c>rgba()</c>, <c>hsl()</c>, or <c>hsla()</c> here, any other function and
+    /// the relative color syntax in <see cref="TryParseCssFunction"/>.
     /// </summary>
     /// <param name="source">The trimmed value that ends with <c>)</c>.</param>
+    /// <param name="depth">The nesting depth of colors inside color functions, for <see cref="MaxNesting"/>.</param>
     /// <param name="value">When this method returns <see langword="true"/>, contains the color.</param>
     /// <returns><see langword="true"/> if the value is a valid color function; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseFunction(ReadOnlySpan<char> source, out Color value)
+    private static bool TryParseFunction(ReadOnlySpan<char> source, int depth, out Color value)
     {
         value = default;
 
@@ -135,14 +143,20 @@ internal static class SvgColorParser
         ReadOnlySpan<char> name = source[..open];
         bool isRgb = name.Equals("rgb", StringComparison.OrdinalIgnoreCase) || name.Equals("rgba", StringComparison.OrdinalIgnoreCase);
         bool isHsl = !isRgb && (name.Equals("hsl", StringComparison.OrdinalIgnoreCase) || name.Equals("hsla", StringComparison.OrdinalIgnoreCase));
-        if (!isRgb && !isHsl)
+        ReadOnlySpan<char> arguments = source[(open + 1)..^1];
+        if ((!isRgb && !isHsl) || IsRelative(arguments))
         {
-            return false;
+            if (!TryParseCssFunction(name, arguments, depth, out SvgCssColor color))
+            {
+                return false;
+            }
+
+            value = color.ToColor();
+            return true;
         }
 
-        ReadOnlySpan<char> arguments = source[(open + 1)..^1];
         Span<Component> components = stackalloc Component[4];
-        if (!TrySplitArguments(arguments, components, out int count, out bool legacy))
+        if (!TrySplitArguments(arguments, components, default, out int count, out bool legacy))
         {
             return false;
         }
@@ -152,11 +166,12 @@ internal static class SvgColorParser
         if (count == 4)
         {
             Component a = components[3];
-            if (a.Unit is not (ComponentUnit.Number or ComponentUnit.Percent))
+            if (a.Unit is not (ComponentUnit.Number or ComponentUnit.Percent or ComponentUnit.None))
             {
                 return false;
             }
 
+            // A missing alpha is zero outside interpolation.
             alpha = Math.Clamp(a.Unit == ComponentUnit.Percent ? a.Value / 100F : a.Value, 0F, 1F);
         }
 
@@ -168,7 +183,7 @@ internal static class SvgColorParser
             for (int i = 0; i < 3; i++)
             {
                 ComponentUnit unit = components[i].Unit;
-                if (unit is not (ComponentUnit.Number or ComponentUnit.Percent) || (legacy && unit != first))
+                if (unit is not (ComponentUnit.Number or ComponentUnit.Percent or ComponentUnit.None) || (legacy && unit != first))
                 {
                     return false;
                 }
@@ -179,7 +194,7 @@ internal static class SvgColorParser
         else
         {
             Component hue = components[0];
-            if (hue.Unit is not (ComponentUnit.Number or ComponentUnit.Angle))
+            if (hue.Unit is not (ComponentUnit.Number or ComponentUnit.Angle or ComponentUnit.None))
             {
                 return false;
             }
@@ -207,10 +222,10 @@ internal static class SvgColorParser
     /// <param name="legacy">Whether the function uses the comma syntax.</param>
     /// <returns><see langword="true"/> if the unit is valid; otherwise, <see langword="false"/>.</returns>
     private static bool IsHslPercentage(ComponentUnit unit, bool legacy)
-        => unit == ComponentUnit.Percent || (!legacy && unit == ComponentUnit.Number);
+        => unit == ComponentUnit.Percent || (!legacy && unit is ComponentUnit.Number or ComponentUnit.None);
 
     /// <summary>
-    /// Converts an <c>rgb()</c> channel to the range 0 to 1. Numbers are in the range 0 to 255.
+    /// Converts an <c>rgb()</c> channel to the range 0 to 1. Numbers are in the range 0 to 255; <c>none</c> is 0.
     /// </summary>
     /// <param name="component">The channel component.</param>
     /// <returns>The clamped channel value.</returns>
@@ -251,13 +266,19 @@ internal static class SvgColorParser
     /// </summary>
     /// <param name="arguments">The characters between the parentheses.</param>
     /// <param name="components">The buffer that receives up to four components.</param>
+    /// <param name="variables">The channel keywords of a relative color, or none.</param>
     /// <param name="count">When this method returns <see langword="true"/>, contains 3 or 4.</param>
     /// <param name="legacy">When this method returns <see langword="true"/>, indicates whether the comma syntax was used.</param>
     /// <returns><see langword="true"/> if the arguments are well formed; otherwise, <see langword="false"/>.</returns>
-    private static bool TrySplitArguments(ReadOnlySpan<char> arguments, Span<Component> components, out int count, out bool legacy)
+    private static bool TrySplitArguments(
+        ReadOnlySpan<char> arguments,
+        Span<Component> components,
+        in SvgCalcVariables variables,
+        out int count,
+        out bool legacy)
     {
         count = 0;
-        legacy = arguments.Contains(',');
+        legacy = HasTopLevelComma(arguments);
         ReadOnlySpan<char> rest = SvgNumberParser.SkipWhitespace(arguments);
         while (!rest.IsEmpty)
         {
@@ -296,7 +317,10 @@ internal static class SvgColorParser
                 }
             }
 
-            if (count == components.Length || !TryReadComponent(rest, out components[count], out int length))
+            // The comma syntax does not take none.
+            if (count == components.Length
+                || !TryReadComponent(rest, in variables, out components[count], out int length)
+                || (legacy && components[count].Unit == ComponentUnit.None))
             {
                 return false;
             }
@@ -313,70 +337,6 @@ internal static class SvgColorParser
         }
 
         return count is 3 or 4;
-    }
-
-    /// <summary>
-    /// Reads one color function component: a number, a percentage, or an angle.
-    /// </summary>
-    /// <param name="source">The characters to read.</param>
-    /// <param name="component">When this method returns <see langword="true"/>, contains the component.</param>
-    /// <param name="length">When this method returns <see langword="true"/>, contains the number of characters read.</param>
-    /// <returns><see langword="true"/> if a component was read; otherwise, <see langword="false"/>.</returns>
-    private static bool TryReadComponent(ReadOnlySpan<char> source, out Component component, out int length)
-    {
-        component = default;
-        if (!SvgNumberParser.TryReadNumber(source, false, out float number, out length))
-        {
-            return false;
-        }
-
-        ReadOnlySpan<char> rest = source[length..];
-        if (!rest.IsEmpty && rest[0] == '%')
-        {
-            component = new Component(number, ComponentUnit.Percent);
-            length++;
-            return true;
-        }
-
-        int unitLength = 0;
-        while (unitLength < rest.Length && char.IsAsciiLetter(rest[unitLength]))
-        {
-            unitLength++;
-        }
-
-        if (unitLength == 0)
-        {
-            component = new Component(number, ComponentUnit.Number);
-            return true;
-        }
-
-        // CSS angle units. A full turn is 360deg, 400grad, 2*pi rad, or 1turn.
-        ReadOnlySpan<char> unit = rest[..unitLength];
-        float degrees;
-        if (unit.Equals("deg", StringComparison.OrdinalIgnoreCase))
-        {
-            degrees = number;
-        }
-        else if (unit.Equals("grad", StringComparison.OrdinalIgnoreCase))
-        {
-            degrees = number * 0.9F;
-        }
-        else if (unit.Equals("rad", StringComparison.OrdinalIgnoreCase))
-        {
-            degrees = number * (180F / MathF.PI);
-        }
-        else if (unit.Equals("turn", StringComparison.OrdinalIgnoreCase))
-        {
-            degrees = number * 360F;
-        }
-        else
-        {
-            return false;
-        }
-
-        component = new Component(degrees, ComponentUnit.Angle);
-        length += unitLength;
-        return true;
     }
 
     /// <summary>

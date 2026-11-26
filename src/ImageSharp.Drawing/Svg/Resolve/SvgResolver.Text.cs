@@ -233,9 +233,7 @@ internal sealed partial class SvgResolver
         RectangleF bounds = layout.Bounds ?? default;
         Brush? fill = this.ResolvePaint(style.Fill, style.FillOpacity, bounds, in context);
         Pen? stroke = null;
-        float strokeWidth = style.StrokeWidth.Unit == SvgLengthUnit.Percent
-            ? style.StrokeWidth.Value * SvgUnits.Diagonal(context.Viewport) / 100F
-            : style.StrokeWidth.Value;
+        float strokeWidth = SvgUnits.ToUser(style.StrokeWidth, SvgUnits.Diagonal(context.Viewport), style.FontSize, this.units, 0F);
 
         Brush? strokeBrush = null;
         if (strokeWidth > 0F)

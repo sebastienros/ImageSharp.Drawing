@@ -541,10 +541,10 @@ public class SvgStylePropertyTests
         Assert.Same(parent.CustomProperties, unset.CustomProperties);
     }
 
-    // A declaration with var() is valid until substitution. Until substitution exists, the property computes from the
-    // declaration of next lower precedence, which is what an invalid declaration gave before.
+    // A declaration with var() is valid until substitution, which happens at computed-value time: the specified style
+    // keeps the pending text over the value of next lower precedence, and the computed style has the substituted value.
     [Fact]
-    public void VarDeclaration_IsPendingAndKeepsTheLowerValue()
+    public void VarDeclaration_IsPendingUntilComputed()
     {
         const string content = """
             <style>#r { fill: blue }</style>
@@ -559,7 +559,9 @@ public class SvgStylePropertyTests
         Assert.True(r.Extended!.Variables!.TryGetPending(SvgPropertyId.Fill, out SvgPendingValue fill));
         Assert.Equal("var(--c)", fill.Text);
         Assert.Null(fill.Shorthand);
-        Assert.Equal(new Rgba32(0, 0, 255, 255), Compute(content, "r").Fill.Color.ToPixel<Rgba32>());
+        Assert.True(r.HasValue(SvgPropertyId.Fill));
+        Assert.Equal(new Rgba32(0, 0, 255, 255), r.Fill.Color.ToPixel<Rgba32>());
+        Assert.Equal(new Rgba32(0, 128, 0, 255), Compute(content, "r").Fill.Color.ToPixel<Rgba32>());
 
         // A later declaration without var() wins.
         Assert.False(tree.GetStyle(Index(tree, "s")).IsPending(SvgPropertyId.Fill));

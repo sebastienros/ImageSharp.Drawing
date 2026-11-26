@@ -41,8 +41,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// The resolve stage computes a value as follows: the value field when <see cref="HasValue(SvgPropertyId)"/> is true;
 /// the parent computed value when the <see cref="Inherit"/> bit is set, or when nothing is specified and
 /// <see cref="IsInherited(SvgPropertyId)"/> is true; otherwise the initial value listed on <see cref="SvgPropertyId"/>.
-/// A property with a <see cref="Pending"/> bit computes from its pending text instead, once <c>var()</c> substitution
-/// exists; until then the computed value ignores the pending bit.
+/// A property with a <see cref="Pending"/> bit computes from its pending text instead, after <c>var()</c> substitution
+/// (<see cref="SvgComputedStyle"/>).
 /// </para>
 /// </remarks>
 internal struct SvgSpecifiedStyle
@@ -351,6 +351,41 @@ internal struct SvgSpecifiedStyle
     /// </summary>
     /// <returns>The extension, which the caller may change.</returns>
     public SvgExtendedStyle GetOrCreateExtended() => this.Extended ??= new SvgExtendedStyle();
+
+    /// <summary>
+    /// Makes properties unspecified again. Only the code that fills a style that is not yet stored in a table calls this,
+    /// because it changes the masks of the extension.
+    /// </summary>
+    /// <param name="properties">The properties.</param>
+    public void Unmark(SvgPropertySet properties)
+    {
+        this.specifiedLow &= ~properties.Low;
+        this.inheritLow &= ~properties.Low;
+        this.initialLow &= ~properties.Low;
+        if (this.Extended is SvgExtendedStyle extended && properties.High != 0)
+        {
+            extended.SpecifiedHigh &= ~properties.High;
+            extended.InheritHigh &= ~properties.High;
+            extended.InitialHigh &= ~properties.High;
+        }
+    }
+
+    /// <summary>
+    /// Returns a copy of this style without custom properties and pending declarations: each property with a pending
+    /// declaration keeps the value of its declaration of next lower precedence. The extension of this style does not
+    /// change.
+    /// </summary>
+    /// <returns>The copy.</returns>
+    public readonly SvgSpecifiedStyle WithoutVariables()
+    {
+        SvgSpecifiedStyle copy = this;
+        if (this.Extended?.Variables is not null)
+        {
+            copy.Extended = this.Extended.WithoutVariables();
+        }
+
+        return copy;
+    }
 
     /// <summary>
     /// Applies the specified properties of <paramref name="source"/> over this style, as a declaration of higher
