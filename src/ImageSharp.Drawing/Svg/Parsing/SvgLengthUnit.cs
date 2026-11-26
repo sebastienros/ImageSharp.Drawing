@@ -64,8 +64,8 @@ internal enum SvgLengthUnit : byte
     Percent,
 
     /// <summary>
-    /// The advance of the "0" glyph of the element font (<c>ch</c>). Without font metrics, CSS Values 4 lets it be
-    /// half the font size, which the resolve stage uses.
+    /// The advance of the "0" glyph of the element font (<c>ch</c>), which the resolve stage reads from the font; without
+    /// a font it is half the font size, the fallback of CSS Values 4. See <see cref="SvgUnits"/>.
     /// </summary>
     Ch,
 
@@ -98,5 +98,13 @@ internal enum SvgLengthUnit : byte
     /// <summary>
     /// The larger of <see cref="Vw"/> and <see cref="Vh"/> (<c>vmax</c>).
     /// </summary>
-    Vmax
+    Vmax,
+
+    /// <summary>
+    /// A math function (<c>calc()</c>, <c>min()</c>, <c>max()</c>, <c>clamp()</c>) that mixes units, such as
+    /// <c>calc(50% - 10px)</c>, so it has no value until its references are known. <see cref="SvgLength.Value"/> holds
+    /// the index of the expression in the <see cref="SvgCalcTable"/> of the document. A math function with one unit is
+    /// stored as a plain length of that unit instead.
+    /// </summary>
+    Calc
 }

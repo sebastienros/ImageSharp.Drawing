@@ -18,16 +18,18 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// the number of flattenings, not with the number of elements.
 /// </para>
 /// <para>
-/// The values are the specified token text: <c>var()</c> references inside a custom property are not substituted here.
-/// A name whose value is <see langword="null"/> holds the guaranteed-invalid value (the <c>initial</c> keyword), which
-/// hides a value of an ancestor.
+/// The values are computed values: <c>var()</c> references inside a custom property are substituted at the element that
+/// declares it, as CSS Custom Properties Level 1 defines, so a descendant that redeclares a referenced property does not
+/// change the value it inherits. A name whose value is <see langword="null"/> holds the guaranteed-invalid value (the
+/// <c>initial</c> keyword, a reference that cannot be substituted, or a member of a reference cycle), which hides a value
+/// of an ancestor.
 /// </para>
 /// <para>
 /// Instances never change after they are created, apart from the cache of the flattened map, which the single-threaded
 /// resolve stage fills.
 /// </para>
 /// </remarks>
-internal sealed class SvgCustomProperties
+internal sealed class SvgCustomProperties : SvgVariableSubstitution.ISource
 {
     /// <summary>
     /// The longest chain of instances that a lookup walks.
@@ -64,8 +66,12 @@ internal sealed class SvgCustomProperties
     /// </summary>
     /// <param name="parent">The computed custom properties of the parent, or <see langword="null"/>.</param>
     /// <param name="declarations">The cascaded custom property declarations of the element, or <see langword="null"/>.</param>
+    /// <param name="budget">The substitution budget of the document, or <see langword="null"/> for a budget of this call alone.</param>
     /// <returns>The computed map, <paramref name="parent"/> when the element declares nothing that changes it.</returns>
-    public static SvgCustomProperties? Compute(SvgCustomProperties? parent, IReadOnlyDictionary<string, SvgCustomPropertyValue>? declarations)
+    public static SvgCustomProperties? Compute(
+        SvgCustomProperties? parent,
+        IReadOnlyDictionary<string, SvgCustomPropertyValue>? declarations,
+        SvgSubstitutionBudget? budget = null)
     {
         if (declarations is null)
         {
@@ -89,6 +95,8 @@ internal sealed class SvgCustomProperties
         {
             return parent;
         }
+
+        SvgCustomPropertyResolver.SubstituteDeclarations(own, parent, budget ?? new SvgSubstitutionBudget());
 
         if (parent is not null && parent.Depth >= MaxDepth)
         {
@@ -120,6 +128,10 @@ internal sealed class SvgCustomProperties
         value = null;
         return false;
     }
+
+    /// <inheritdoc/>
+    bool SvgVariableSubstitution.ISource.TryGetValue(ReadOnlySpan<char> name, int depth, out string? value)
+        => this.TryGetValue(name, out value);
 
     /// <summary>
     /// Returns an instance without a parent that holds every name this instance sees, built once and cached.

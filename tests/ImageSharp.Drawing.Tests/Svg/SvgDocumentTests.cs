@@ -394,12 +394,11 @@ public class SvgDocumentTests
         Assert.Null(options.ResourceBaseDirectory);
     }
 
-    // CSS Values 4: rem is the root font size, Q a quarter-millimeter, ch half the font size without font metrics, and the
-    // viewport units refer to the initial containing block, which is the intrinsic size of a standalone document.
+    // CSS Values 4: rem is the root font size, Q a quarter-millimeter, and the viewport units refer to the initial
+    // containing block, which is the intrinsic size of a standalone document. ch comes from the font; see SvgCssUnitTests.
     [Theory]
     [InlineData("width=\"2rem\" height=\"1rem\"", 40F, 20F)]
     [InlineData("width=\"101.6Q\" height=\"50.8Q\"", 96F, 48F)]
-    [InlineData("width=\"3ch\" height=\"1ch\"", 15F, 5F)]
     [InlineData("width=\"10vw\" height=\"10vh\"", 40F, 20F)]
     [InlineData("width=\"10vmin\" height=\"10vmax\"", 20F, 40F)]
     public void Units_ResolveTheCssUnits(string attributes, float width, float height)

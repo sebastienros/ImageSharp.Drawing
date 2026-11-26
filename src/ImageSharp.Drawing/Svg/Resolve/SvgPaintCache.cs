@@ -563,7 +563,7 @@ internal sealed class SvgPaintCache
             // The root element computes with the root basis, as the resolver computes it.
             int index = ancestors[i];
             style = index == 0
-                ? SvgComputedStyle.ComputeRoot(in this.tree.GetStyle(0), in this.initialStyle, SvgUnitBasis.ForRoot(this.units.Dpi))
+                ? SvgComputedStyle.ComputeRoot(in this.tree.GetStyle(0), in this.initialStyle, this.units.ForRoot())
                 : SvgComputedStyle.Compute(in this.tree.GetStyle(index), in style, in this.initialStyle, this.units, this.tree[index].Kind);
         }
 

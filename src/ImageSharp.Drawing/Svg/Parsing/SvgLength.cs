@@ -51,8 +51,8 @@ internal readonly struct SvgLength
             return true;
         }
 
-        value = default;
-        return false;
+        // A math function (CSS Values 4) is tried only after the plain form fails, so plain lengths pay nothing for it.
+        return SvgCalc.TryParseLength(source, false, out value);
     }
 
     /// <summary>
@@ -64,13 +64,15 @@ internal readonly struct SvgLength
     /// <returns><see langword="true"/> if the value is a length of zero or more; otherwise, <see langword="false"/>.</returns>
     public static bool TryParseNonNegative(ReadOnlySpan<char> source, out SvgLength value)
     {
-        if (TryParse(source, out value) && value.Value >= 0)
+        source = SvgNumberParser.Trim(source);
+        if (TryRead(source, out value, out int length) && length == source.Length && value.Value >= 0)
         {
             return true;
         }
 
-        value = default;
-        return false;
+        // CSS Values 4 clamps a math function to the range of the property instead of rejecting it, so calc(10px - 20px)
+        // is a valid zero here.
+        return SvgCalc.TryParseLength(source, true, out value);
     }
 
     /// <summary>
@@ -151,7 +153,7 @@ internal readonly struct SvgLength
     /// <param name="unit">The unit characters; empty for a unitless number.</param>
     /// <param name="value">When this method returns <see langword="true"/>, contains the unit.</param>
     /// <returns><see langword="true"/> if the unit is known; otherwise, <see langword="false"/>.</returns>
-    private static bool TryGetUnit(ReadOnlySpan<char> unit, out SvgLengthUnit value)
+    internal static bool TryGetUnit(ReadOnlySpan<char> unit, out SvgLengthUnit value)
     {
         value = unit.Length switch
         {

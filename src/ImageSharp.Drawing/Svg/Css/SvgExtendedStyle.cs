@@ -192,6 +192,18 @@ internal sealed class SvgExtendedStyle
     }
 
     /// <summary>
+    /// Returns a copy of this extension without custom properties and pending declarations. Neither this extension nor
+    /// its parts change.
+    /// </summary>
+    /// <returns>The copy.</returns>
+    public SvgExtendedStyle WithoutVariables()
+    {
+        SvgExtendedStyle result = (SvgExtendedStyle)this.MemberwiseClone();
+        result.Variables = null;
+        return result;
+    }
+
+    /// <summary>
     /// Returns a new extension that holds the values of <paramref name="target"/> with the values of the properties in
     /// <paramref name="properties"/> taken from <paramref name="source"/>, and the masks, pending declarations, and custom
     /// properties of both, the source winning. Neither input changes.

@@ -29,11 +29,9 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="Geometry"/>.
 /// </para>
 /// <para>
-/// Declarations with <c>var()</c> are not substituted yet: a property whose winning declaration has <c>var()</c>
-/// computes from the declaration of next lower precedence, as if the <c>var()</c> declaration were invalid at parse time.
-/// The pending declarations stay in the specified style (<see cref="SvgSpecifiedStyle.Pending"/>), the computed custom
-/// properties are in <see cref="CustomProperties"/>, and <see cref="SubstituteVariables"/> is where the substitution
-/// joins the computation.
+/// Declarations with <c>var()</c> stay pending in the specified style (<see cref="SvgSpecifiedStyle.Pending"/>) and are
+/// substituted at computed-value time with the computed custom properties of the element (<see cref="CustomProperties"/>),
+/// in <see cref="SubstituteVariables"/>.
 /// </para>
 /// </remarks>
 internal partial struct SvgComputedStyle
@@ -360,7 +358,8 @@ internal partial struct SvgComputedStyle
         // Font size first: em and ex lengths of the other properties refer to the computed font size of the element.
         if (specified.IsSpecified(SvgPropertyId.FontSize))
         {
-            style.FontSize = ComputeFontSize(in specified, in parent, in initial, units);
+            // ch in font-size refers to the font of the parent.
+            style.FontSize = ComputeFontSize(in specified, in parent, in initial, units.WithFont(parent.Text));
         }
 
         // The text properties share one object, which changes as a whole, and so do the geometry properties.
@@ -370,6 +369,9 @@ internal partial struct SvgComputedStyle
         {
             style.Text = ComputeText(in specified, textBits, style.Text, parent.Text, initial.Text, style.FontSize, units);
         }
+
+        // ch in the other lengths refers to the font of the element.
+        units = units.WithFont(style.Text);
 
         SvgExtendedStyle? extended = specified.Extended;
         SvgPropertySet geometryBits = specifiedSet & SvgGeometryStyle.Properties;
@@ -381,7 +383,7 @@ internal partial struct SvgComputedStyle
         // Custom properties inherit; an element without declarations keeps the map of its parent.
         if (extended?.Variables?.CustomProperties is IReadOnlyDictionary<string, SvgCustomPropertyValue> custom)
         {
-            style.CustomProperties = SvgCustomProperties.Compute(parent.CustomProperties, custom);
+            style.CustomProperties = SvgCustomProperties.Compute(parent.CustomProperties, custom, units.Context?.Budget);
         }
 
         // Visit only the specified inline and extended properties below 64. The inherit keyword takes the parent value
@@ -506,12 +508,10 @@ internal partial struct SvgComputedStyle
     /// whose specified style has custom properties or pending declarations (<see cref="SvgSpecifiedStyle.Pending"/>).
     /// </summary>
     /// <remarks>
-    /// This partial method has no implementation yet, so the compiler removes the call: pending declarations do not change
-    /// the computed style, and each such property keeps the value of its declaration of next lower precedence. An
-    /// implementation substitutes the custom properties into the text of each pending declaration
+    /// The implementation substitutes the custom properties into the text of each pending declaration
     /// (<see cref="SvgVariableStyle.TryGetPending(SvgPropertyId, out SvgPendingValue)"/>), parses the result with
-    /// <see cref="SvgPropertyParser"/> into a specified style, and computes the property from it; a result that does not
-    /// parse makes the property behave as <c>unset</c> (invalid at computed-value time).
+    /// <see cref="SvgPropertyParser"/> into a specified style, and computes the element again from it; a result that does
+    /// not parse makes the property behave as <c>unset</c> (invalid at computed-value time).
     /// </remarks>
     /// <param name="specified">The cascaded specified style of the element.</param>
     /// <param name="parent">The computed style of the parent.</param>
@@ -549,10 +549,14 @@ internal partial struct SvgComputedStyle
     /// <param name="y">The computed vertical component, in pixels or as a percentage; unspecified is 0.</param>
     /// <param name="referenceBox">The size of the reference box.</param>
     /// <returns>The origin.</returns>
+    /// <remarks>
+    /// A math function that mixes a percentage with lengths needs the style context; without it, as here, its component
+    /// is 0. Graphics elements resolve such an origin through <see cref="SvgResolver.TryGetLocalTransform"/> instead.
+    /// </remarks>
     public static Vector2 ResolveTransformOrigin(SvgLength x, SvgLength y, SizeF referenceBox)
         => new(
-            x.Unit == SvgLengthUnit.Percent ? x.Value * referenceBox.Width / 100F : x.Value,
-            y.Unit == SvgLengthUnit.Percent ? y.Value * referenceBox.Height / 100F : y.Value);
+            x.Unit == SvgLengthUnit.Percent ? x.Value * referenceBox.Width / 100F : x.Unit == SvgLengthUnit.Calc ? 0F : x.Value,
+            y.Unit == SvgLengthUnit.Percent ? y.Value * referenceBox.Height / 100F : y.Unit == SvgLengthUnit.Calc ? 0F : y.Value);
 
     /// <summary>
     /// Applies a transform origin to a transform: the result is <c>translate(origin) × transform × translate(-origin)</c>
@@ -702,16 +706,16 @@ internal partial struct SvgComputedStyle
                     text.FontWeight = ComputeFontWeight(values!.FontWeight, parent.FontWeight);
                     break;
                 case SvgPropertyId.LetterSpacing:
-                    text.LetterSpacing = ToComputedOptionalLength(values!.LetterSpacing, fontSize, units);
+                    text.LetterSpacing = ToComputedTextLength(values!.LetterSpacing, fontSize, units);
                     break;
                 case SvgPropertyId.WordSpacing:
-                    text.WordSpacing = ToComputedOptionalLength(values!.WordSpacing, fontSize, units);
+                    text.WordSpacing = ToComputedTextLength(values!.WordSpacing, fontSize, units);
                     break;
                 case SvgPropertyId.Kerning:
-                    text.Kerning = ToComputedOptionalLength(values!.Kerning, fontSize, units);
+                    text.Kerning = ToComputedTextLength(values!.Kerning, fontSize, units);
                     break;
                 case SvgPropertyId.BaselineShift when values!.BaselineShiftKind == SvgBaselineShiftKind.Length:
-                    text.BaselineShift = ToComputedLength(values.BaselineShift, fontSize, units);
+                    text.BaselineShift = ToComputedTextLength(values.BaselineShift, fontSize, units);
                     break;
             }
         }
@@ -758,6 +762,7 @@ internal partial struct SvgComputedStyle
             SvgPropertySet bit = hasAttribute ? SvgPropertySet.Of(property) : default;
             if (property == SvgPropertyId.Transform)
             {
+                geometry.CssTransform = ComputeCssTransform(in specified, values, parent);
                 continue;
             }
 
@@ -846,10 +851,8 @@ internal partial struct SvgComputedStyle
             return initial.FontSize;
         }
 
-        SvgLength value = specified.FontSize;
-        return value.Unit == SvgLengthUnit.Percent
-            ? parent.FontSize * value.Value / 100F
-            : SvgUnits.ToPixels(value, parent.FontSize, units);
+        // A percentage, also inside a math function, refers to the parent font size.
+        return SvgUnits.ToUser(specified.FontSize, parent.FontSize, parent.FontSize, units, initial.FontSize);
     }
 
     /// <summary>
@@ -859,8 +862,11 @@ internal partial struct SvgComputedStyle
     /// <param name="fontSize">The computed font size of the element.</param>
     /// <param name="units">The document values that length units refer to.</param>
     /// <returns>The computed length.</returns>
+    /// <remarks>
+    /// A math function with a percentage stays an expression, whose font-relative parts resolve where it is used.
+    /// </remarks>
     private static SvgLength ToComputedLength(SvgLength value, float fontSize, SvgUnitBasis units)
-        => value.Unit == SvgLengthUnit.Percent ? value : new SvgLength(SvgUnits.ToPixels(value, fontSize, units), SvgLengthUnit.Px);
+        => SvgUnits.HasPercentage(value, units) ? value : new SvgLength(SvgUnits.ToPixels(value, fontSize, units), SvgLengthUnit.Px);
 
     /// <summary>
     /// Copies the value of one property from another style, for the <c>inherit</c> and <c>initial</c> keywords.

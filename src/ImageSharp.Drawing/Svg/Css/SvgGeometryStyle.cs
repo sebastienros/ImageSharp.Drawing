@@ -126,6 +126,15 @@ internal sealed class SvgGeometryStyle
     public System.Numerics.Matrix3x2 Transform { get; set; } = System.Numerics.Matrix3x2.Identity;
 
     /// <summary>
+    /// Gets or sets the CSS <c>transform</c> value as parsed, or <see langword="null"/> when no declaration sets it. In a
+    /// specified style it holds the same value as <see cref="Transform"/>, and also a value that needs the reference box
+    /// or the font size (a percentage, a unit other than <c>px</c>), for which <see cref="Transform"/> is the identity. In
+    /// a computed style it is the value that wins over the transform table of the element, which also covers a value
+    /// that <c>var()</c> substitution produced after the reader built that table.
+    /// </summary>
+    public SvgCssTransform? CssTransform { get; set; }
+
+    /// <summary>
     /// Gets or sets, in a computed style, the properties whose computed value comes from a declaration (a value,
     /// <c>initial</c>, or <c>inherit</c> from a parent value that came from a declaration). The element uses its attribute
     /// for the other geometry properties. Empty in a specified style, whose bits are in <see cref="SvgSpecifiedStyle"/>.
@@ -226,6 +235,7 @@ internal sealed class SvgGeometryStyle
                 break;
             case SvgPropertyId.Transform:
                 this.Transform = source.Transform;
+                this.CssTransform = source.CssTransform;
                 break;
             default:
                 this.SetLength(property, source.GetLength(property));

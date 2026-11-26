@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+  <!-- CSS Values 4 math functions in presentation attributes and properties. Green passes; red shows a failure. -->
+
+  <!-- Row 1: lengths with one unit, in attributes and in CSS. -->
+  <rect x="5" y="5" width="calc(10px + 10px)" height="20" fill="green"/>
+  <rect x="5" y="5" width="0" height="20" fill="green" style="x: calc(15px * 2); width: calc(40px / 2)"/>
+  <rect x="55" y="5" width="min(20px, 100px)" height="max(5px, 20px)" fill="green"/>
+  <rect x="80" y="5" width="20" height="20" fill="green" style="width: clamp(1px, 20px, 300px)"/>
+  <rect x="105" y="5" width="calc(calc(calc(5px * 2) * 2))" height="20" fill="green"/>
+  <circle cx="140" cy="15" r="calc(5px * 2)" fill="green"/>
+  <!-- calc() with + and - needs spaces, and px * px is invalid: the attribute stays. -->
+  <rect x="155" y="5" width="20" height="20" fill="green" style="width: calc(10px+10px)"/>
+
+  <!-- Row 2: numbers in opacity, stroke-width, stroke-dashoffset, and stroke-miterlimit. -->
+  <rect x="5" y="30" width="20" height="20" fill="green" opacity="calc(0.25 * 2)"/>
+  <rect x="30" y="30" width="20" height="20" fill="green" style="fill-opacity: calc(50%)"/>
+  <line x1="55" y1="40" x2="75" y2="40" stroke="green" stroke-width="calc(10px * 2)"/>
+  <line x1="80" y1="40" x2="120" y2="40" stroke="green" stroke-width="20" stroke-dasharray="20 20" style="stroke-dashoffset: calc(10px * 2)"/>
+  <polyline points="130,50 140,30 150,50" fill="none" stroke="green" stroke-width="4" style="stroke-miterlimit: calc(2 * 5)"/>
+  <rect x="155" y="30" width="20" height="20" fill="green" style="width: calc(10px * 10px)"/>
+
+  <!-- Row 3: percentages mixed with lengths, which resolve against the viewport. -->
+  <rect x="calc(2.5% + 0px)" y="55" width="calc(15% - 10px)" height="20" fill="green"/>
+  <line x1="30" y1="65" x2="50" y2="65" stroke="green" style="stroke-width: calc(5% + 10px)"/>
+  <rect x="55" y="55" width="20" height="20" fill="green" style="transform: translate(calc(25% - 50px), 0)"/>
+  <rect x="80" y="55" width="calc(10% + 0.5em)" height="20" fill="green" font-size="0"/>
+  <rect x="105" y="55" width="max(5%, 20px)" height="20" fill="green"/>
+  <!-- The percentage of font-size refers to the parent font size, 16px: 2em is 20px. -->
+  <rect x="130" y="55" width="2em" height="20" fill="green" style="font-size: calc(50% + 2px)"/>
+</svg>

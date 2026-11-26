@@ -172,9 +172,7 @@ internal sealed partial class SvgResolver
         // The shape is the context element of its markers, for context-fill and context-stroke.
         IPath? shape = this.GetShape(index, kind, in context);
         this.EnterContextElement(in context, shape?.Bounds ?? default, -1);
-        float strokeWidth = style.StrokeWidth.Unit == SvgLengthUnit.Percent
-            ? style.StrokeWidth.Value * SvgUnits.Diagonal(context.Viewport) / 100F
-            : style.StrokeWidth.Value;
+        float strokeWidth = SvgUnits.ToUser(style.StrokeWidth, SvgUnits.Diagonal(context.Viewport), style.FontSize, this.units, 0F);
 
         for (int i = 0; i < placed.Length; i++)
         {

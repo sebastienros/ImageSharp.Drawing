@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- CSS Custom Properties Level 1: var() substitution at computed-value time. Each green square passes; red or
+       blue shows a failure. -->
+  <style>
+    svg { --green: green; --size: 20px; }
+    .sheet { --c: green; fill: var(--c); }
+    .parent { --a: var(--b); --b: green; }
+    .child { --b: red; fill: var(--a); }
+    .marker { --m: url(#m); marker: var(--m); }
+    .dash { --dash: 10 10; stroke-dasharray: var(--dash); }
+  </style>
+  <defs>
+    <marker id="m" markerWidth="10" markerHeight="10" refX="5" refY="5" markerUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="green"/>
+    </marker>
+    <rect id="u" width="20" height="20" style="fill: var(--use, red)"/>
+  </defs>
+
+  <!-- Row 1: value, fallback, nested fallback, inherited from the root, style sheet, declared at the parent. -->
+  <rect x="5" y="5" width="20" height="20" fill="red" style="--c: green; fill: var(--c)"/>
+  <rect x="30" y="5" width="20" height="20" fill="red" style="fill: var(--missing, green)"/>
+  <rect x="55" y="5" width="20" height="20" fill="red" style="fill: var(--missing, var(--green))"/>
+  <rect x="80" y="5" width="20" height="20" fill="red" style="fill: var(--green)"/>
+  <rect x="105" y="5" width="20" height="20" fill="red" class="sheet"/>
+  <!-- A custom property substitutes where it is declared, so the child redeclaring - -b does not change - -a. -->
+  <g class="parent"><g class="child"><rect x="130" y="5" width="20" height="20" fill="inherit"/></g></g>
+
+  <!-- Row 2: a cycle and a type mismatch make fill unset (inherited green); a cycle member takes its fallback;
+       initial is the guaranteed-invalid value; the value of an inherited property comes from the parent. -->
+  <g fill="green">
+    <rect x="5" y="30" width="20" height="20" fill="red" style="--a: var(--b); --b: var(--a); fill: var(--a)"/>
+    <rect x="30" y="30" width="20" height="20" fill="red" style="--a: var(--a); fill: var(--a, green)"/>
+    <rect x="55" y="30" width="20" height="20" fill="red" style="--c: 10px; fill: var(--c)"/>
+    <rect x="80" y="30" width="20" height="20" fill="red" style="fill: var(--nope)"/>
+    <g style="--c: red"><rect x="105" y="30" width="20" height="20" fill="red" style="--c: initial; fill: var(--c, green)"/></g>
+    <rect x="130" y="30" width="20" height="20" fill="blue" style="--n: 25; fill: rgb(0 var(--n)5 0)"/>
+  </g>
+  <!-- A malformed var() is invalid at parse time: the attribute applies. -->
+  <rect x="155" y="30" width="20" height="20" fill="green" style="fill: var(c)"/>
+
+  <!-- Row 3: presentation attributes with var(): fill, opacity, width, x. -->
+  <rect x="5" y="55" width="20" height="20" fill="var(--c)" style="--c: green"/>
+  <rect x="30" y="55" width="20" height="20" fill="green" opacity="var(--o)" style="--o: 0.5"/>
+  <rect x="55" y="55" width="var(--w)" height="20" fill="green" style="--w: 20px"/>
+  <rect x="var(--x)" y="55" width="20" height="20" fill="green" style="--x: 80px"/>
+  <!-- var() in the transform attribute is invalid; the CSS transform takes it. -->
+  <rect x="0" y="55" width="20" height="20" fill="green" style="--t: translate(105px, 0); transform: var(--t)"/>
+  <rect x="0" y="55" width="20" height="20" fill="green" style="--t: 130px; transform: translate(var(--t), 0px)"/>
+  <path fill="green" d="M0 0" style="--p: path('M 155 55 h 20 v 20 h -20 z'); d: var(--p)"/>
+
+  <!-- Row 4: shorthands, dash arrays, math functions, color functions, and use instances. -->
+  <path class="marker" d="M 15 90 L 15 90.01" stroke="none" fill="none"/>
+  <line class="dash" x1="30" y1="90" x2="50" y2="90" stroke="green" stroke-width="20"/>
+  <rect x="0" y="80" width="20" height="20" fill="green" style="--x: 27.5px; x: calc(var(--x) * 2)"/>
+  <rect x="80" y="80" width="20" height="20" fill="red" style="--g: 128; fill: rgb(0 var(--g) 0)"/>
+  <use href="#u" x="105" y="80" style="--use: green"/>
+  <rect x="130" y="80" width="var(--size)" height="var(--size)" fill="green"/>
+  <rect x="155" y="80" width="20" height="20" fill="red" style="--k: green; fill: VAR(--k)"/>
+
+  <!-- Row 5: font-size from var() applies to em lengths of the same element. -->
+  <rect x="5" y="105" width="2em" height="20" fill="green" style="--fs: 10px; font-size: var(--fs)"/>
+  <rect x="30" y="105" width="20" height="20" fill="red" style="--a: green; --b: var(--a); --c: var(--b); fill: var(--c)"/>
+</svg>

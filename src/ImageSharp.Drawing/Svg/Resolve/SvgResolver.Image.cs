@@ -147,7 +147,7 @@ internal sealed partial class SvgResolver
     private bool TryGetImageLayout(int index, in SvgResolveContext context, out LoadedImage? image, out RectangleF viewport)
     {
         viewport = default;
-        ref readonly SvgImageAttributes attributes = ref this.tree.GetImage(index);
+        SvgImageAttributes attributes = this.GetImageAttributes(index, context.Style);
         image = attributes.Href is null ? null : this.LoadImage(attributes.Href);
         if (image is null)
         {
@@ -156,11 +156,12 @@ internal sealed partial class SvgResolver
 
         SizeF parent = context.Viewport;
         float fontSize = context.Style.FontSize;
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
         SizeF intrinsic = image.Size;
-        float x = SvgUnits.ToUser(attributes.X, parent.Width, fontSize, this.units, 0F);
-        float y = SvgUnits.ToUser(attributes.Y, parent.Height, fontSize, this.units, 0F);
-        float width = SvgUnits.ToUser(attributes.Width, parent.Width, fontSize, this.units, 0F);
-        float height = SvgUnits.ToUser(attributes.Height, parent.Height, fontSize, this.units, 0F);
+        float x = SvgUnits.ToUser(attributes.X, parent.Width, fontSize, units, 0F);
+        float y = SvgUnits.ToUser(attributes.Y, parent.Height, fontSize, units, 0F);
+        float width = SvgUnits.ToUser(attributes.Width, parent.Width, fontSize, units, 0F);
+        float height = SvgUnits.ToUser(attributes.Height, parent.Height, fontSize, units, 0F);
         bool hasWidth = attributes.Width.IsSpecified;
         bool hasHeight = attributes.Height.IsSpecified;
 

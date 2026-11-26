@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="125" viewBox="0 0 200 125">
+  <!-- CSS Color 4 and 5 functions in fill, as attributes (rows 1 to 3) and in CSS (rows 4 and 5). Colors outside the
+       sRGB gamut are clipped per channel, as in Chromium. -->
+  <rect x="0" y="0" width="200" height="125" fill="white"/>
+
+  <rect x="5" y="5" width="20" height="20" fill="hwb(200 30% 40%)"/>
+  <rect x="30" y="5" width="20" height="20" fill="lab(50 20 -30)"/>
+  <rect x="55" y="5" width="20" height="20" fill="lch(60 120 30)"/>
+  <rect x="80" y="5" width="20" height="20" fill="oklab(0.7 0.1 0.1)"/>
+  <rect x="105" y="5" width="20" height="20" fill="oklch(60% 50% 300)"/>
+  <rect x="130" y="5" width="20" height="20" fill="color(display-p3 0.3 0.6 0.9)"/>
+  <rect x="155" y="5" width="20" height="20" fill="color(srgb-linear 0.5 0.2 0.8)"/>
+
+  <rect x="5" y="30" width="20" height="20" fill="#0808"/>
+  <rect x="30" y="30" width="20" height="20" fill="#00800080"/>
+  <rect x="55" y="30" width="20" height="20" fill="rgb(0 128 0 / 50%)"/>
+  <rect x="80" y="30" width="20" height="20" fill="hsl(120deg 100% 25% / 0.5)"/>
+  <rect x="105" y="30" width="20" height="20" fill="rgb(none 128 none)"/>
+  <rect x="130" y="30" width="20" height="20" fill="color(xyz-d50 0.2 0.3 0.4)"/>
+  <rect x="155" y="30" width="20" height="20" fill="color(a98-rgb 0.5 0.2 0.8)"/>
+
+  <rect x="5" y="55" width="20" height="20" fill="color-mix(in oklab, red 30%, blue)"/>
+  <rect x="30" y="55" width="20" height="20" fill="color-mix(in lch, red, blue)"/>
+  <rect x="55" y="55" width="20" height="20" fill="color-mix(in oklch longer hue, red, blue)"/>
+  <rect x="80" y="55" width="20" height="20" fill="color-mix(in srgb, red 20%, blue 20%)"/>
+  <rect x="105" y="55" width="20" height="20" fill="rgb(from green calc(r + 100) g b / 0.5)"/>
+  <rect x="130" y="55" width="20" height="20" fill="oklch(from blue l c calc(h + 90))"/>
+  <rect x="155" y="55" width="20" height="20" fill="light-dark(green, red)"/>
+
+  <rect x="5" y="80" width="20" height="20" fill="red" style="fill: lab(46.28 -47.55 48.59)"/>
+  <rect x="30" y="80" width="20" height="20" fill="red" style="fill: oklch(0.7 0.3 30)"/>
+  <rect x="55" y="80" width="20" height="20" fill="red" style="fill: color(display-p3 0 1 0)"/>
+  <rect x="80" y="80" width="20" height="20" fill="red" style="fill: rgb(calc(50% + 10%) 0 0)"/>
+  <rect x="105" y="80" width="20" height="20" fill="red" style="fill: hsl(from red calc(h + 120) s l)"/>
+  <rect x="130" y="80" width="20" height="20" fill="red" style="fill: color-mix(in hsl, red, blue)"/>
+  <rect x="155" y="80" width="20" height="20" fill="red" style="fill: hwb(0 60% 60%)"/>
+
+  <!-- Invalid values: the declaration is dropped and the attribute applies. -->
+  <rect x="5" y="105" width="20" height="15" fill="green" style="fill: hwb(120, 0%, 50%)"/>
+  <rect x="30" y="105" width="20" height="15" fill="green" style="fill: color(srgb 0 0.5)"/>
+  <rect x="55" y="105" width="20" height="15" fill="green" style="fill: color-mix(in srgb, red)"/>
+  <rect x="80" y="105" width="20" height="15" fill="green" style="fill: lab(1, 2, 3)"/>
+  <!-- Strokes and stops take the same colors. The gradient has one color: Chromium interpolates the stops of a gradient
+       with such colors in Oklab, where SVG 2 (color-interpolation) and this renderer interpolate in sRGB. -->
+  <rect x="105" y="105" width="20" height="15" fill="none" stroke="oklch(0.5199 0.1770 142.5)" stroke-width="4"/>
+  <linearGradient id="g"><stop offset="0" stop-color="lab(50 100 0)"/><stop offset="1" stop-color="lab(50 100 0)"/></linearGradient>
+  <rect x="130" y="105" width="45" height="15" fill="url(#g)"/>
+</svg>

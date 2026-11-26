@@ -221,9 +221,15 @@ internal sealed partial class SvgPropertyParser
             case SvgPropertyId.FillOpacity:
             case SvgPropertyId.StrokeOpacity:
             case SvgPropertyId.StopOpacity:
+                // A math function is clamped to the range like a plain value.
                 if (!SvgNumberParser.TryParseClampedFraction(source, out float opacity))
                 {
-                    return false;
+                    if (!SvgCalc.TryParseFraction(source, out opacity))
+                    {
+                        return false;
+                    }
+
+                    opacity = Math.Clamp(opacity, 0F, 1F);
                 }
 
                 SetOpacity(ref style, property, opacity);
@@ -279,7 +285,7 @@ internal sealed partial class SvgPropertyParser
                 break;
             case SvgPropertyId.StrokeMiterLimit:
                 // SVG requires a miter limit of at least 1; any other value is an error.
-                if (!SvgNumberParser.TryParseNumber(source, out float miterLimit) || miterLimit < 1F)
+                if (!(SvgNumberParser.TryParseNumber(source, out float miterLimit) || SvgCalc.TryParseNumber(source, out miterLimit)) || miterLimit < 1F)
                 {
                     return false;
                 }
@@ -521,12 +527,16 @@ internal sealed partial class SvgPropertyParser
                 geometry.TransformOriginY = originY;
                 return true;
             case SvgPropertyId.Transform:
-                if (!SvgTransformParser.TryParseCss(source, out System.Numerics.Matrix3x2 transform))
+                if (!SvgCssTransform.TryParse(source, out SvgCssTransform? transform))
                 {
                     return false;
                 }
 
-                style.GetOrCreateExtended().GetOrCreateGeometry().Transform = transform;
+                // The reader folds a known matrix into the transform table; a value that needs the reference box keeps
+                // the identity there and resolves from the computed style.
+                SvgGeometryStyle transformGeometry = style.GetOrCreateExtended().GetOrCreateGeometry();
+                transformGeometry.Transform = transform!.IsStatic ? transform.Matrix : System.Numerics.Matrix3x2.Identity;
+                transformGeometry.CssTransform = transform;
                 return true;
             default:
                 return false;
@@ -680,13 +690,8 @@ internal sealed partial class SvgPropertyParser
                 return false;
             }
 
-            int length = 0;
-            while (length < rest.Length && !SvgNumberParser.IsWhitespace(rest[length]))
-            {
-                length++;
-            }
-
-            ReadOnlySpan<char> word = rest[..length];
+            // A math function with spaces inside stays one component.
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
             rest = SvgNumberParser.SkipWhitespace(rest[length..]);
             keywords[count] = word switch
             {

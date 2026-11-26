@@ -71,8 +71,10 @@ internal sealed partial class SvgPropertyParser
                 style.GetOrCreateExtended().GetOrCreateGeometry().SetLength(property, size);
                 return true;
             case SvgPropertyId.D:
+                // The d property takes path(<string>) without a fill rule; Chromium drops path(evenodd, ...) here.
                 IPath? path = null;
-                if (!source.Equals("none", StringComparison.OrdinalIgnoreCase) && !TryParsePathFunction(source, out _, out path))
+                if (!source.Equals("none", StringComparison.OrdinalIgnoreCase)
+                    && (!TryParsePathFunction(source, out _, out path) || SvgNumberParser.Trim(source[5..])[0] is not ('"' or '\'')))
                 {
                     return false;
                 }

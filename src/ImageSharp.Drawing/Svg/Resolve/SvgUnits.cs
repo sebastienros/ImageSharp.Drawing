@@ -10,10 +10,13 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <para>
 /// <c>px</c> and unitless numbers are user units. Absolute units convert with the load resolution: an inch is
 /// <c>dpi</c> user units, a point 1/72 inch, a pica 1/6 inch, a quarter-millimeter 1/101.6 inch. <c>em</c> is the
-/// computed font size, and <c>ex</c> and <c>ch</c> are half of it, because the renderer has no font metrics yet; CSS
-/// Values 4 allows that fallback. <c>rem</c> is the computed font size of the root element. <c>vw</c>, <c>vh</c>,
-/// <c>vmin</c>, and <c>vmax</c> refer to the intrinsic size of the document, which plays the part of the initial
-/// containing block of a standalone document.
+/// computed font size. <c>ch</c> is the advance of "0" in the first available font of
+/// <see cref="SvgUnitBasis.Font"/>, as CSS Values 4 defines it, and half the font size when the basis names no font or
+/// the font has no "0" (the fallback of CSS Values 4). <c>ex</c> is half the font size: the x-height of the fonts would
+/// change the result of conformance tests whose reference images use that fallback (see <c>SVG_DESIGN.md</c>).
+/// <c>rem</c> is the computed font size of the root element. <c>vw</c>, <c>vh</c>, <c>vmin</c>, and <c>vmax</c> refer to
+/// the intrinsic size of the document, which plays the part of the initial containing block of a standalone document.
+/// A math function that mixes units (<see cref="SvgLengthUnit.Calc"/>) runs its expression with the same references.
 /// </para>
 /// <para>
 /// A percentage refers to a size that the caller chooses: the viewport width for x-axis values, the height for y-axis
@@ -38,8 +41,35 @@ internal static class SvgUnits
             return defaultValue;
         }
 
-        return value.Unit == SvgLengthUnit.Percent ? value.Value * percentBase / 100F : ToPixels(value, fontSize, units);
+        return value.Unit switch
+        {
+            SvgLengthUnit.Percent => value.Value * percentBase / 100F,
+            SvgLengthUnit.Calc => EvaluateCalc(value, percentBase, fontSize, units),
+            _ => ToPixels(value, fontSize, units)
+        };
     }
+
+    /// <summary>
+    /// Returns whether a length depends on the size that percentages refer to: a percentage, or a math function with a
+    /// percentage in it.
+    /// </summary>
+    /// <param name="value">The length.</param>
+    /// <param name="units">The document values, whose context holds the math functions.</param>
+    /// <returns><see langword="true"/> if the length needs a percentage base; otherwise, <see langword="false"/>.</returns>
+    public static bool HasPercentage(SvgLength value, SvgUnitBasis units)
+        => value.Unit == SvgLengthUnit.Percent
+        || (value.Unit == SvgLengthUnit.Calc && units.Context?.GetCalc(value)?.HasPercentage != false);
+
+    /// <summary>
+    /// Runs the expression of a math function that mixes units.
+    /// </summary>
+    /// <param name="value">A length of unit <see cref="SvgLengthUnit.Calc"/>.</param>
+    /// <param name="percentBase">The size that 100% refers to.</param>
+    /// <param name="fontSize">The computed font size of the element.</param>
+    /// <param name="units">The document values that units refer to.</param>
+    /// <returns>The length in user units; zero when the expression is not known.</returns>
+    private static float EvaluateCalc(SvgLength value, float percentBase, float fontSize, SvgUnitBasis units)
+        => units.Context?.GetCalc(value)?.Evaluate(percentBase, fontSize, units) ?? 0F;
 
     /// <summary>
     /// Converts a length that is not a percentage to user units. An unspecified length is zero.
@@ -59,12 +89,16 @@ internal static class SvgUnits
             SvgLengthUnit.In => value.Value * units.Dpi,
             SvgLengthUnit.Q => value.Value * units.Dpi / 101.6F,
             SvgLengthUnit.Em => value.Value * fontSize,
-            SvgLengthUnit.Ex or SvgLengthUnit.Ch => value.Value * fontSize / 2F,
+            SvgLengthUnit.Ex => value.Value * fontSize / 2F,
+            SvgLengthUnit.Ch => value.Value * fontSize * (units.Font is SvgTextStyle font ? units.Context!.GetZeroAdvance(font) : 0.5F),
             SvgLengthUnit.Rem => value.Value * units.RootFontSize,
             SvgLengthUnit.Vw => value.Value * units.ViewportSize.Width / 100F,
             SvgLengthUnit.Vh => value.Value * units.ViewportSize.Height / 100F,
             SvgLengthUnit.Vmin => value.Value * MathF.Min(units.ViewportSize.Width, units.ViewportSize.Height) / 100F,
             SvgLengthUnit.Vmax => value.Value * MathF.Max(units.ViewportSize.Width, units.ViewportSize.Height) / 100F,
+
+            // A percentage has no base here; the callers of this method do not take percentages.
+            SvgLengthUnit.Calc => EvaluateCalc(value, 0F, fontSize, units),
             _ => 0F
         };
 

@@ -30,11 +30,37 @@ internal readonly struct SvgUnitBasis
     /// <param name="rootFontSize">The computed font size of the root element in pixels, for <c>rem</c>.</param>
     /// <param name="viewportSize">The size that <c>vw</c> and <c>vh</c> take 1% of.</param>
     public SvgUnitBasis(float dpi, float rootFontSize, SizeF viewportSize)
+        : this(dpi, rootFontSize, viewportSize, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SvgUnitBasis"/> struct with the style context of a resolve.
+    /// </summary>
+    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="rootFontSize">The computed font size of the root element in pixels, for <c>rem</c>.</param>
+    /// <param name="viewportSize">The size that <c>vw</c> and <c>vh</c> take 1% of.</param>
+    /// <param name="context">The style context of the resolve, or <see langword="null"/> outside one.</param>
+    public SvgUnitBasis(float dpi, float rootFontSize, SizeF viewportSize, SvgStyleContext? context)
     {
         this.Dpi = dpi;
         this.RootFontSize = rootFontSize;
         this.ViewportSize = viewportSize;
+        this.Context = context;
+        this.Font = null;
     }
+
+    /// <summary>
+    /// Gets the style context of the resolve: <c>var()</c> substitution, the math functions that mix units, and the font
+    /// metrics of <c>ch</c>. <see langword="null"/> outside a resolve; then such values resolve to their fallbacks.
+    /// </summary>
+    public SvgStyleContext? Context { get; }
+
+    /// <summary>
+    /// Gets the computed text style whose first available font <c>ch</c> refers to, or <see langword="null"/> when the
+    /// caller did not name one; then <c>ch</c> is half the font size, the fallback of CSS Values 4.
+    /// </summary>
+    public SvgTextStyle? Font { get; private init; }
 
     /// <summary>
     /// Gets the pixels per inch for absolute units.
@@ -57,4 +83,26 @@ internal readonly struct SvgUnitBasis
     /// <param name="dpi">The pixels per inch for absolute units.</param>
     /// <returns>The basis.</returns>
     public static SvgUnitBasis ForRoot(float dpi) => new(dpi, InitialFontSize, DefaultViewportSize);
+
+    /// <summary>
+    /// Creates the basis for the root element with the style context of a resolve.
+    /// </summary>
+    /// <param name="dpi">The pixels per inch for absolute units.</param>
+    /// <param name="context">The style context of the resolve.</param>
+    /// <returns>The basis.</returns>
+    public static SvgUnitBasis ForRoot(float dpi, SvgStyleContext? context) => new(dpi, InitialFontSize, DefaultViewportSize, context);
+
+    /// <summary>
+    /// Returns this basis for the root element: the same resolution and context, with the values that apply before the
+    /// root font size and the intrinsic size are known.
+    /// </summary>
+    /// <returns>The basis.</returns>
+    public SvgUnitBasis ForRoot() => new(this.Dpi, InitialFontSize, DefaultViewportSize, this.Context);
+
+    /// <summary>
+    /// Returns this basis with the font that <c>ch</c> refers to. The font is looked up only when a length uses it.
+    /// </summary>
+    /// <param name="text">The computed text style of the element whose font the unit uses.</param>
+    /// <returns>The basis.</returns>
+    public SvgUnitBasis WithFont(SvgTextStyle text) => this.Context is null ? this : this with { Font = text };
 }

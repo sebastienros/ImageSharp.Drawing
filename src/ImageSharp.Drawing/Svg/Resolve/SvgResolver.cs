@@ -87,11 +87,12 @@ internal sealed partial class SvgResolver
         // rem in the font size of the root refers to the initial font size; the other root lengths refer to the root
         // font size. Viewport units refer to the intrinsic size, which the root size defines, so the root itself uses
         // the default size.
-        this.rootStyle = SvgComputedStyle.ComputeRoot(in tree.GetStyle(0), in this.initialStyle, SvgUnitBasis.ForRoot(options.Dpi));
+        SvgStyleContext styleContext = new(tree.CalcTable, options);
+        this.rootStyle = SvgComputedStyle.ComputeRoot(in tree.GetStyle(0), in this.initialStyle, SvgUnitBasis.ForRoot(options.Dpi, styleContext));
 
-        SvgUnitBasis rootUnits = new(options.Dpi, this.rootStyle.FontSize, SvgUnitBasis.DefaultViewportSize);
+        SvgUnitBasis rootUnits = new(options.Dpi, this.rootStyle.FontSize, SvgUnitBasis.DefaultViewportSize, styleContext);
         this.intrinsicSize = this.ComputeIntrinsicSize(rootUnits, out this.rootViewBox, out this.viewBoxDisablesRendering);
-        this.units = new SvgUnitBasis(options.Dpi, this.rootStyle.FontSize, this.intrinsicSize);
+        this.units = new SvgUnitBasis(options.Dpi, this.rootStyle.FontSize, this.intrinsicSize, styleContext);
         this.paints = new SvgPaintCache(tree, this.units, in this.initialStyle);
         this.shapes = new IPath?[tree.Count];
         this.shapeContexts = new Vector3[tree.Count];
@@ -518,7 +519,7 @@ internal sealed partial class SvgResolver
     /// <param name="context">The context of the <c>use</c> element.</param>
     private void ResolveUse(int index, in SvgResolveContext context)
     {
-        ref readonly SvgUseAttributes use = ref this.tree.GetUse(index);
+        SvgUseAttributes use = this.GetUseAttributes(index, context.Style);
         if (use.Href is null || !this.tree.TryGetElementById(use.Href, out int target))
         {
             return;
@@ -654,6 +655,11 @@ internal sealed partial class SvgResolver
     /// <returns><see langword="true"/> if the element has a transform; otherwise, <see langword="false"/>.</returns>
     internal bool TryGetLocalTransform(int index, in SvgComputedStyle style, SizeF referenceBox, out Matrix3x2 transform)
     {
+        if (NeedsStyledTransform(style.Geometry))
+        {
+            return this.TryGetStyledLocalTransform(index, in style, referenceBox, out transform);
+        }
+
         if (!this.tree.TryGetTransform(index, out transform))
         {
             return false;
@@ -757,7 +763,7 @@ internal sealed partial class SvgResolver
 
             case SvgElementKind.Use:
             {
-                ref readonly SvgUseAttributes use = ref this.tree.GetUse(element);
+                SvgUseAttributes use = this.GetUseAttributes(element, context.Style);
                 if (use.Href is null
                     || !this.tree.TryGetElementById(use.Href, out int target)
                     || (target <= element && element < this.tree[target].SubtreeEnd)
@@ -885,9 +891,7 @@ internal sealed partial class SvgResolver
             : this.ResolvePaint(style.Fill, style.FillOpacity, bounds, in context);
 
         Pen? stroke = null;
-        float strokeWidth = style.StrokeWidth.Unit == SvgLengthUnit.Percent
-            ? style.StrokeWidth.Value * SvgUnits.Diagonal(viewport) / 100F
-            : style.StrokeWidth.Value;
+        float strokeWidth = SvgUnits.ToUser(style.StrokeWidth, SvgUnits.Diagonal(viewport), style.FontSize, this.units, 0F);
 
         if (strokeWidth > 0F)
         {
@@ -977,9 +981,7 @@ internal sealed partial class SvgResolver
             pattern = this.CreateDashPattern(style.StrokeDashArray, width, style.FontSize, viewport);
             if (pattern is not null)
             {
-                float dashOffset = style.StrokeDashOffset.Unit == SvgLengthUnit.Percent
-                    ? style.StrokeDashOffset.Value * SvgUnits.Diagonal(viewport) / 100F
-                    : style.StrokeDashOffset.Value;
+                float dashOffset = SvgUnits.ToUser(style.StrokeDashOffset, SvgUnits.Diagonal(viewport), style.FontSize, this.units, 0F);
 
                 // The pen measures the dash offset in multiples of the stroke width.
                 offset = dashOffset / width;
@@ -1004,7 +1006,7 @@ internal sealed partial class SvgResolver
     /// <returns>The pattern, or <see langword="null"/> for a solid stroke.</returns>
     private float[]? CreateDashPattern(SvgDashArray dashArray, float width, float fontSize, SizeF viewport)
     {
-        ReadOnlySpan<SvgLength> lengths = this.tree.GetDashArray(dashArray);
+        ReadOnlySpan<SvgLength> lengths = this.GetDashLengths(dashArray);
         float diagonal = SvgUnits.Diagonal(viewport);
         int count = lengths.Length % 2 == 0 ? lengths.Length : lengths.Length * 2;
         float[] pattern = new float[count];
@@ -1044,7 +1046,7 @@ internal sealed partial class SvgResolver
         {
             // The parser built the path. An empty path, which the parser builds when the first command has an error, has
             // nothing to paint.
-            IPath? path = this.tree.GetPath(index).Path;
+            IPath? path = this.GetPathData(index, context.Style);
             if (path is ComplexPolygon complex)
             {
                 using IEnumerator<IPath> subpaths = complex.Paths.GetEnumerator();
@@ -1071,10 +1073,12 @@ internal sealed partial class SvgResolver
         }
 
         // Percentages in the other shapes refer to the viewport, and em and ex to the font size, so the shared geometry is
-        // keyed by both. Instances in the same viewport, which is the usual case, share one path.
+        // keyed by both. Instances in the same viewport, which is the usual case, share one path. Geometry from CSS can
+        // differ per instance, so such a shape is not cached.
         Vector3 key = new(context.Viewport.Width, context.Viewport.Height, context.Style.FontSize);
+        bool styled = HasStyledGeometry(context.Style.Geometry);
         IPath? cached = this.shapes[index];
-        if (cached is not null && this.shapeContexts[index] == key)
+        if (!styled && cached is not null && this.shapeContexts[index] == key)
         {
             return cached;
         }
@@ -1086,7 +1090,7 @@ internal sealed partial class SvgResolver
             _ => this.CreateLine(index, in context),
         };
 
-        if (shape is not null)
+        if (shape is not null && !styled)
         {
             this.shapes[index] = shape;
             this.shapeContexts[index] = key;
@@ -1108,21 +1112,22 @@ internal sealed partial class SvgResolver
     /// <returns>The path, or <see langword="null"/> when the width or height is not positive.</returns>
     private IPath? CreateRect(int index, in SvgResolveContext context)
     {
-        ref readonly SvgRectAttributes rect = ref this.tree.GetRect(index);
+        SvgRectAttributes rect = this.GetRectAttributes(index, context.Style);
         SizeF viewport = context.Viewport;
         float fontSize = context.Style.FontSize;
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
 
-        float width = SvgUnits.ToUser(rect.Width, viewport.Width, fontSize, this.units, 0F);
-        float height = SvgUnits.ToUser(rect.Height, viewport.Height, fontSize, this.units, 0F);
+        float width = SvgUnits.ToUser(rect.Width, viewport.Width, fontSize, units, 0F);
+        float height = SvgUnits.ToUser(rect.Height, viewport.Height, fontSize, units, 0F);
         if (!(width > 0F) || !(height > 0F))
         {
             return null;
         }
 
-        float x = SvgUnits.ToUser(rect.X, viewport.Width, fontSize, this.units, 0F);
-        float y = SvgUnits.ToUser(rect.Y, viewport.Height, fontSize, this.units, 0F);
-        float rx = SvgUnits.ToUser(rect.Rx, viewport.Width, fontSize, this.units, 0F);
-        float ry = SvgUnits.ToUser(rect.Ry, viewport.Height, fontSize, this.units, 0F);
+        float x = SvgUnits.ToUser(rect.X, viewport.Width, fontSize, units, 0F);
+        float y = SvgUnits.ToUser(rect.Y, viewport.Height, fontSize, units, 0F);
+        float rx = SvgUnits.ToUser(rect.Rx, viewport.Width, fontSize, units, 0F);
+        float ry = SvgUnits.ToUser(rect.Ry, viewport.Height, fontSize, units, 0F);
 
         if (!rect.Rx.IsSpecified)
         {
@@ -1189,21 +1194,22 @@ internal sealed partial class SvgResolver
     /// <returns>The path, or <see langword="null"/> when a radius is not positive.</returns>
     private Polygon? CreateEllipse(int index, SvgElementKind kind, in SvgResolveContext context)
     {
-        ref readonly SvgCircleAttributes circle = ref this.tree.GetCircle(index);
+        SvgCircleAttributes circle = this.GetCircleAttributes(index, context.Style);
         SizeF viewport = context.Viewport;
         float fontSize = context.Style.FontSize;
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
 
         float rx;
         float ry;
         if (kind == SvgElementKind.Circle)
         {
-            rx = SvgUnits.ToUser(circle.R, SvgUnits.Diagonal(viewport), fontSize, this.units, 0F);
+            rx = SvgUnits.ToUser(circle.R, SvgUnits.Diagonal(viewport), fontSize, units, 0F);
             ry = rx;
         }
         else
         {
-            rx = SvgUnits.ToUser(circle.Rx, viewport.Width, fontSize, this.units, 0F);
-            ry = SvgUnits.ToUser(circle.Ry, viewport.Height, fontSize, this.units, 0F);
+            rx = SvgUnits.ToUser(circle.Rx, viewport.Width, fontSize, units, 0F);
+            ry = SvgUnits.ToUser(circle.Ry, viewport.Height, fontSize, units, 0F);
             if (!circle.Rx.IsSpecified)
             {
                 rx = ry;
@@ -1219,8 +1225,8 @@ internal sealed partial class SvgResolver
             return null;
         }
 
-        float cx = SvgUnits.ToUser(circle.Cx, viewport.Width, fontSize, this.units, 0F);
-        float cy = SvgUnits.ToUser(circle.Cy, viewport.Height, fontSize, this.units, 0F);
+        float cx = SvgUnits.ToUser(circle.Cx, viewport.Width, fontSize, units, 0F);
+        float cy = SvgUnits.ToUser(circle.Cy, viewport.Height, fontSize, units, 0F);
         float kx = rx * Kappa;
         float ky = ry * Kappa;
 
@@ -1247,13 +1253,14 @@ internal sealed partial class SvgResolver
         ref readonly SvgLineAttributes line = ref this.tree.GetLine(index);
         SizeF viewport = context.Viewport;
         float fontSize = context.Style.FontSize;
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
 
         PointF start = new(
-            SvgUnits.ToUser(line.X1, viewport.Width, fontSize, this.units, 0F),
-            SvgUnits.ToUser(line.Y1, viewport.Height, fontSize, this.units, 0F));
+            SvgUnits.ToUser(line.X1, viewport.Width, fontSize, units, 0F),
+            SvgUnits.ToUser(line.Y1, viewport.Height, fontSize, units, 0F));
         PointF end = new(
-            SvgUnits.ToUser(line.X2, viewport.Width, fontSize, this.units, 0F),
-            SvgUnits.ToUser(line.Y2, viewport.Height, fontSize, this.units, 0F));
+            SvgUnits.ToUser(line.X2, viewport.Width, fontSize, units, 0F),
+            SvgUnits.ToUser(line.Y2, viewport.Height, fontSize, units, 0F));
 
         return new Path(new LinearLineSegment(start, end));
     }

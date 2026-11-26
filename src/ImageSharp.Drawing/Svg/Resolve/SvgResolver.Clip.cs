@@ -341,7 +341,7 @@ internal sealed partial class SvgResolver
         {
             // A use element adds geometry only when it references a shape directly; the shape inherits from the use
             // element and moves by x and y after its own transform.
-            ref readonly SvgUseAttributes use = ref this.tree.GetUse(child);
+            SvgUseAttributes use = this.GetUseAttributes(child, in style);
             if (use.Href is null || !this.tree.TryGetElementById(use.Href, out shape))
             {
                 return false;

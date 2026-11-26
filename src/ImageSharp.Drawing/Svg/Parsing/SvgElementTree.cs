@@ -101,7 +101,13 @@ internal sealed class SvgElementTree
         this.ids = tables.Ids;
         this.idLookup = this.ids.GetAlternateLookup<ReadOnlySpan<char>>();
         this.StyleRuleCount = styleRuleCount;
+        this.CalcTable = tables.Calc;
     }
+
+    /// <summary>
+    /// Gets the math functions that mix units, which lengths of unit <see cref="SvgLengthUnit.Calc"/> index into.
+    /// </summary>
+    public SvgCalcTable CalcTable { get; }
 
     /// <summary>
     /// Gets the number of elements.

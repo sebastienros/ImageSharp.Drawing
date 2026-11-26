@@ -75,7 +75,16 @@ internal sealed class SvgReader
         // The user style sheet is known before the first element, so its attribute names are recorded from the start.
         if (!string.IsNullOrEmpty(options.UserStyleSheet))
         {
-            SvgCssParser.ParseStyleSheet(options.UserStyleSheet, this.StyleSheet, this.properties, this.names, true, -1);
+            SvgCalcTable? previous = SvgCalcTable.Enter(this.tables.Calc);
+            try
+            {
+                SvgCssParser.ParseStyleSheet(options.UserStyleSheet, this.StyleSheet, this.properties, this.names, true, -1);
+            }
+            finally
+            {
+                SvgCalcTable.Exit(previous);
+            }
+
             this.UpdateAttributeCoverage();
         }
     }
@@ -280,12 +289,32 @@ internal sealed class SvgReader
         };
 
     /// <summary>
-    /// Reads every node, then runs the cascade.
+    /// Reads every node, then runs the cascade. The math functions that mix units go to the table of this document while
+    /// it reads (<see cref="SvgCalcTable.Current"/>).
     /// </summary>
     /// <param name="xml">The XML reader.</param>
     /// <param name="source">The input, for a second read.</param>
     /// <returns>The element tree.</returns>
     private SvgElementTree ReadDocument(XmlReader xml, in Source source)
+    {
+        SvgCalcTable? previous = SvgCalcTable.Enter(this.tables.Calc);
+        try
+        {
+            return this.ReadDocumentCore(xml, in source);
+        }
+        finally
+        {
+            SvgCalcTable.Exit(previous);
+        }
+    }
+
+    /// <summary>
+    /// Reads every node, then runs the cascade.
+    /// </summary>
+    /// <param name="xml">The XML reader.</param>
+    /// <param name="source">The input, for a second read.</param>
+    /// <returns>The element tree.</returns>
+    private SvgElementTree ReadDocumentCore(XmlReader xml, in Source source)
     {
         try
         {
@@ -1110,6 +1139,11 @@ internal sealed class SvgReader
         /// Gets the dash lengths that <see cref="SvgDashArray"/> values index into.
         /// </summary>
         public List<SvgLength> DashLengths { get; }
+
+        /// <summary>
+        /// Gets the math functions that mix units, which lengths of unit <see cref="SvgLengthUnit.Calc"/> index into.
+        /// </summary>
+        public SvgCalcTable Calc { get; } = new();
 
         /// <summary>
         /// Gets the attributes of <c>svg</c> and <c>symbol</c> elements.

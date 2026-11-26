@@ -66,6 +66,12 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 | Presentation attributes and inline `style` | Yes | Yes | Yes | 1 | Yes |
 | `<style>` element with selectors | Yes (full selector engine) | — | Yes (ExCSS) | 1 (simple), 2 (full) | Yes (full selectors, `media`) |
 | User stylesheet | Yes | — | Yes | 2 | Yes |
+| Custom properties and `var()` | Yes | — | Not stated | 5 | Yes: substitution at computed-value time, in CSS and in presentation attributes as Chromium accepts them; cycles, fallbacks, shorthands |
+| Geometry properties and `d` in CSS | Partial | — | Not stated | 5 | Yes: `rect`, `circle`, `ellipse`, `path`, `use` (`x`, `y`), `image`; not on a nested `svg`, as Chromium |
+| CSS `transform` syntax, `transform-box` | Partial | — | Not stated | 5 | Yes: CSS units, percentages of the reference box, math functions; 3D functions flattened to the plane |
+| CSS Color 4 and 5 functions | Partial | — | Not stated | 5 | Yes: `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color()`, `none`, `color-mix()`, relative colors, `light-dark()`; clipped to sRGB as Chromium; not `currentColor` inside `color-mix()` and relative colors |
+| `calc()`, `min()`, `max()`, `clamp()` | Partial | — | Not stated | 5 | Yes: lengths, numbers, angles, color channels; percentages mixed with lengths resolve against their reference |
+| `ch` from the font | — | — | Not stated | 5 | Yes; `ex` stays half the font size: the x-height, which Chromium uses, fails three conformance tests whose references use half the font size |
 | `image` (raster, data URIs) | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
 | `image` (nested SVG file) | Yes | — | Yes | 2 | Yes |
 | `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 | Yes (glyph outlines at load; section 15) |
@@ -315,6 +321,7 @@ SVG arrives from untrusted sources. Issue #385 showed crashes in the path parser
 - **Expansion.** Nested `use` can multiply nodes exponentially. Limits on instance count, element count, and nesting depth live in `SvgLimits`.
 - **Buffers.** Limits on layer, pattern tile, and filter region sizes. Blur radius is clamped. `SvgLimits` has `MaxElements`, `MaxNodes`, `MaxNestingDepth`, `MaxCharactersFromEntities`, `MaxImagePixels`, `MaxPatternTilePixels`, `MaxTextCharacters`, `MaxFilterPixels`, and, since phase 5, `MaxLayerPixels`: the largest total of the pixels of the layers that one draw keeps open at the same time (default 16 × 4096 × 4096). A pass over the render nodes with the transform of the draw computes the total before anything is recorded, and a draw over the limit throws `InvalidImageContentException` without changing the canvas. Nested SVG images are part of the draw that shows them. Filter content and pattern tiles draw on canvases of their own, which are checked when they draw; filter buffers count against `MaxFilterPixels`. At 4000 pixels on the long edge the largest total of the benchmark corpus is 2.2 million pixels (StyledLandscape) and of the resvg suite 41 million (`masking/mask/mask-on-child`, 2.6 canvases), a margin of 6.5 to the default.
 - **Numbers.** NaN, infinity, and overflow in lengths and transforms make the node invalid. They do not reach the rasterizer.
+- **CSS values.** Internal limits, each of which makes the value invalid when exceeded: a `var()` substitution longer than 32,768 characters (a chain of custom properties that doubles at each step stops after about 12 steps), `var()` references and fallbacks nested deeper than 32, and 16 million characters produced by all substitutions of one document (`use` instances substitute again); math functions nested deeper than 32 or with more than 256 values and operators, and 65,536 math functions that mix units per document; color functions nested deeper than 16.
 - **Fuzzing.** A fuzz target for `SvgDocument.Load` belongs in the test plan.
 
 ## 11. Phases
