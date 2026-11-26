@@ -113,7 +113,7 @@ As in the earlier phases:
 
 - Cross-feature tests: geometry from CSS with markers, patterns, filters, and `use`; `var()` in paint, in geometry, and in filters; basic-shape clips with masks and filters; the decoder with text, images, and filters in one document.
 - Conformance totals per category next to the earlier counts.
-- Benchmarks: `Image.Load` of an SVG through the decoder against `SvgDocument.Load` plus `DrawSvg` (the decoder must add no measurable cost), and against the existing Svg.Skia and NetVips load-and-render numbers. Check that the corpus documents are not slower than at the phase 4 merge commit.
+- Benchmarks: `Image.Load` of an SVG through the decoder against `SvgDocument.Load` plus `DrawSvg` (the decoder must add no measurable cost), and against the existing Svg.Skia and NetVips load-and-render times. Managed allocation is reported for ImageSharp.Drawing only, as an absolute value: Svg.Skia and NetVips are native libraries, so it is not a comparison between renderers (a decision of the user). Check that the corpus documents are not slower than at the phase 4 merge commit.
 - Update `SVG_DESIGN.md`: status, the public API section, the feature table, open question 2 as decided, the limits, results, known gaps, and the list of features that stay out with the reason for each.
 - Remove plan package names from source comments.
 
