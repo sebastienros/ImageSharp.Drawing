@@ -56,6 +56,35 @@ internal static class SvgGrowth
     }
 
     /// <summary>
+    /// Runs an action once to warm it up, then measures it several times and returns the shortest time. Use it for a
+    /// cost that varies much between runs (parallel work on a loaded machine): the shortest run is the one with the
+    /// least disturbance.
+    /// </summary>
+    /// <param name="output">The test output, which receives the measured time.</param>
+    /// <param name="name">The name of the case in the output.</param>
+    /// <param name="runs">The number of measured runs.</param>
+    /// <param name="action">The action.</param>
+    /// <returns>The shortest time of the measured runs.</returns>
+    public static TimeSpan MeasureBest(ITestOutputHelper output, string name, int runs, Action action)
+    {
+        action();
+        TimeSpan best = TimeSpan.MaxValue;
+        for (int i = 0; i < runs; i++)
+        {
+            Stopwatch watch = Stopwatch.StartNew();
+            action();
+            watch.Stop();
+            if (watch.Elapsed < best)
+            {
+                best = watch.Elapsed;
+            }
+        }
+
+        output.WriteLine($"{name}: {best.TotalMilliseconds:0} ms (best of {runs})");
+        return best;
+    }
+
+    /// <summary>
     /// Asserts that a cost grew at most in proportion to its input: the large run, with <paramref name="factor"/> times
     /// the input of the small run, took less than <paramref name="factor"/> times the small run, with slack. For a cost
     /// that may be quadratic, pass the square of the input ratio.

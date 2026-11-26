@@ -90,14 +90,19 @@ public class SvgNestedImageTextTests
     }
 
     /// <summary>
-    /// Embedded documents nested as deep as the image nesting limit, each level with text and ten instances of the next
+    /// Embedded documents nested deeper than the image nesting limit, each level with text and ten instances of the next
     /// level, load and draw; twice the nesting depth costs no more, because the levels beyond the limit do not load.
     /// </summary>
+    /// <remarks>
+    /// Both documents exceed the limit of four nested levels, so both draw the same content and differ only in the
+    /// levels that do not load. The draw of the ten thousand instances of the deepest level varies by a factor of four
+    /// between runs on a loaded machine, so each time is the best of several runs.
+    /// </remarks>
     [Fact]
     public void NestingWithTextAtEveryLevel_IsBounded()
     {
-        TimeSpan small = SvgGrowth.MeasureWarm(this.output, "4 levels", () => DrawNested(4));
-        TimeSpan large = SvgGrowth.Measure(this.output, "8 levels", () => DrawNested(8));
+        TimeSpan small = SvgGrowth.MeasureBest(this.output, "5 levels", 5, () => DrawNested(5));
+        TimeSpan large = SvgGrowth.MeasureBest(this.output, "10 levels", 5, () => DrawNested(10));
         SvgGrowth.AssertBounded(small, large);
 
         static void DrawNested(int depth)
