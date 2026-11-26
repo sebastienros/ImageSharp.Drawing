@@ -14,12 +14,13 @@ internal enum SvgImageRendering : byte
     Auto,
 
     /// <summary>
-    /// <c>optimizeQuality</c>, an SVG 1.1 value that CSS maps to smooth sampling.
+    /// <c>optimizeQuality</c>, an SVG 1.1 value that CSS Images Level 3 treats as <c>smooth</c>.
     /// </summary>
     OptimizeQuality,
 
     /// <summary>
-    /// <c>optimizeSpeed</c>, an SVG 1.1 value that browsers map to nearest-neighbor sampling.
+    /// <c>optimizeSpeed</c>, an SVG 1.1 value that CSS Images Level 3 treats as <c>crisp-edges</c>: nearest-neighbor
+    /// sampling here. The Chromium oracle samples it smoothly in an <c>image</c> element.
     /// </summary>
     OptimizeSpeed,
 

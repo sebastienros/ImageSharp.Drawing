@@ -274,17 +274,18 @@ public class SvgStylePropertyTests
         Assert.Equal([Px(1), Px(2), new SvgLength(3, SvgLengthUnit.Percent), new SvgLength(4, SvgLengthUnit.Percent)], polygon.Lengths);
     }
 
-    // Chromium accepts basic shapes in the clip-path presentation attribute. The shape is not applied yet: it names no
-    // element, so the element renders unclipped, as before.
+    // Chromium accepts basic shapes in the clip-path presentation attribute, and the shape clips: a circle of radius 5
+    // at the center of the rectangle.
     [Fact]
-    public void ClipPath_ShapeAttributeIsStoredAndDrawsUnclipped()
+    public void ClipPath_ShapeAttributeIsStoredAndClips()
     {
         const string content = """<rect id="r" width="200" height="100" fill="green" clip-path="circle(5px)"/>""";
         SvgComputedStyle style = Compute(content, "r");
         Assert.Equal(SvgBasicShapeKind.Circle, style.ClipPath.Shape!.Kind);
 
         using Image<Rgba32> image = Render(content);
-        Assert.Equal(new Rgba32(0, 128, 0, 255), image[2, 2]);
+        Assert.Equal(default, image[2, 2]);
+        Assert.Equal(new Rgba32(0, 128, 0, 255), image[100, 50]);
     }
 
     [Theory]
@@ -429,13 +430,18 @@ public class SvgStylePropertyTests
             <g style="font-feature-settings: 'tnum'; font-variant-ligatures: none; white-space-collapse: preserve">
               <text id="t">a</text>
             </g>
+            <text style="white-space-collapse: preserve">a<tspan id="s">b</tspan></text>
             <text id="a" font-feature-settings="'smcp'" font-variant-caps="small-caps" white-space-collapse="preserve">a</text>
             """;
 
         SvgTextStyle inherited = Compute(content, "t").Text;
         Assert.Equal(Tag.Parse("tnum"), Assert.Single(inherited.FontFeatureSettings).Tag);
         Assert.Equal(SvgFontVariantLigatures.None, inherited.FontVariantLigatures);
-        Assert.Equal(SvgWhiteSpaceCollapse.Preserve, inherited.WhiteSpaceCollapse);
+
+        // white-space-collapse inherits inside text, but a text element starts from the initial value, as the user agent
+        // style sheet of the Chromium oracle sets it on text: the value of the g does not reach the text.
+        Assert.Equal(SvgWhiteSpaceCollapse.Collapse, inherited.WhiteSpaceCollapse);
+        Assert.Equal(SvgWhiteSpaceCollapse.Preserve, Compute(content, "s").Text.WhiteSpaceCollapse);
 
         // Chromium ignores these attributes.
         SvgTextStyle attributes = Compute(content, "a").Text;
@@ -443,7 +449,7 @@ public class SvgStylePropertyTests
     }
 
     // The legacy keywords set white-space as before and white-space-collapse too; the CSS Text Level 4 shorthand forms
-    // set only white-space-collapse, so the text layout, which reads white-space, renders them as before.
+    // set only white-space-collapse, which the text layout reads.
     [Theory]
     [InlineData("pre", true, (int)SvgWhiteSpace.Pre, (int)SvgWhiteSpaceCollapse.Preserve)]
     [InlineData("nowrap", true, (int)SvgWhiteSpace.Nowrap, (int)SvgWhiteSpaceCollapse.Collapse)]

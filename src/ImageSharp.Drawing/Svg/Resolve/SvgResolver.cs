@@ -894,7 +894,7 @@ internal sealed partial class SvgResolver
             Brush? strokeBrush = this.ResolvePaint(style.Stroke, style.StrokeOpacity, bounds, in context);
             if (strokeBrush is not null)
             {
-                stroke = this.CreatePen(strokeBrush, strokeWidth, in style, viewport);
+                stroke = this.CreatePen(strokeBrush, strokeWidth, in style, viewport, this.GetDashScale(index, path, in style));
             }
         }
 
@@ -951,8 +951,9 @@ internal sealed partial class SvgResolver
     /// <param name="width">The stroke width in user units. It is greater than zero.</param>
     /// <param name="style">The computed style of the shape.</param>
     /// <param name="viewport">The viewport size, for percentages.</param>
+    /// <param name="dashScale">The factor of <c>pathLength</c> for the dash pattern and offset; see <c>SvgResolver.PathLength.cs</c>.</param>
     /// <returns>The pen.</returns>
-    private Pen CreatePen(Brush brush, float width, in SvgComputedStyle style, SizeF viewport)
+    private Pen CreatePen(Brush brush, float width, in SvgComputedStyle style, SizeF viewport, float dashScale = 1F)
     {
         LineCap lineCap = style.StrokeLineCap switch
         {
@@ -974,12 +975,19 @@ internal sealed partial class SvgResolver
         float offset = 0F;
         if (!style.StrokeDashArray.IsNone)
         {
-            pattern = this.CreateDashPattern(style.StrokeDashArray, width, style.FontSize, viewport);
+            pattern = this.CreateDashPattern(style.StrokeDashArray, width, style.FontSize, viewport, dashScale);
             if (pattern is not null)
             {
                 float dashOffset = style.StrokeDashOffset.Unit == SvgLengthUnit.Percent
                     ? style.StrokeDashOffset.Value * SvgUnits.Diagonal(viewport) / 100F
                     : style.StrokeDashOffset.Value;
+
+                // An infinite offset, from a pathLength of zero, has no defined result and is ignored.
+                dashOffset = ScalePathDistance(dashOffset, dashScale);
+                if (!float.IsFinite(dashOffset))
+                {
+                    dashOffset = 0F;
+                }
 
                 // The pen measures the dash offset in multiples of the stroke width.
                 offset = dashOffset / width;
@@ -1001,23 +1009,38 @@ internal sealed partial class SvgResolver
     /// <param name="width">The stroke width in user units.</param>
     /// <param name="fontSize">The computed font size, for <c>em</c> and <c>ex</c>.</param>
     /// <param name="viewport">The viewport size, for percentages.</param>
+    /// <param name="scale">The factor of <c>pathLength</c>, or 1.</param>
     /// <returns>The pattern, or <see langword="null"/> for a solid stroke.</returns>
-    private float[]? CreateDashPattern(SvgDashArray dashArray, float width, float fontSize, SizeF viewport)
+    private float[]? CreateDashPattern(SvgDashArray dashArray, float width, float fontSize, SizeF viewport, float scale)
     {
         ReadOnlySpan<SvgLength> lengths = this.tree.GetDashArray(dashArray);
         float diagonal = SvgUnits.Diagonal(viewport);
         int count = lengths.Length % 2 == 0 ? lengths.Length : lengths.Length * 2;
         float[] pattern = new float[count];
         float sum = 0F;
+        float first = 0F;
 
         for (int i = 0; i < lengths.Length; i++)
         {
             float length = SvgUnits.ToUser(lengths[i], diagonal, fontSize, this.units, 0F);
+            if (scale != 1F)
+            {
+                length = ScaleDashLength(length, scale);
+                first = i == 0 ? length : first;
+            }
+
             pattern[i] = length / width;
             sum += length;
         }
 
         if (!(sum > 0F) || !float.IsFinite(sum))
+        {
+            return null;
+        }
+
+        // A pathLength of zero, or one so small that the scale overflows, makes the first dash infinite when it is not
+        // zero, which covers every subpath: the stroke is solid.
+        if (first >= InfiniteDashLength)
         {
             return null;
         }

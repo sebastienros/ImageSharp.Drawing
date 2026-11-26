@@ -117,9 +117,8 @@ internal enum SvgCssSimpleSelectorKind : byte
 
     /// <summary>
     /// <c>:lang(L)</c> (Selectors Level 4): the language of the element, from <see cref="SvgElementTree.GetLanguage(int)"/>,
-    /// matches one of the language ranges of the argument. The selector parser does not produce it yet: it rejects
-    /// <c>:lang()</c>, so a rule with it is dropped, as before. The member exists so that support for the selector needs
-    /// no change of this list.
+    /// matches one of the language ranges of the argument. <see cref="SvgCssSimpleSelector.Name"/> holds the ranges in the
+    /// form that <see cref="SvgCssLanguageRanges"/> reads.
     /// </summary>
     Lang
 }

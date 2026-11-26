@@ -29,8 +29,8 @@ internal enum SvgShorthand : byte
 
     /// <summary>
     /// <c>font-variant</c> as the shorthand of <c>font-variant-ligatures</c>, <c>-caps</c>, <c>-numeric</c>,
-    /// <c>-east-asian</c>, and <c>-position</c>. The declaration also sets <see cref="SvgPropertyId.FontVariant"/>, which
-    /// the text layout reads today, so its name maps to that property; this member names the shorthand in a
+    /// <c>-east-asian</c>, and <c>-position</c>. The declaration also sets <see cref="SvgPropertyId.FontVariant"/>, the
+    /// older value that no renderer code reads any more, so its name maps to that property; this member names the shorthand in a
     /// <see cref="SvgPendingValue"/>.
     /// </summary>
     FontVariant,

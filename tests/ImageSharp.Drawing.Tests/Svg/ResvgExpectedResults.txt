@@ -437,9 +437,9 @@ filters/flood-opacity/50percent.svg pass
 filters/flood-opacity/simple-case.svg pass
 masking/clip-rule/clip-rule=evenodd.svg pass
 masking/clip/simple-case.svg fail image: the deprecated CSS clip property (rect()) on image is not implemented
-masking/clipPath/circle-shorthand-with-stroke-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
-masking/clipPath/circle-shorthand-with-view-box.svg fail clipPath: CSS basic shapes in clip-path are not supported
-masking/clipPath/circle-shorthand.svg fail clipPath: CSS basic shapes in clip-path are not supported
+masking/clipPath/circle-shorthand-with-stroke-box.svg fail reference: the reference image has an opaque white background; composited over white, this render differs from it by at most 20 in any channel, and Chromium renders the transparent background of this render
+masking/clipPath/circle-shorthand-with-view-box.svg fail reference: the reference image has an opaque white background; composited over white, this render differs from it by at most 5 in any channel, and Chromium renders the transparent background of this render
+masking/clipPath/circle-shorthand.svg pass
 masking/clipPath/clip-path-on-child-with-transform.svg pass
 masking/clipPath/clip-path-on-child.svg pass
 masking/clipPath/clip-path-on-children.svg pass

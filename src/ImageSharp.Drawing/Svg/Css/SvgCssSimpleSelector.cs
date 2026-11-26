@@ -32,8 +32,8 @@ internal readonly struct SvgCssSimpleSelector
     public SvgCssSimpleSelectorKind Kind { get; }
 
     /// <summary>
-    /// Gets the type, id, or class name, or the local name of an attribute selector, with escapes decoded;
-    /// <see langword="null"/> for the other kinds.
+    /// Gets the type, id, or class name, or the local name of an attribute selector, with escapes decoded; the language
+    /// ranges of <c>:lang()</c> (see <see cref="SvgCssLanguageRanges"/>); <see langword="null"/> for the other kinds.
     /// </summary>
     public string? Name { get; }
 

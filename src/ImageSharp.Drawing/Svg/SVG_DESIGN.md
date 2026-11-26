@@ -53,18 +53,18 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 | `switch` | Partial | — | Yes | 2 | Yes |
 | Nested `svg`, `viewBox`, `preserveAspectRatio` | Yes | Yes | Yes | 1 | Yes |
 | Basic shapes and paths | Yes | Yes | Yes | 1 | Yes |
-| Fill, stroke, dashes, caps, joins, miter limit | Yes | Yes | Yes | 1 | Yes (`miter-clip` and `arcs` fall back to `miter`) |
+| Fill, stroke, dashes, caps, joins, miter limit | Yes | Yes | Yes | 1 | Yes (`miter-clip` and `arcs` fall back to `miter`); `pathLength` scales dashes (phase 5) |
 | `paint-order` | Yes | — | Partial | 2 | Yes |
 | `vector-effect: non-scaling-stroke` | Paths only | — | Partial | 2 | Yes |
 | Markers | Yes | — | Partial | 2 | Yes (path, line, polyline, polygon, as Chromium) |
 | Linear and radial gradients, spread, transform, href | Yes | Yes | Yes | 1 | Yes |
 | Patterns | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
-| `clipPath`, `clip-rule` | Partial | Yes | Partial | 2 | Yes (no CSS basic shapes) |
+| `clipPath`, `clip-rule` | Partial | Yes | Partial | 2 | Yes; CSS basic shapes and geometry boxes in `clip-path` since phase 5 (no `shape()`) |
 | `mask`, `mask-type` | Yes | Luminance only | Yes | 2 | Yes |
 | `opacity`, `fill-opacity`, `stroke-opacity` | Yes | Yes | Yes | 1 | Yes |
 | `mix-blend-mode`, `isolation` | Yes (style only) | — | Yes (style only) | 2 | Yes |
 | Presentation attributes and inline `style` | Yes | Yes | Yes | 1 | Yes |
-| `<style>` element with selectors | Yes (full selector engine) | — | Yes (ExCSS) | 1 (simple), 2 (full) | Yes (full selectors, `media`) |
+| `<style>` element with selectors | Yes (full selector engine) | — | Yes (ExCSS) | 1 (simple), 2 (full) | Yes (full selectors, `media`, `:lang()` since phase 5) |
 | User stylesheet | Yes | — | Yes | 2 | Yes |
 | `image` (raster, data URIs) | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
 | `image` (nested SVG file) | Yes | — | Yes | 2 | Yes |
@@ -426,13 +426,14 @@ Text resolves to glyph outlines when the document loads, as in resvg: each glyph
 
 | Feature | Implemented |
 |---|---|
-| `text`, `tspan`, `a` in text, position lists, `letter-spacing`, `word-spacing`, `text-anchor`, white space | Yes |
+| `text`, `tspan`, `a` in text, position lists, `letter-spacing`, `word-spacing`, `text-anchor`, white space | Yes; `white-space-collapse` and the CSS Text 4 forms of `white-space` since phase 5 |
 | Font matching (CSS weight, style, stretch; typographic families) and per-character fallback | Yes, from `SvgLoadOptions.FontCollection` only |
-| `textPath` (`startOffset`, `side`; `path` elements and the `path` attribute) | Yes; `method` and `spacing` have no effect, as in Chromium |
+| `textPath` (`startOffset`, `side`; `path` elements and the `path` attribute) | Yes; `method` and `spacing` have no effect, as in Chromium; `pathLength` of the path scales `startOffset` (phase 5) |
 | `textLength`, `lengthAdjust` | Yes, also in vertical and right-to-left text and on a path |
 | `text-decoration` | Solid lines with the metrics of the primary font, as resvg; no other styles, no skip-ink |
 | `dominant-baseline`, `alignment-baseline`, `baseline-shift` | Yes, across the line in every writing mode; the `BASE` table is not used, as in Chromium |
 | `font-variant` (caps), `font-kerning`, `kerning` | Yes, through OpenType features; no synthesized small capitals |
+| `font-feature-settings`, `font-variant-ligatures`, `-caps`, `-numeric`, `-east-asian`, `-position` (phase 5) | Yes, resolved in the order of CSS Fonts 4; features turn on with value 1 only, and of the default features only `liga` and `kern` turn off (section 15.4) |
 | Vertical `writing-mode` (upright and sideways glyphs, `sideways-rl`, `sideways-lr`) | Yes |
 | `direction`, `unicode-bidi`, bidirectional reordering, complex script shaping | Yes; the Unicode bidirectional algorithm is a temporary local copy of the SixLabors.Fonts implementation (`Svg/Text/Bidi`), shaping is through SixLabors.Fonts |
 | `tref` | Yes (resvg supports it; Chromium does not) |
@@ -496,7 +497,7 @@ The text pipeline shapes one directional run at a time with `TextShaper.ShapeRun
 
 - The bidirectional algorithm and its resolved levels (`SixLabors.Fonts.Unicode.BidiAlgorithm` is internal). Until it is public, `src/ImageSharp.Drawing/Svg/Text/Bidi` holds a copy of `BidiAlgorithm`, `BidiData`, and their helper types from SixLabors.Fonts 3.2.1 (package T6); the copy must be removed when SixLabors.Fonts exposes the levels. The copy changes three places of the source that took quadratic time without changing the results (rule W2, the joining of level runs into isolating run sequences, and the search for the run after an isolate); it gives the levels of all 91,707 cases of the Unicode `BidiCharacterTest.txt`. Each text chunk is one paragraph; its level runs are shaped one at a time, in their direction, and the shaper mirrors the characters of right-to-left runs (rule L4), so a lone bracket at an odd level now draws mirrored.
 - A bidirectional mode (`TextBidiMode` exists for `TextOptions` only) and context characters before and after a run on `TextShapingBuffer`, so that Arabic joins across a `tspan` boundary as in Chromium.
-- A way to turn off default features: `ShapeRun` only turns features on, so ligatures under `letter-spacing` are broken by shaping each grapheme again.
+- A way to turn off default features, and feature values: `ShapeRun` only turns features on, with the value 1, so ligatures under `letter-spacing`, `font-variant-ligatures: none`, and `"liga" 0` are broken by shaping each grapheme again; `calt`, `clig`, and the other default features cannot be turned off, and `"salt" 2` selects the first alternate.
 - `FontMetrics.TryGetBaselineCoordinate` (the `BASE` table) is internal. Chromium does not use the table either, so nothing renders differently today.
 - The OS/2 width class: the font matcher reads `usWidthClass` from the raw table data for `font-stretch`.
 - Family grouping by typographic family name (name ID 16): `FontCollection` groups faces by their legacy family name, so the font matcher also collects the families whose faces name the requested family as their typographic family.

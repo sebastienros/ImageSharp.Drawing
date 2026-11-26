@@ -92,16 +92,17 @@ internal sealed partial class SvgResolver
     {
         scope = default;
         int clip = this.GetReference(style.ClipPath, SvgElementKind.ClipPath);
+        SvgClipShape? clipShape = style.ClipPath.Shape;
         int mask = this.GetReference(style.Mask, SvgElementKind.Mask);
         SvgBlendMode blend = style.MixBlendMode;
         bool isolate = style.Isolation == SvgIsolation.Isolate;
-        if (clip < 0 && mask < 0 && blend == SvgBlendMode.Normal && !isolate)
+        if (clip < 0 && clipShape is null && mask < 0 && blend == SvgBlendMode.Normal && !isolate)
         {
             return true;
         }
 
         RectangleF? box = null;
-        if (clip >= 0 || mask >= 0)
+        if (clip >= 0 || mask >= 0 || clipShape is not null)
         {
             // The user space of the root element is already the view box space, so its box is the box of its children
             // without the viewport transform that a nested svg element applies.
@@ -118,6 +119,19 @@ internal sealed partial class SvgResolver
         if (clip >= 0)
         {
             clipKind = this.ClassifyClip(clip, in target, geometry);
+            if (clipKind == SvgClipKind.Empty)
+            {
+                return false;
+            }
+        }
+
+        // A basic shape clips in the coordinates of its reference box (SvgResolver.ClipShape.cs).
+        IPath? coverageShape = null;
+        Matrix3x2 shapeTransform = default;
+        if (clipShape is not null)
+        {
+            RectangleF? referenceBox = this.GetClipShapeBox(element, clipShape.Box, in context, box, out shapeTransform);
+            clipKind = this.ClassifyClipShape(clipShape, referenceBox, style.FontSize, shapeTransform, geometry, out coverageShape);
             if (clipKind == SvgClipKind.Empty)
             {
                 return false;
@@ -158,6 +172,8 @@ internal sealed partial class SvgResolver
             ClipCount = clipCount,
             Layer = layer,
             CoverageClip = clipKind == SvgClipKind.Coverage ? clip : -1,
+            CoverageShape = coverageShape,
+            CoverageShapeTransform = shapeTransform,
             Mask = mask,
             MaskRegion = maskRegion,
             Opacity = layer >= 0 ? opacity : 1F,
@@ -237,13 +253,23 @@ internal sealed partial class SvgResolver
             bounds = RectangleF.Intersect(bounds, TransformBounds(scope.MaskRegion, scope.Target.Transform));
         }
 
+        if (scope.CoverageShape is IPath shape)
+        {
+            bounds = RectangleF.Intersect(bounds, TransformBounds(shape.Bounds, scope.CoverageShapeTransform));
+        }
+
         if (!(bounds.Width > 0F) || !(bounds.Height > 0F))
         {
             return false;
         }
 
         // isolation: isolate changes the result only when content blends with what is below the element.
-        if (scope.CoverageClip < 0 && scope.Mask < 0 && scope.BlendMode == SvgBlendMode.Normal && scope.Opacity >= 1F && !blends)
+        if (scope.CoverageClip < 0
+            && scope.CoverageShape is null
+            && scope.Mask < 0
+            && scope.BlendMode == SvgBlendMode.Normal
+            && scope.Opacity >= 1F
+            && !blends)
         {
             this.hasEmptyNodes = true;
             return true;
@@ -261,6 +287,12 @@ internal sealed partial class SvgResolver
         {
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.BeginMask, MaskMode = SvgMaskMode.Alpha, Bounds = bounds });
             this.AddClipCoverage(scope.CoverageClip, scope.Target);
+            this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.EndMask });
+        }
+        else if (scope.CoverageShape is not null)
+        {
+            this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.BeginMask, MaskMode = SvgMaskMode.Alpha, Bounds = bounds });
+            this.AddClipShapeCoverage(scope.CoverageShape, scope.CoverageShapeTransform);
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.EndMask });
         }
 
