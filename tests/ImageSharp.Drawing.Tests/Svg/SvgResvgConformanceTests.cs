@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using System.Xml.Linq;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Svg;
@@ -50,6 +51,18 @@ public class SvgResvgConformanceTests
     /// The largest number of mismatched pixels that a passing test may have. See <see cref="CountMismatchedPixels"/>.
     /// </summary>
     private const int MaxMismatchedPixels = 40;
+
+    /// <summary>
+    /// The category whose tests get the informational crosshair count. See <see cref="GetCrosshairMask"/>.
+    /// </summary>
+    private const string TextCategory = "text";
+
+    /// <summary>
+    /// The environment variable that names a directory of Chromium renders of the suite, with the layout of its
+    /// <c>tests</c> directory (<c>tests/SvgTools/render-svg.js --resvg-fonts</c> at the reference size). When it is set,
+    /// the summary also counts the text tests for those renders. It changes no outcome.
+    /// </summary>
+    private const string ChromiumRendersVariable = "RESVG_CHROMIUM_RENDERS";
 
     /// <summary>
     /// The time limit for loading and drawing one test.
@@ -129,6 +142,8 @@ public class SvgResvgConformanceTests
         StringBuilder results = new();
         _ = results.AppendLine("path\toutcome\tmismatched pixels\tdetail");
         SortedDictionary<string, CategorySummary> summaries = new(StringComparer.Ordinal);
+        string? chromiumDirectory = Environment.GetEnvironmentVariable(ChromiumRendersVariable);
+        CrosshairSummary crosshairSummary = new() { ChromiumDirectory = chromiumDirectory };
 
         foreach (string test in tests)
         {
@@ -148,9 +163,21 @@ public class SvgResvgConformanceTests
                 summary.LibrsvgPassed += suiteResult.Librsvg == 1 ? 1 : 0;
             }
 
-            (Outcome outcome, int mismatched, string detail) = undefined
-                ? (Outcome.Skip, -1, "undefined behavior in the suite")
-                : Run(IOPath.Combine(testsDirectory, test), IOPath.Combine(outputDirectory, test));
+            string svgPath = IOPath.Combine(testsDirectory, test);
+            bool crosshairCount = !undefined && category == TextCategory;
+            (Outcome outcome, int mismatched, int offCrosshair, string detail) = undefined
+                ? (Outcome.Skip, -1, -1, "undefined behavior in the suite")
+                : Run(svgPath, IOPath.Combine(outputDirectory, test), crosshairCount);
+
+            if (crosshairCount)
+            {
+                crosshairSummary.Count(outcome == Outcome.Pass, offCrosshair, mismatched);
+                if (chromiumDirectory is not null)
+                {
+                    (int chromiumMismatched, int chromiumOffCrosshair) = CompareRender(svgPath, IOPath.Combine(chromiumDirectory, IOPath.ChangeExtension(test, ".png")));
+                    crosshairSummary.CountChromium(chromiumMismatched, chromiumOffCrosshair);
+                }
+            }
 
             _ = results.Append(test).Append('\t').Append(outcome).Append('\t')
                 .Append(mismatched.ToString(CultureInfo.InvariantCulture)).Append('\t').AppendLine(detail);
@@ -195,7 +222,7 @@ public class SvgResvgConformanceTests
         }
 
         File.WriteAllText(IOPath.Combine(outputDirectory, "results.tsv"), results.ToString());
-        this.WriteSummary(summaries, outputDirectory);
+        this.WriteSummary(summaries, crosshairSummary, outputDirectory);
 
         foreach (string mismatch in mismatches)
         {
@@ -213,8 +240,12 @@ public class SvgResvgConformanceTests
     /// </summary>
     /// <param name="svgPath">The full path of the test SVG.</param>
     /// <param name="outputPath">The path of the saved render, with the <c>.svg</c> extension.</param>
-    /// <returns>The outcome, the number of mismatched pixels or -1, and a detail text.</returns>
-    private static (Outcome Outcome, int Mismatched, string Detail) Run(string svgPath, string outputPath)
+    /// <param name="countCrosshair">Whether to count the mismatched pixels off the crosshair line of the test.</param>
+    /// <returns>
+    /// The outcome, the number of mismatched pixels or -1, the number of those off the crosshair line or -1 when the test
+    /// has none or the count is not asked for, and a detail text.
+    /// </returns>
+    private static (Outcome Outcome, int Mismatched, int OffCrosshair, string Detail) Run(string svgPath, string outputPath, bool countCrosshair)
     {
         using Image<Rgba32> reference = Image.Load<Rgba32>(IOPath.ChangeExtension(svgPath, ".png"));
         Image<Rgba32> actual = new(reference.Width, reference.Height);
@@ -225,7 +256,7 @@ public class SvgResvgConformanceTests
             if (!task.Wait(TestTimeLimit))
             {
                 actual = null;
-                return (Outcome.Defect, -1, $"loading and drawing took longer than {TestTimeLimit.TotalSeconds} s");
+                return (Outcome.Defect, -1, -1, $"loading and drawing took longer than {TestTimeLimit.TotalSeconds} s");
             }
 
             switch (task.Result)
@@ -233,24 +264,144 @@ public class SvgResvgConformanceTests
                 case null:
                     break;
                 case InvalidImageContentException exception:
-                    return (Outcome.Fail, -1, $"invalid content: {exception.Message}");
+                    return (Outcome.Fail, -1, -1, $"invalid content: {exception.Message}");
                 case Exception exception:
-                    return (Outcome.Defect, -1, $"{exception.GetType().Name}: {exception.Message}");
+                    return (Outcome.Defect, -1, -1, $"{exception.GetType().Name}: {exception.Message}");
             }
 
-            int mismatched = CountMismatchedPixels(reference, actual);
+            bool[] crosshair = countCrosshair ? GetCrosshairMask(svgPath, reference.Width, reference.Height) : null;
+            int mismatched = CountMismatchedPixels(reference, actual, crosshair, out int offCrosshair);
             if (mismatched <= MaxMismatchedPixels)
             {
-                return (Outcome.Pass, mismatched, string.Empty);
+                return (Outcome.Pass, mismatched, offCrosshair, string.Empty);
             }
 
             _ = Directory.CreateDirectory(IOPath.GetDirectoryName(outputPath)!);
             actual.SaveAsPng(IOPath.ChangeExtension(outputPath, ".png"));
-            return (Outcome.Fail, mismatched, $"{mismatched} mismatched pixels");
+            string detail = crosshair is null
+                ? $"{mismatched} mismatched pixels"
+                : $"{mismatched} mismatched pixels, {offCrosshair} off the crosshair";
+            return (Outcome.Fail, mismatched, offCrosshair, detail);
         }
         finally
         {
             actual?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Compares a render made elsewhere, such as a Chromium render, with the reference image of a test.
+    /// </summary>
+    /// <param name="svgPath">The full path of the test SVG.</param>
+    /// <param name="renderPath">The full path of the render.</param>
+    /// <returns>
+    /// The number of mismatched pixels and the number of those off the crosshair line (-1 when the test has none); both
+    /// -1 when the render is missing or has another size.
+    /// </returns>
+    private static (int Mismatched, int OffCrosshair) CompareRender(string svgPath, string renderPath)
+    {
+        if (!File.Exists(renderPath))
+        {
+            return (-1, -1);
+        }
+
+        using Image<Rgba32> reference = Image.Load<Rgba32>(IOPath.ChangeExtension(svgPath, ".png"));
+        using Image<Rgba32> render = Image.Load<Rgba32>(renderPath);
+        if (render.Width != reference.Width || render.Height != reference.Height)
+        {
+            return (-1, -1);
+        }
+
+        int mismatched = CountMismatchedPixels(reference, render, GetCrosshairMask(svgPath, reference.Width, reference.Height), out int offCrosshair);
+        return (mismatched, offCrosshair);
+    }
+
+    /// <summary>
+    /// Returns the pixels that the crosshair line of a test touches: the element with the id <c>crosshair</c>, a path of
+    /// horizontal and vertical lines that most text tests draw with a 0.5 wide gray stroke to mark the text position.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The geometry comes from the test document: the absolute <c>M</c> and <c>L</c> commands of the path, its
+    /// <c>stroke-width</c>, and the <c>viewBox</c> of the root, which maps to the image with the default
+    /// <c>preserveAspectRatio</c> (<c>xMidYMid meet</c>), as the tests use it. A horizontal line touches the pixel rows
+    /// that its stroke covers, and a vertical line the pixel columns; along the line the range widens by one pixel at
+    /// each end for the antialiased caps.
+    /// </para>
+    /// <para>
+    /// The mask serves the informational count of the summary only. It never changes an outcome.
+    /// </para>
+    /// </remarks>
+    /// <param name="svgPath">The full path of the test SVG.</param>
+    /// <param name="width">The image width.</param>
+    /// <param name="height">The image height.</param>
+    /// <returns>A flag per pixel, row by row, or <see langword="null"/> when the test has no crosshair line.</returns>
+    private static bool[] GetCrosshairMask(string svgPath, int width, int height)
+    {
+        XElement root = XDocument.Load(svgPath).Root;
+        XElement crosshair = root.Descendants().FirstOrDefault(e => (string)e.Attribute("id") == "crosshair");
+        if (crosshair is null || (string)crosshair.Attribute("d") is not string data)
+        {
+            return null;
+        }
+
+        float[] viewBox = ParseNumbers((string)root.Attribute("viewBox") ?? $"0 0 {width} {height}");
+        float scale = MathF.Min(width / viewBox[2], height / viewBox[3]);
+        float offsetX = ((width - (viewBox[2] * scale)) / 2F) - (viewBox[0] * scale);
+        float offsetY = ((height - (viewBox[3] * scale)) / 2F) - (viewBox[1] * scale);
+        float halfWidth = float.Parse((string)crosshair.Attribute("stroke-width") ?? "1", CultureInfo.InvariantCulture) * scale / 2F;
+
+        bool[] mask = new bool[width * height];
+        Vector2 current = default;
+        char command = 'M';
+        List<float> values = [];
+        foreach (string token in data.Split([' ', ',', '\n', '\r', '\t'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (char.IsLetter(token[0]))
+            {
+                command = token[0];
+                continue;
+            }
+
+            values.Add(float.Parse(token, CultureInfo.InvariantCulture));
+            if (values.Count < 2)
+            {
+                continue;
+            }
+
+            Vector2 point = new((values[0] * scale) + offsetX, (values[1] * scale) + offsetY);
+            values.Clear();
+            if (command == 'L')
+            {
+                if (point.Y == current.Y)
+                {
+                    Mark(mask, width, height, MathF.Min(current.X, point.X) - 1F, point.Y - halfWidth, MathF.Max(current.X, point.X) + 1F, point.Y + halfWidth);
+                }
+                else if (point.X == current.X)
+                {
+                    Mark(mask, width, height, point.X - halfWidth, MathF.Min(current.Y, point.Y) - 1F, point.X + halfWidth, MathF.Max(current.Y, point.Y) + 1F);
+                }
+            }
+
+            current = point;
+        }
+
+        return mask;
+
+        static float[] ParseNumbers(string text)
+            => [.. text.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries).Select(t => float.Parse(t, CultureInfo.InvariantCulture))];
+
+        static void Mark(bool[] mask, int width, int height, float left, float top, float right, float bottom)
+        {
+            // Every pixel that the rectangle overlaps.
+            int x0 = Math.Max(0, (int)MathF.Floor(left));
+            int x1 = Math.Min(width, (int)MathF.Ceiling(right));
+            int y0 = Math.Max(0, (int)MathF.Floor(top));
+            int y1 = Math.Min(height, (int)MathF.Ceiling(bottom));
+            for (int y = y0; y < y1; y++)
+            {
+                Array.Fill(mask, true, (y * width) + x0, Math.Max(0, x1 - x0));
+            }
         }
     }
 
@@ -354,14 +505,20 @@ public class SvgResvgConformanceTests
     /// </remarks>
     /// <param name="reference">The reference image.</param>
     /// <param name="actual">The render, of the same size.</param>
+    /// <param name="crosshair">The pixels of the crosshair line (<see cref="GetCrosshairMask"/>), or <see langword="null"/>.</param>
+    /// <param name="offCrosshair">
+    /// When this method returns, contains the number of mismatched pixels outside <paramref name="crosshair"/>, or -1 when
+    /// it is <see langword="null"/>. It does not take part in the pass criterion.
+    /// </param>
     /// <returns>The number of mismatched pixels.</returns>
-    private static int CountMismatchedPixels(Image<Rgba32> reference, Image<Rgba32> actual)
+    private static int CountMismatchedPixels(Image<Rgba32> reference, Image<Rgba32> actual, bool[] crosshair, out int offCrosshair)
     {
         int width = reference.Width;
         int height = reference.Height;
         Rgba32[] a = Premultiply(reference);
         Rgba32[] b = Premultiply(actual);
 
+        offCrosshair = crosshair is null ? -1 : 0;
         int count = 0;
         for (int y = 0; y < height; y++)
         {
@@ -401,6 +558,10 @@ public class SvgResvgConformanceTests
                 if (MathF.Max(MathF.Max(excess.X, excess.Y), MathF.Max(excess.Z, excess.W)) > ChannelTolerance)
                 {
                     count++;
+                    if (crosshair is not null && !crosshair[i])
+                    {
+                        offCrosshair++;
+                    }
                 }
             }
         }
@@ -522,8 +683,9 @@ public class SvgResvgConformanceTests
     /// test output and to <c>summary.txt</c> in the output directory.
     /// </summary>
     /// <param name="summaries">The summaries by category.</param>
+    /// <param name="crosshair">The informational crosshair counts of the text category.</param>
     /// <param name="outputDirectory">The output directory.</param>
-    private void WriteSummary(SortedDictionary<string, CategorySummary> summaries, string outputDirectory)
+    private void WriteSummary(SortedDictionary<string, CategorySummary> summaries, CrosshairSummary crosshair, string outputDirectory)
     {
         StringBuilder text = new();
         CategorySummary total = new();
@@ -549,6 +711,7 @@ public class SvgResvgConformanceTests
             }
         }
 
+        crosshair.Append(text);
         string summary = text.ToString();
         File.WriteAllText(IOPath.Combine(outputDirectory, "summary.txt"), summary);
         this.output.WriteLine(summary);
@@ -668,6 +831,127 @@ public class SvgResvgConformanceTests
             this.ChromePassed += other.ChromePassed;
             this.ResvgPassed += other.ResvgPassed;
             this.LibrsvgPassed += other.LibrsvgPassed;
+        }
+    }
+
+    /// <summary>
+    /// The informational counts of the text category around the crosshair line that most text tests draw (see
+    /// <see cref="GetCrosshairMask"/>): how many failing tests mismatch only on that line, for this renderer and, when
+    /// <see cref="ChromiumRendersVariable"/> names them, for Chromium renders. The counts change no outcome.
+    /// </summary>
+    private sealed class CrosshairSummary
+    {
+        /// <summary>
+        /// Gets or sets the directory of the Chromium renders, or <see langword="null"/>.
+        /// </summary>
+        public string ChromiumDirectory { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of text tests that ran.
+        /// </summary>
+        public int Tests { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of those that passed.
+        /// </summary>
+        public int Passed { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of failing tests whose mismatched pixels all lie on the crosshair line.
+        /// </summary>
+        public int OnlyOnCrosshair { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of failing tests with at most the passing number of mismatched pixels off the crosshair
+        /// line, the tests above included.
+        /// </summary>
+        public int PassOffCrosshair { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of Chromium renders compared.
+        /// </summary>
+        public int ChromiumTests { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of Chromium renders that pass.
+        /// </summary>
+        public int ChromiumPassed { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of failing Chromium renders whose mismatched pixels all lie on the crosshair line.
+        /// </summary>
+        public int ChromiumOnlyOnCrosshair { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of failing Chromium renders with at most the passing number of mismatched pixels off
+        /// the crosshair line.
+        /// </summary>
+        public int ChromiumPassOffCrosshair { get; set; }
+
+        /// <summary>
+        /// Counts the outcome of a text test of this renderer.
+        /// </summary>
+        /// <param name="passed">Whether the test passed.</param>
+        /// <param name="offCrosshair">The mismatched pixels off the crosshair line, or -1 without a line.</param>
+        /// <param name="mismatched">The mismatched pixels, or -1 when the document did not render.</param>
+        public void Count(bool passed, int offCrosshair, int mismatched)
+        {
+            this.Tests++;
+            this.Passed += passed ? 1 : 0;
+            if (!passed && mismatched >= 0 && offCrosshair >= 0)
+            {
+                this.OnlyOnCrosshair += offCrosshair == 0 ? 1 : 0;
+                this.PassOffCrosshair += offCrosshair <= MaxMismatchedPixels ? 1 : 0;
+            }
+        }
+
+        /// <summary>
+        /// Counts the comparison of a Chromium render of a text test.
+        /// </summary>
+        /// <param name="mismatched">The mismatched pixels, or -1 when the render is missing.</param>
+        /// <param name="offCrosshair">The mismatched pixels off the crosshair line, or -1 without a line.</param>
+        public void CountChromium(int mismatched, int offCrosshair)
+        {
+            if (mismatched < 0)
+            {
+                return;
+            }
+
+            this.ChromiumTests++;
+            if (mismatched <= MaxMismatchedPixels)
+            {
+                this.ChromiumPassed++;
+            }
+            else if (offCrosshair >= 0)
+            {
+                this.ChromiumOnlyOnCrosshair += offCrosshair == 0 ? 1 : 0;
+                this.ChromiumPassOffCrosshair += offCrosshair <= MaxMismatchedPixels ? 1 : 0;
+            }
+        }
+
+        /// <summary>
+        /// Appends the counts to the summary text.
+        /// </summary>
+        /// <param name="text">The summary text.</param>
+        public void Append(StringBuilder text)
+        {
+            _ = text.AppendLine()
+                .AppendLine("Text tests and the 0.5 wide crosshair line (informational; the pass criterion is unchanged).")
+                .AppendLine("'only on the line': failing tests whose mismatched pixels all lie on the pixels the line touches.")
+                .AppendLine(CultureInfo.InvariantCulture, $"'at most {MaxMismatchedPixels} off the line': failing tests with at most {MaxMismatchedPixels} mismatched pixels elsewhere, the former included.")
+                .AppendLine(
+                    CultureInfo.InvariantCulture,
+                    $"this renderer: {this.Tests} run, {this.Passed} passed, {this.OnlyOnCrosshair} only on the line, {this.PassOffCrosshair} at most {MaxMismatchedPixels} off the line");
+
+            if (this.ChromiumDirectory is null)
+            {
+                _ = text.AppendLine(CultureInfo.InvariantCulture, $"Chromium: not compared; set {ChromiumRendersVariable} to a directory of renders.");
+                return;
+            }
+
+            _ = text.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"Chromium ({this.ChromiumDirectory}): {this.ChromiumTests} compared, {this.ChromiumPassed} passed, {this.ChromiumOnlyOnCrosshair} only on the line, {this.ChromiumPassOffCrosshair} at most {MaxMismatchedPixels} off the line");
         }
     }
 

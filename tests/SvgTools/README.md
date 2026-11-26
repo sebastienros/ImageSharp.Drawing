@@ -122,6 +122,18 @@ Per category in the resvg repository: filters 416, masking 100, paint-servers 16
 
 The conformance runner is `SvgResvgConformanceTests` in the test project. It runs every test of `resvg-test-suite` and checks the outcome against `tests/ImageSharp.Drawing.Tests/Svg/ResvgExpectedResults.txt`, which also describes the pass criterion and its calibration. Without the suite the test returns early. It writes `results.tsv` (outcome and mismatched pixels per test), `summary.txt` (counts per category), and the render of every failing test to `tests/Images/ActualOutput/Svg/Resvg`.
 
+For information, without changing any outcome, the summary also counts the failing text tests whose mismatched pixels all lie on the 0.5 wide crosshair line that most text tests draw (the element with the id `crosshair`; the runner reads its geometry from the test document), and those with at most 40 mismatched pixels elsewhere. The header of the expected results file explains why that line fails. With the environment variable `RESVG_CHROMIUM_RENDERS` set to a directory of Chromium renders in the layout of the suite's `tests` directory, the summary gives the same counts for Chromium:
+
+```
+for d in tests/Images/External/resvg-test-suite/tests/text/*/; do
+  node tests/SvgTools/render-svg.js --resvg-fonts tests/Images/External/resvg-test-suite/fonts --width 500 --height 500 \
+    --out-dir <dir>/text/$(basename $d) $d*.svg
+done
+RESVG_CHROMIUM_RENDERS=<dir> dotnet test tests/ImageSharp.Drawing.Tests -c Release --filter FullyQualifiedName~SvgResvgConformanceTests
+```
+
+Four text tests have reference images of another size (two 500 x 250, two 400 x 400); render those at their size, or the summary leaves them out of the Chromium count.
+
 Text in the runner uses only the fonts of the suite: the `.ttf` and `.otf` files of `fonts/`, loaded in ordinal order of the file names into one font collection, with the generic families of the resvg test harness (`crates/resvg/tests/integration/main.rs` in the resvg repository: serif Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display, monospace Noto Mono). The fonts stay in the suite directory; they are not copied into the repository. A few reference images of the suite draw generic families with fonts that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); those tests fail with a reason that says so.
 
 Licenses:
@@ -144,9 +156,11 @@ dotnet artifacts/bin/tests/ImageSharp.Drawing.Benchmarks/Release/net10.0/ImageSh
 
 - `--svg-info` prints the libvips version and configuration and renders the Tiger with both renderers, to prove that the native libraries load.
 - `--verify svg <long edge>` writes, for every corpus document, the exact input bytes (`<name>.svg`) and the output of each renderer (`<name>-svgskia.png`, `<name>-netvips.png`, `<name>-imagesharp.png`) to `svg-<long edge>-verify` next to the assembly. It also checks that the ImageSharp.Drawing retained scene gives the same pixels as a fresh render. Render the `.svg` files with `render-svg.js --long-edge <long edge> --out-dir <dir>` and compare. Design section 9.3 asks for this check before benchmark numbers count.
+- `FONTCONFIG_FILE=$PWD/tests/ImageSharp.Drawing.Benchmarks/Svg/fonts.conf` before the command gives NetVips (librsvg through Pango and fontconfig) the font files of the benchmarks and no other font. ImageSharp.Drawing loads the same files into its font collection and Svg.Skia gets a typeface provider for each (`SvgBenchmarkFonts`); the SkiaSharp native assets of the benchmarks are built without fontconfig. The text documents of the corpus name their family (Open Sans), so no output depends on the fonts of the machine. Without the variable, `--verify` and `--svg-info` print a warning.
+- `SVG_BENCHMARK_CORPUS=<entry>,<entry>` and `SVG_BENCHMARK_SIZES=<px>,<px>` limit the corpus entries and the long-edge sizes of a run; the benchmark processes inherit them. Example: `SVG_BENCHMARK_CORPUS=TextHeavy,TextDecorations SVG_BENCHMARK_SIZES=100,1000 dotnet ... --filter "*.Svg.*" --job short`.
 - `--profile svg <iterations> <corpus entry> <long edge> [single]` prints the mean time and the allocated bytes of each ImageSharp.Drawing stage: the XML read with the cascade, the resolve stage, the emit stage, the scene build, and the scene render. `single` uses one thread.
 - A `--job` argument replaces the default long job of the benchmark project.
 
-The corpus entries (`SvgBenchmarkCorpus`) are `Tiger`, `Paris30k`, `Icons` (all 40 icons in one operation), `SoftIceCream`, `Moose`, `StyledLandscape`, and the two phase 2 documents `Dashboard` (clips, masks, blend modes) and `PatternChart` (patterns, markers, an embedded image). The benchmarks give `paris-30k.svg` a 1096 x 1060 viewport in memory, because the file has none. The long-edge sizes are 100, 1000, and 4000 pixels.
+The corpus entries (`SvgBenchmarkCorpus`) are `Tiger`, `Paris30k`, `Icons` (all 40 icons in one operation), `SoftIceCream`, `Moose`, `StyledLandscape`, the two phase 2 documents `Dashboard` (clips, masks, blend modes) and `PatternChart` (patterns, markers, an embedded image), and the two phase 3 documents `TextHeavy` (41 text elements, tspans, anchors, spacing, rotate lists) and `TextDecorations` (text on paths, decorations, gradients, strokes, textLength). The benchmarks give `paris-30k.svg` a 1096 x 1060 viewport in memory, because the file has none. The long-edge sizes are 100, 1000, and 4000 pixels.
 
 Run time: the short job runs the 78 SVG benchmarks of the six phase 1 entries in about 45 minutes on a 4-core machine; the two phase 2 entries add 26 more. `Paris30k` takes most of it: at the 4000 pixel size one Svg.Skia operation takes about a minute. The default job (3 launches, 40 warmup and 40 measured iterations) multiplies that time, so filter the run, for example with `--filter "*LoadAndRenderSvg*"`, when you do not need every case.

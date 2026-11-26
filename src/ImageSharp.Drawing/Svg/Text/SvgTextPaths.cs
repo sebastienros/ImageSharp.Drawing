@@ -8,18 +8,14 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Package T2 implements <see cref="PlaceOnPaths"/> in a file of its own. Contract: the stage runs after text anchoring.
+/// <see cref="PlaceOnPaths"/> is in <c>SvgTextPaths.Placement.cs</c>. Contract: the stage runs after text anchoring.
 /// A cluster lies on a path when its span has <see cref="SvgTextSpan.TextPath"/>. Its <see cref="SvgTextCluster.X"/> is
 /// its anchored position along the line, which becomes a distance along the path; its <see cref="SvgTextCluster.Y"/> a
-/// distance perpendicular to it. The hook sets <see cref="SvgTextCluster.X"/>, <see cref="SvgTextCluster.Y"/>, and
+/// distance perpendicular to it. The stage sets <see cref="SvgTextCluster.X"/>, <see cref="SvgTextCluster.Y"/>, and
 /// <see cref="SvgTextCluster.Rotation"/> to the placed pen position and direction in user units of the <c>text</c>
 /// element, sets <see cref="SvgTextCluster.Skipped"/> for clusters that fall off the path, and moves the clusters after a
 /// <c>textPath</c> to continue at the end of the path. The resolver passed in resolves the referenced element and its
 /// transform.
-/// </para>
-/// <para>
-/// Without an implementation nothing is placed: every cluster on a path is left out, so text inside <c>textPath</c> does
-/// not render.
 /// </para>
 /// </remarks>
 internal static partial class SvgTextPaths
@@ -49,8 +45,7 @@ internal static partial class SvgTextPaths
     }
 
     /// <summary>
-    /// Hook of package T2: places the clusters on their paths, as the remarks of the type describe, and sets
-    /// <paramref name="placed"/>.
+    /// Places the clusters on their paths, as the remarks of the type describe, and sets <paramref name="placed"/>.
     /// </summary>
     /// <param name="layout">The anchored layout.</param>
     /// <param name="resolver">The resolver.</param>

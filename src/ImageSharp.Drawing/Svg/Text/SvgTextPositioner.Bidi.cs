@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Package T4 in stage 4: the visual order of bidirectional text and the placement of right-to-left chunks.
+/// Stage 4: the visual order of bidirectional text and the placement of right-to-left chunks.
 /// </summary>
 /// <remarks>
 /// <para>

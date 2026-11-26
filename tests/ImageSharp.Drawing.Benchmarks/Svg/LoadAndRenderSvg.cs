@@ -49,6 +49,11 @@ public class LoadAndRenderSvg
     public static IEnumerable<string> Corpus => SvgBenchmarkCorpus.Names;
 
     /// <summary>
+    /// Gets the long-edge sizes: 100, 1000, and 4000 pixels, or those that <c>SVG_BENCHMARK_SIZES</c> lists.
+    /// </summary>
+    public static IEnumerable<int> Sizes => SvgBenchmarkCorpus.Sizes;
+
+    /// <summary>
     /// Gets or sets the corpus entry. An entry with several documents processes all of them in one operation.
     /// </summary>
     [ParamsSource(nameof(Corpus))]
@@ -57,7 +62,7 @@ public class LoadAndRenderSvg
     /// <summary>
     /// Gets or sets the output length of the longer side of each document, in pixels.
     /// </summary>
-    [Params(100, 1000, 4000)]
+    [ParamsSource(nameof(Sizes))]
     public int LongEdge { get; set; }
 
     /// <summary>

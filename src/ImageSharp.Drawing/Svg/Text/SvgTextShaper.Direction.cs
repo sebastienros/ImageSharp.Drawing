@@ -10,7 +10,7 @@ using SixLabors.Fonts.Unicode;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Package T4 in stage 3: the glyph orientation of vertical text, the shaping direction of right-to-left runs, and the
+/// Stage 3: the glyph orientation of vertical text, the shaping direction of right-to-left runs, and the
 /// visual order of bidirectional text.
 /// </summary>
 /// <remarks>

@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <content>
-/// Package T2: <c>textLength</c> and <c>lengthAdjust</c>, and the position rules of <c>textPath</c> that must apply
+/// <c>textLength</c> and <c>lengthAdjust</c>, and the position rules of <c>textPath</c> that must apply
 /// before them and before text anchoring.
 /// </content>
 /// <remarks>
@@ -33,7 +33,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 internal static partial class SvgTextPositioner
 {
     /// <summary>
-    /// Implements the hook of package T2.
+    /// Applies the position rules of text on a path and every <c>textLength</c>, then ends the anchored text chunk of
+    /// each <c>textPath</c> at its last cluster.
     /// </summary>
     /// <param name="layout">The positioned layout.</param>
     static partial void ApplyTextLength(SvgTextLayout layout)
@@ -81,8 +82,20 @@ internal static partial class SvgTextPositioner
         bool[] resolved = new bool[count];
         int[] anchors = new int[count];
         GetPositionsWithoutAbsolute(layout, horizontal, positions, anchors);
+        int[] starts = GetChunkStartClusters(layout, horizontal, anchors);
+        bool upward = IsUpward(layout);
 
-        List<int> resolvedStarts = [];
+        // The clusters after an element, up to the next text chunk, move by its last shift. Many elements in one chunk
+        // would make that a quadratic walk, so the moves add up in a Fenwick tree over the cluster indices (a range add
+        // and a point query each cost O(log n)), and fold into the positions and shifts of a cluster when an element
+        // reads them. folded holds what each cluster has taken from the tree so far.
+        float[] trailing = new float[count + 1];
+        float[] folded = new float[count];
+        int[] chunkEnds = GetChunkEnds(clusters);
+
+        // The first clusters of the resolved elements that no ancestor has absorbed yet: each counts as one unit of
+        // spacing in its nearest resolved ancestor.
+        bool[] resolvedStarts = new bool[count];
         bool visualOrder = HasRightToLeft(layout);
         foreach ((int spanIndex, float length, SvgLengthAdjust adjust) in elements)
         {
@@ -98,8 +111,12 @@ internal static partial class SvgTextPositioner
             float max = float.NegativeInfinity;
             for (int k = start; k < end; k++)
             {
+                float move = QueryTrailing(trailing, k) - folded[k];
+                folded[k] += move;
+                positions[k] += move;
+                shifts[k] += move;
                 min = MathF.Min(min, positions[k]);
-                max = MathF.Max(max, positions[k] + (clusters[k].Width * clusters[k].ScaleX));
+                max = MathF.Max(max, positions[k] + layout.GetInlineExtent(in clusters[k]));
             }
 
             float delta = length - (max - min);
@@ -138,11 +155,7 @@ internal static partial class SvgTextPositioner
                 for (int k = start; k < end; k++)
                 {
                     n += resolved[k] ? 0 : 1;
-                }
-
-                foreach (int resolvedStart in resolvedStarts)
-                {
-                    n += resolvedStart >= start && resolvedStart < end ? 1 : 0;
+                    n += resolvedStarts[k] ? 1 : 0;
                 }
 
                 float step = n != 0 ? delta / n : 0F;
@@ -154,7 +167,7 @@ internal static partial class SvgTextPositioner
                     positions[k] += shift;
                     shifts[k] += shift;
                     recorded[k] += shift;
-                    if (!resolved[k] || resolvedStarts.Contains(k))
+                    if (!resolved[k] || resolvedStarts[k])
                     {
                         shift += step;
                     }
@@ -163,21 +176,26 @@ internal static partial class SvgTextPositioner
                 }
             }
 
-            for (int k = end; k < count && !clusters[k].StartsChunk; k++)
+            if (end < chunkEnds[end])
             {
-                positions[k] += shift;
-                shifts[k] += shift;
+                AddTrailing(trailing, end, shift);
+                AddTrailing(trailing, chunkEnds[end], -shift);
             }
 
-            _ = resolvedStarts.RemoveAll(k => k >= start && k < end);
-            resolvedStarts.Add(start);
+            Array.Clear(resolvedStarts, start, end - start);
+            resolvedStarts[start] = true;
         }
 
-        // The absolute position of the anchor cluster wins over its own shift; the clusters after it keep their shifts
-        // relative to it.
         for (int k = 0; k < count; k++)
         {
-            float change = shifts[k] - recorded[anchors[k]];
+            shifts[k] += QueryTrailing(trailing, k) - folded[k];
+        }
+
+        // The absolute position places the start edge of its run of clusters, so the cluster at that edge keeps its
+        // position against its own shift; the other clusters keep their shifts relative to it.
+        for (int k = 0; k < count; k++)
+        {
+            float change = shifts[k] - recorded[starts[anchors[k]]];
             if (change != 0F && float.IsFinite(change))
             {
                 ref SvgTextCluster cluster = ref clusters[k];
@@ -187,7 +205,7 @@ internal static partial class SvgTextPositioner
                 }
                 else
                 {
-                    cluster.Y += change;
+                    cluster.Y += upward ? -change : change;
                 }
             }
         }
@@ -242,6 +260,9 @@ internal static partial class SvgTextPositioner
         SvgTextCharacter[] characters = layout.Content.Characters;
         SvgTextSpan[] spans = layout.Content.Spans;
         SvgTextCharacterFlags inlineFlag = horizontal ? SvgTextCharacterFlags.HasX : SvgTextCharacterFlags.HasY;
+
+        // Positions run along the inline direction, which points up in sideways-lr text.
+        float sign = IsUpward(layout) ? -1F : 1F;
         float advance = 0F;
         float offset = 0F;
         int anchor = 0;
@@ -257,14 +278,124 @@ internal static partial class SvgTextPositioner
             if (hasInline || (path >= 0 && path != previousPath))
             {
                 anchor = k;
-                offset = (hasInline ? (horizontal ? first.X : first.Y) : 0F) - advance;
+                offset = (hasInline ? sign * (horizontal ? first.X : first.Y) : 0F) - advance;
             }
 
             previousPath = path;
             anchors[k] = anchor;
-            positions[k] = (horizontal ? cluster.X : cluster.Y) - offset;
-            advance += cluster.Width;
+            positions[k] = (sign * (horizontal ? cluster.X : cluster.Y)) - offset;
+            advance += layout.GetInlineExtent(in cluster);
         }
+    }
+
+    /// <summary>
+    /// Returns, for every cluster index, the end of the run of clusters that the trailing shift of an element ending
+    /// there moves: the index of the next cluster that starts a text chunk, at or after it, or the number of clusters.
+    /// </summary>
+    /// <param name="clusters">The clusters.</param>
+    /// <returns>The end per index, with one more entry for the end of the clusters.</returns>
+    private static int[] GetChunkEnds(ReadOnlySpan<SvgTextCluster> clusters)
+    {
+        int[] ends = new int[clusters.Length + 1];
+        ends[clusters.Length] = clusters.Length;
+        for (int k = clusters.Length - 1; k >= 0; k--)
+        {
+            ends[k] = clusters[k].StartsChunk ? k : ends[k + 1];
+        }
+
+        return ends;
+    }
+
+    /// <summary>
+    /// Adds a value to the trailing shifts of every cluster from an index on, in a Fenwick tree over prefix sums.
+    /// </summary>
+    /// <param name="tree">The tree, one entry longer than the number of clusters; entry 0 is unused.</param>
+    /// <param name="index">The first cluster that the value moves.</param>
+    /// <param name="value">The value.</param>
+    private static void AddTrailing(float[] tree, int index, float value)
+    {
+        for (int i = index + 1; i < tree.Length; i += i & -i)
+        {
+            tree[i] += value;
+        }
+    }
+
+    /// <summary>
+    /// Returns the sum of the trailing shifts that apply to a cluster: the prefix sum of the Fenwick tree.
+    /// </summary>
+    /// <param name="tree">The tree.</param>
+    /// <param name="index">The cluster.</param>
+    /// <returns>The sum.</returns>
+    private static float QueryTrailing(float[] tree, int index)
+    {
+        float sum = 0F;
+        for (int i = index + 1; i > 0; i -= i & -i)
+        {
+            sum += tree[i];
+        }
+
+        return sum;
+    }
+
+    /// <summary>
+    /// Returns whether the inline direction of a layout points up: <c>sideways-lr</c> text, whose pen moves upward.
+    /// </summary>
+    /// <param name="layout">The layout.</param>
+    /// <returns><see langword="true"/> if the inline direction is up; otherwise, <see langword="false"/>.</returns>
+    private static bool IsUpward(SvgTextLayout layout)
+        => layout.Content.Spans[0].Style.Text.WritingMode == SvgWritingMode.SidewaysLr;
+
+    /// <summary>
+    /// Returns, for each anchor cluster, the cluster at the start edge of its text chunk: the first cluster of the chunk in
+    /// visual order, from the left in left-to-right text and from the right in right-to-left text. Without bidirectional
+    /// reordering, and in vertical text, that is the anchor cluster itself.
+    /// </summary>
+    /// <remarks>
+    /// Chromium keeps the start edge of a chunk at its absolute position when <c>textLength</c> spreads or scales the
+    /// clusters (measured with Amiri: an Arabic word in a left-to-right <c>text</c> keeps its left edge at <c>x</c>). The
+    /// logical first cluster of such a chunk lies at its right end, so it cannot serve as the reference.
+    /// </remarks>
+    /// <param name="layout">The layout.</param>
+    /// <param name="horizontal">Whether the inline direction is horizontal.</param>
+    /// <param name="anchors">The anchor of every cluster (<see cref="GetPositionsWithoutAbsolute"/>).</param>
+    /// <returns>The start cluster per anchor cluster; the entries of the other clusters are themselves.</returns>
+    private static int[] GetChunkStartClusters(SvgTextLayout layout, bool horizontal, int[] anchors)
+    {
+        ReadOnlySpan<SvgTextCluster> clusters = layout.Clusters;
+        int[] starts = new int[clusters.Length];
+        for (int k = 0; k < starts.Length; k++)
+        {
+            starts[k] = k;
+        }
+
+        if (!horizontal || layout.Content.Directions?.VisualOrder is not int[] visualOrder)
+        {
+            return starts;
+        }
+
+        bool rightToLeft = layout.Content.Spans[0].Style.Text.Direction == SvgDirection.Rtl;
+        for (int a = 0; a < clusters.Length; a++)
+        {
+            if (anchors[a] != a)
+            {
+                continue;
+            }
+
+            int best = a;
+            for (int k = a + 1; k < clusters.Length && anchors[k] == a && !clusters[k].StartsChunk; k++)
+            {
+                int order = visualOrder[clusters[k].CharStart];
+                int bestOrder = visualOrder[clusters[best].CharStart];
+                if (rightToLeft ? order > bestOrder : order < bestOrder)
+                {
+                    best = k;
+                }
+            }
+
+            starts[a] = best;
+        }
+
+        return starts;
     }
 
     /// <summary>

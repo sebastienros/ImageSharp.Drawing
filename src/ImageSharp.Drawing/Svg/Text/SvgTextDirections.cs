@@ -7,7 +7,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// The direction data of the characters of one <c>text</c> element: the glyph orientation of vertical text, the
-/// direction in which each character is shaped, and the visual order of bidirectional text. Package T4 sets it in
+/// direction in which each character is shaped, and the visual order of bidirectional text. Stage 3 sets it in
 /// <see cref="SvgTextContent.Directions"/> before shaping; horizontal left-to-right text has none.
 /// </summary>
 /// <remarks>

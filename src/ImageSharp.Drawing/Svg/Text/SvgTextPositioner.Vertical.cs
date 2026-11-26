@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Package T4 in stage 4: the pen advance of vertical text and of cursive scripts.
+/// Stage 4: the pen advance of vertical text and of cursive scripts.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -12,11 +12,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// advance and the offsets that shaping gives it: SixLabors.Fonts centres the glyph on the pen position horizontally and
 /// hangs it below the pen from its vertical origin, with the vertical metrics of the font where it has them and metrics
 /// synthesized from the horizontal ones otherwise. A sideways cluster turns 90 degrees clockwise about its pen position
-/// (counterclockwise for <c>sideways-lr</c>). In <c>vertical-rl</c> and <c>vertical-lr</c> text the dominant baseline is
-/// <c>central</c>, as CSS Writing Modes defines and Chromium applies: a sideways cluster moves left by half the sum of the
-/// ascent and the (negative) descent of the primary font of its span (<see cref="SvgTextDirections.CentralBaselines"/>),
-/// so that the middle of the em box of that font lies on the pen position. The <c>sideways</c> values keep the
-/// alphabetic baseline.
+/// (counterclockwise for <c>sideways-lr</c>). The baseline of the line, <c>central</c> by default in <c>vertical-rl</c>
+/// and <c>vertical-lr</c> text, applies afterwards, across the line (<c>SvgTextPositioner.Baselines.cs</c>).
 /// </para>
 /// <para>
 /// Cursive scripts: CSS Text Level 3 does not apply <c>letter-spacing</c> between the letters of a cursive script, such
@@ -59,9 +56,5 @@ internal static partial class SvgTextPositioner
         }
 
         cluster.Rotation += 90F;
-        if (directions.CentralBaselines is float[] centralBaselines)
-        {
-            cluster.X -= centralBaselines[cluster.Span];
-        }
     }
 }

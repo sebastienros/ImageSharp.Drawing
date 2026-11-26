@@ -16,28 +16,28 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// as CSS Text Level 3 defines and Chromium applies them: after every typographic character, the last one included.
 /// </para>
 /// <para>
-/// Hooks of later packages are partial methods: a package implements its hook in a file of its own, and shared code
-/// does not change. Package T3 implements <see cref="ApplyBaselineShift"/>; package T4 implements
-/// <see cref="ApplyVerticalAdvance"/> and <see cref="ReorderClusters"/>; package T2 implements
-/// <see cref="ApplyTextLength"/>, which runs after the walk and before text anchoring.
+/// The steps for single features are partial methods in files of their own: <see cref="ApplyBaselineShift"/>
+/// (<c>SvgTextPositioner.Baselines.cs</c>), <see cref="ApplyVerticalAdvance"/> (<c>SvgTextPositioner.Vertical.cs</c>),
+/// <see cref="ReorderClusters"/> (<c>SvgTextPositioner.Bidi.cs</c>), and <see cref="ApplyTextLength"/>
+/// (<c>SvgTextPositioner.TextLength.cs</c>), which runs after the walk and before text anchoring.
 /// </para>
 /// </remarks>
 internal static partial class SvgTextPositioner
 {
     /// <summary>
-    /// Hook of package T3: adds the vertical offset of a cluster from the pen position, from <c>dominant-baseline</c>,
-    /// <c>alignment-baseline</c>, and <c>baseline-shift</c> (cumulative through the spans), positive downward. It moves
-    /// the glyphs, not the pen. Without an implementation every cluster sits on the alphabetic baseline.
+    /// Adds the offset of a cluster from the pen position across the line, from <c>dominant-baseline</c>,
+    /// <c>alignment-baseline</c>, and <c>baseline-shift</c> (cumulative through the spans), positive toward the bottom of
+    /// the glyphs. It moves the glyphs, not the pen. <see cref="Position"/> turns it into a move along y in horizontal
+    /// text and along x in vertical text.
     /// </summary>
     /// <param name="layout">The layout, with the spans in <see cref="SvgTextContent.Spans"/>.</param>
-    /// <param name="cluster">The cluster, with its span and font.</param>
+    /// <param name="cluster">The cluster, with its span, its font, and its orientation set.</param>
     /// <param name="shift">The offset in user units, 0 on entry.</param>
     static partial void ApplyBaselineShift(SvgTextLayout layout, in SvgTextCluster cluster, ref float shift);
 
     /// <summary>
-    /// Hook of package T4: for a cluster of a vertical writing mode, sets <paramref name="vertical"/> and the advance of
-    /// the cluster along y; for a cluster of a cursive script, removes the letter spacing from the advance. Without an
-    /// implementation all text is horizontal.
+    /// For a cluster of a vertical writing mode, sets <paramref name="vertical"/>, the orientation of the cluster, and
+    /// its advance along y; for a cluster of a cursive script, removes the letter spacing from the advance.
     /// </summary>
     /// <param name="layout">The layout.</param>
     /// <param name="cluster">The cluster.</param>
@@ -46,17 +46,15 @@ internal static partial class SvgTextPositioner
     static partial void ApplyVerticalAdvance(SvgTextLayout layout, ref SvgTextCluster cluster, ref bool vertical, ref float advance);
 
     /// <summary>
-    /// Hook of package T4: reorders the visual positions of right-to-left runs with the Unicode bidirectional algorithm.
-    /// The clusters stay in logical order in the list; only their positions change, so position lists keep applying in
-    /// logical order. Without an implementation all text is left to right.
+    /// Reorders the visual positions of right-to-left runs with the Unicode bidirectional algorithm. The clusters stay
+    /// in logical order in the list; only their positions change, so position lists keep applying in logical order.
     /// </summary>
     /// <param name="layout">The positioned layout.</param>
     static partial void ReorderClusters(SvgTextLayout layout);
 
     /// <summary>
-    /// Hook of package T2: adjusts the clusters of every element with <c>textLength</c>, the spacing for
-    /// <c>lengthAdjust="spacing"</c> and also <see cref="SvgTextCluster.ScaleX"/> for <c>spacingAndGlyphs</c>. Without an
-    /// implementation <c>textLength</c> has no effect.
+    /// Adjusts the clusters of every element with <c>textLength</c>, the spacing for <c>lengthAdjust="spacing"</c> and
+    /// also <see cref="SvgTextCluster.ScaleX"/> for <c>spacingAndGlyphs</c>.
     /// </summary>
     /// <param name="layout">The positioned layout.</param>
     static partial void ApplyTextLength(SvgTextLayout layout);
@@ -96,11 +94,9 @@ internal static partial class SvgTextPositioner
             penX += first.Dx;
             penY += first.Dy;
 
-            float shift = 0F;
-            ApplyBaselineShift(layout, in cluster, ref shift);
             cluster.StartsChunk = startsChunk;
             cluster.X = penX;
-            cluster.Y = penY + shift;
+            cluster.Y = penY;
             cluster.Rotation = float.IsNaN(first.Rotate) ? 0F : first.Rotate;
             cluster.Hidden = style.Visibility != SvgVisibility.Visible;
 
@@ -108,12 +104,20 @@ internal static partial class SvgTextPositioner
             bool vertical = false;
             ApplyVerticalAdvance(layout, ref cluster, ref vertical, ref width);
             cluster.Width = width;
+
+            // The baseline offset moves the glyphs across the line, toward the bottom of the glyphs: down in horizontal
+            // text; in vertical text left, where glyphs turned clockwise have their bottom, and right in sideways-lr,
+            // whose glyphs turn counterclockwise.
+            float shift = 0F;
+            ApplyBaselineShift(layout, in cluster, ref shift);
             if (vertical)
             {
+                cluster.X += layout.Content.Directions!.WritingMode == SvgWritingMode.SidewaysLr ? shift : -shift;
                 penY += width;
             }
             else
             {
+                cluster.Y += shift;
                 penX += width;
             }
         }

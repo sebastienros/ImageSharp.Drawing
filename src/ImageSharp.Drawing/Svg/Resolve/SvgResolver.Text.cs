@@ -44,6 +44,11 @@ internal sealed partial class SvgResolver
     internal SvgTextResolveState TextState => this.textState ??= new SvgTextResolveState(this.loadOptions);
 
     /// <summary>
+    /// Gets the largest number of characters of text that the document may lay out, <see cref="SvgLimits.MaxTextCharacters"/>.
+    /// </summary>
+    internal int MaxTextCharacters => this.loadOptions.Limits.MaxTextCharacters;
+
+    /// <summary>
     /// Gets the number of characters of text that the load has laid out, counted per instance.
     /// </summary>
     private long TextCharacters => this.textState?.Characters ?? 0;
@@ -360,11 +365,10 @@ internal sealed partial class SvgResolver
     }
 
     /// <summary>
-    /// Hook of package T3 for <c>text-decoration</c>: adds the decoration lines of a paint group as rectangle draw nodes.
-    /// It runs after the glyph nodes of the group; to paint underline and overline below the glyphs, as Chromium does,
-    /// the implementation inserts its nodes at <paramref name="firstNode"/>. The paint of a decoration comes from the span
-    /// that sets <c>text-decoration</c> (an ancestor of <paramref name="span"/> or the span itself). Without an
-    /// implementation no decoration renders.
+    /// Adds the <c>text-decoration</c> lines of a paint group as draw nodes (<c>SvgResolver.TextDecorations.cs</c>). It
+    /// runs after the glyph nodes of the group; to paint underline and overline below the glyphs, as Chromium does, it
+    /// inserts their nodes at <paramref name="firstNode"/>. The paint of a decoration comes from the span that sets
+    /// <c>text-decoration</c> (an ancestor of <paramref name="span"/> or the span itself).
     /// </summary>
     /// <param name="layout">The layout.</param>
     /// <param name="start">The first cluster of the group.</param>
@@ -375,8 +379,8 @@ internal sealed partial class SvgResolver
     partial void EmitTextDecorations(SvgTextLayout layout, int start, int end, SvgTextSpan span, in SvgResolveContext context, int firstNode);
 
     /// <summary>
-    /// Hook of package T3 for <c>text-decoration</c> in a <c>clipPath</c>: adds the decoration lines of the visible clusters
-    /// to the clip geometry, as Chromium paints them into the clip. Without an implementation only glyphs clip.
+    /// Adds the <c>text-decoration</c> lines of the visible clusters to the geometry of a <c>clipPath</c>, as Chromium
+    /// paints them into the clip.
     /// </summary>
     /// <param name="layout">The layout.</param>
     /// <param name="paths">The clip geometry in the user space of the text.</param>
@@ -401,23 +405,15 @@ internal sealed partial class SvgResolver
         }
 
         SvgTextLayout? layout = this.textState?.ActiveLayout;
-        if (layout is null)
+        int span = layout?.Content.FindSpan(element) ?? -1;
+        if (span < 0)
         {
             return false;
         }
 
-        SvgTextSpan[] spans = layout.Content.Spans;
-        for (int i = 0; i < spans.Length; i++)
-        {
-            if (spans[i].Element == element)
-            {
-                RectangleF? box = layout.GetSpanBounds(i);
-                bounds = box ?? default;
-                return box.HasValue;
-            }
-        }
-
-        return false;
+        RectangleF? spanBox = layout!.GetSpanBounds(span);
+        bounds = spanBox ?? default;
+        return spanBox.HasValue;
     }
 
     /// <summary>
@@ -426,23 +422,7 @@ internal sealed partial class SvgResolver
     /// <param name="element">The element index.</param>
     /// <returns><see langword="true"/> if a span of the active text layout is the element; otherwise, <see langword="false"/>.</returns>
     private bool IsActiveTextSpan(int element)
-    {
-        SvgTextLayout? layout = this.textState?.ActiveLayout;
-        if (layout is null)
-        {
-            return false;
-        }
-
-        foreach (SvgTextSpan span in layout.Content.Spans)
-        {
-            if (span.Element == element)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => this.textState?.ActiveLayout?.Content.FindSpan(element) >= 0;
 
     /// <summary>
     /// Returns the geometry that a <c>text</c> element adds to a <c>clipPath</c>: the outlines of its visible glyphs in

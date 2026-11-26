@@ -27,9 +27,31 @@ internal static class SvgBenchmarkCorpus
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1096\" height=\"1060\" viewBox=\"0 0 1096 1060\">";
 
     /// <summary>
-    /// Gets the entry names, in the order that the benchmark tables show them.
+    /// The environment variable that limits the corpus to a comma-separated list of entry names. The benchmark
+    /// processes inherit it, so a run can measure some entries with every method without the others.
     /// </summary>
-    public static IEnumerable<string> Names { get; } =
+    private const string CorpusVariable = "SVG_BENCHMARK_CORPUS";
+
+    /// <summary>
+    /// The environment variable that limits the long-edge sizes to a comma-separated list of pixel lengths.
+    /// </summary>
+    private const string SizesVariable = "SVG_BENCHMARK_SIZES";
+
+    /// <summary>
+    /// Gets the entry names, in the order that the benchmark tables show them, limited by
+    /// <c>SVG_BENCHMARK_CORPUS</c> when it is set.
+    /// </summary>
+    public static IEnumerable<string> Names => Filter(AllNames, CorpusVariable);
+
+    /// <summary>
+    /// Gets the long-edge sizes in pixels: 100, 1000, and 4000, limited by <c>SVG_BENCHMARK_SIZES</c> when it is set.
+    /// </summary>
+    public static IEnumerable<int> Sizes => Filter(["100", "1000", "4000"], SizesVariable).Select(int.Parse);
+
+    /// <summary>
+    /// Gets every entry name.
+    /// </summary>
+    private static string[] AllNames { get; } =
     [
         "Tiger",
         "Paris30k",
@@ -39,8 +61,28 @@ internal static class SvgBenchmarkCorpus
         "StyledLandscape",
         "Dashboard",
         "PatternChart",
-        "TextHeavy"
+        "TextHeavy",
+        "TextDecorations"
     ];
+
+    /// <summary>
+    /// Returns the values that an environment variable keeps: all values when it is not set, else the values that it
+    /// lists, in the order of <paramref name="values"/>.
+    /// </summary>
+    /// <param name="values">The values.</param>
+    /// <param name="variable">The environment variable.</param>
+    /// <returns>The kept values.</returns>
+    private static IEnumerable<string> Filter(string[] values, string variable)
+    {
+        string list = Environment.GetEnvironmentVariable(variable);
+        if (string.IsNullOrWhiteSpace(list))
+        {
+            return values;
+        }
+
+        string[] kept = list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return values.Where(value => kept.Contains(value, StringComparer.Ordinal));
+    }
 
     /// <summary>
     /// Gets the input files of an entry, relative to the test image input directory.
@@ -58,6 +100,7 @@ internal static class SvgBenchmarkCorpus
         "Dashboard" => [TestImages.Svg.CompositingDashboard],
         "PatternChart" => [TestImages.Svg.PatternChart],
         "TextHeavy" => [TestImages.Svg.TextHeavy],
+        "TextDecorations" => [TestImages.Svg.TextDecorations],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 

@@ -7,8 +7,7 @@ using SixLabors.Fonts;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <content>
-/// Package T3: the baseline of each cluster from <c>dominant-baseline</c>, <c>alignment-baseline</c>, and
-/// <c>baseline-shift</c>.
+/// The baseline of each cluster from <c>dominant-baseline</c>, <c>alignment-baseline</c>, and <c>baseline-shift</c>.
 /// </content>
 /// <remarks>
 /// <para>
@@ -29,12 +28,17 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// Baseline heights follow Chromium, which derives them from the ascent, the descent, and the x-height of the font:
 /// hanging is 0.8 of the ascent, mathematical half the ascent, middle half the x-height, central the middle of the
 /// ascent and descent, the text edges the ascent and the descent, and ideographic the descent. Chromium ignores the
-/// <c>BASE</c> table (measured with Source Sans Pro, which has one), and SixLabors.Fonts does not expose it publicly. Chromium does not support the CSS values <c>top</c>, <c>center</c>, <c>bottom</c>,
-/// <c>text-top</c>, and <c>text-bottom</c> in SVG; they act as if they were not set.
+/// <c>BASE</c> table (measured with Source Sans Pro, which has one), and SixLabors.Fonts does not expose it publicly.
+/// Chromium does not support the CSS values <c>top</c>, <c>center</c>, <c>bottom</c>, <c>text-top</c>, and
+/// <c>text-bottom</c> in SVG; they act as if they were not set.
 /// </para>
 /// <para>
-/// Only horizontal text takes the alignment: package T4 owns the baselines of vertical text. The shift is
-/// perpendicular to the inline direction.
+/// The offset is across the line in every writing mode, toward the bottom of the glyphs. The dominant baseline
+/// <c>auto</c> is <c>central</c> in <c>vertical-rl</c> and <c>vertical-lr</c> text, as CSS Writing Modes defines and
+/// Chromium applies, and alphabetic otherwise. Shaping already centres an upright glyph of vertical text on the pen
+/// position, which is the central baseline, so the offset of an upright cluster is the height of its baseline less the
+/// height of the central baseline. Measured against Chromium with Noto Sans KR: <c>baseline-shift</c> and the alignment
+/// baselines move vertical text across the line, as here.
 /// </para>
 /// </remarks>
 internal static partial class SvgTextPositioner
@@ -54,6 +58,11 @@ internal static partial class SvgTextPositioner
     /// </summary>
     private enum BaselineKind
     {
+        /// <summary>
+        /// The dominant baseline <c>auto</c>: central in vertical text, alphabetic otherwise.
+        /// </summary>
+        Auto,
+
         /// <summary>
         /// The alphabetic baseline: no offset.
         /// </summary>
@@ -100,7 +109,7 @@ internal static partial class SvgTextPositioner
     /// </summary>
     /// <param name="layout">The layout, with the spans in <see cref="SvgTextContent.Spans"/>.</param>
     /// <param name="cluster">The cluster, with its span and font.</param>
-    /// <param name="shift">The offset in user units, positive downward.</param>
+    /// <param name="shift">The offset in user units, positive toward the bottom of the glyphs.</param>
     static partial void ApplyBaselineShift(SvgTextLayout layout, in SvgTextCluster cluster, ref float shift)
     {
         SvgTextSpan[] spans = layout.Content.Spans;
@@ -129,13 +138,23 @@ internal static partial class SvgTextPositioner
             }
         }
 
-        SvgTextSpan own = spans[cluster.Span];
-        if (own.Style.Text.WritingMode == SvgWritingMode.HorizontalTb)
+        // The writing mode of the text element decides the orientation of the whole text, as in Chromium.
+        SvgTextDirections? directions = layout.Content.Directions;
+        bool central = directions?.WritingMode is SvgWritingMode.VerticalRl or SvgWritingMode.VerticalLr;
+        BaselineKind baseline = GetBaseline(spans, cluster.Span);
+        if (baseline == BaselineKind.Auto)
         {
-            BaselineKind baseline = GetBaseline(spans, cluster.Span);
-            if (baseline != BaselineKind.Alphabetic && TryGetFontMetrics(layout, own, out FontMetrics? metrics, out float scale))
+            baseline = central ? BaselineKind.Central : BaselineKind.Alphabetic;
+        }
+
+        SvgTextSpan own = spans[cluster.Span];
+        bool upright = central && (directions!.Flags[cluster.CharStart] & SvgTextDirections.Upright) != 0;
+        if ((baseline != BaselineKind.Alphabetic || upright) && TryGetFontMetrics(layout, own, out FontMetrics? ownMetrics, out float ownScale))
+        {
+            offset += GetBaselineHeight(baseline, ownMetrics, ownScale);
+            if (upright)
             {
-                offset += GetBaselineHeight(baseline, metrics, scale);
+                offset -= GetBaselineHeight(BaselineKind.Central, ownMetrics, ownScale);
             }
         }
 
@@ -148,7 +167,7 @@ internal static partial class SvgTextPositioner
     /// </summary>
     /// <param name="spans">The spans.</param>
     /// <param name="index">The span index.</param>
-    /// <returns>The baseline.</returns>
+    /// <returns>The baseline; <see cref="BaselineKind.Auto"/> for the default baseline of the writing mode.</returns>
     private static BaselineKind GetBaseline(SvgTextSpan[] spans, int index)
     {
         switch (spans[index].Style.Text.AlignmentBaseline)
@@ -198,13 +217,15 @@ internal static partial class SvgTextPositioner
                     return BaselineKind.TextBeforeEdge;
                 case SvgDominantBaseline.TextAfterEdge:
                     return BaselineKind.TextAfterEdge;
-                default:
-                    // auto, use-script, and alphabetic: the alphabetic baseline of horizontal text.
+                case SvgDominantBaseline.Alphabetic:
                     return BaselineKind.Alphabetic;
+                default:
+                    // auto and use-script: the default baseline of the writing mode.
+                    return BaselineKind.Auto;
             }
         }
 
-        return BaselineKind.Alphabetic;
+        return BaselineKind.Auto;
     }
 
     /// <summary>

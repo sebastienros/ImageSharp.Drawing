@@ -6,7 +6,7 @@ using System.Numerics;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <content>
-/// Package T2: text on a path, as Chromium lays it out (<c>SvgTextLayoutAlgorithm::PositionOnPath</c> in Blink). The
+/// Text on a path, as Chromium lays it out (<c>SvgTextLayoutAlgorithm::PositionOnPath</c> in Blink). The
 /// layout rules are adapted from the Chromium project (BSD 3-Clause License, see THIRD-PARTY-NOTICES).
 /// </content>
 /// <remarks>
@@ -197,7 +197,7 @@ internal static partial class SvgTextPaths
                     afterPath = true;
                     Vector2 end = measure is not null
                         ? GetEndPoint(measure, reverse)
-                        : GetLastClusterEnd(clusters[i..], horizontal, upward);
+                        : GetLastClusterEnd(layout, clusters[i..], horizontal, upward);
                     pathEnd = end - new Vector2(cluster.X, cluster.Y);
                 }
 
@@ -225,7 +225,9 @@ internal static partial class SvgTextPaths
             }
 
             inPath = true;
-            float size = cluster.Width * cluster.ScaleX;
+
+            // The extent along the inline direction is positive in sideways-lr too, where the pen moves upward.
+            float size = layout.GetInlineExtent(in cluster);
             float inlinePosition = horizontal ? cluster.X : upward ? -cluster.Y : cluster.Y;
             float middle = inlinePosition + (size / 2F) + startOffset;
             if (measure is null || !(middle >= 0F && middle <= measure.Length))
@@ -242,6 +244,10 @@ internal static partial class SvgTextPaths
 
             // The offset of the pen from the path point before the rotation: back by half the advance along the inline
             // direction, and across by the cross position. Vertical glyphs turn by a quarter turn less than the path.
+            // The offset is in the frame of the line, which does not turn with the quarter turn that sideways glyphs of
+            // vertical text already have, so that turn is taken out of its angle.
+            float orientation = horizontal || layout.IsUpright(in cluster) ? 0F : upward ? -90F : 90F;
+            float offsetAngle = angle - orientation;
             Vector2 local;
             if (horizontal)
             {
@@ -250,15 +256,17 @@ internal static partial class SvgTextPaths
             else if (upward)
             {
                 angle += 90F;
+                offsetAngle += 90F;
                 local = new Vector2(-cluster.X, size / 2F);
             }
             else
             {
                 angle -= 90F;
+                offsetAngle -= 90F;
                 local = new Vector2(cluster.X, -size / 2F);
             }
 
-            Vector2 pen = point + Vector2.Transform(local, Matrix3x2.CreateRotation(angle * (MathF.PI / 180F)));
+            Vector2 pen = point + Vector2.Transform(local, Matrix3x2.CreateRotation(offsetAngle * (MathF.PI / 180F)));
             cluster.X = pen.X;
             cluster.Y = pen.Y;
             cluster.Rotation = angle;
@@ -394,18 +402,19 @@ internal static partial class SvgTextPaths
     /// Returns the end of the last cluster that is not left out, as Chromium does for the text after a <c>textPath</c>
     /// without a valid path.
     /// </summary>
+    /// <param name="layout">The layout.</param>
     /// <param name="clusters">The clusters from the first one after the path to the end of the text.</param>
     /// <param name="horizontal">Whether the inline direction is horizontal.</param>
     /// <param name="upward">Whether the inline direction is upward.</param>
     /// <returns>The pen position after the last cluster, or the origin when every cluster is left out.</returns>
-    private static Vector2 GetLastClusterEnd(ReadOnlySpan<SvgTextCluster> clusters, bool horizontal, bool upward)
+    private static Vector2 GetLastClusterEnd(SvgTextLayout layout, ReadOnlySpan<SvgTextCluster> clusters, bool horizontal, bool upward)
     {
         for (int i = clusters.Length - 1; i >= 0; i--)
         {
             ref readonly SvgTextCluster cluster = ref clusters[i];
             if (!cluster.Skipped)
             {
-                float size = cluster.Width * cluster.ScaleX;
+                float size = layout.GetInlineExtent(in cluster);
                 return horizontal
                     ? new Vector2(cluster.X + size, cluster.Y)
                     : new Vector2(cluster.X, upward ? cluster.Y - size : cluster.Y + size);

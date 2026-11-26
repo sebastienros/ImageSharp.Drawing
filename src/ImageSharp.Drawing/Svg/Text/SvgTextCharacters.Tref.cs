@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Package T4 in stage 1: the characters of <c>tref</c>.
+/// Stage 1: the characters of <c>tref</c>.
 /// </summary>
 /// <remarks>
 /// <para>

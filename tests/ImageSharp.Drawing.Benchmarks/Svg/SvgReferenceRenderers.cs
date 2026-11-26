@@ -41,13 +41,15 @@ internal static class SvgReferenceRenderers
     }
 
     /// <summary>
-    /// Parses a document with Svg.Skia and records it as an <see cref="SKPicture"/>.
+    /// Parses a document with Svg.Skia and records it as an <see cref="SKPicture"/>, with the fonts of
+    /// <see cref="SvgBenchmarkFonts"/>.
     /// </summary>
     /// <param name="document">The SVG bytes.</param>
     /// <returns>The loaded document. The caller disposes it; it owns its picture.</returns>
     public static SKSvg LoadSkia(byte[] document)
     {
         SKSvg svg = new();
+        SvgBenchmarkFonts.Configure(svg);
         using MemoryStream stream = new(document, writable: false);
         if (svg.Load(stream) is null)
         {
@@ -137,6 +139,7 @@ internal static class SvgReferenceRenderers
     public static void PrintInfo()
     {
         int defaultConcurrency = ConfigureNetVips();
+        SvgBenchmarkFonts.CheckFontConfig();
         Console.WriteLine($"libvips          {Vips.Version(0)}.{Vips.Version(1)}.{Vips.Version(2)}");
         Console.WriteLine($"svgload_buffer   {(Vips.TypeFind("VipsOperation", "svgload_buffer") != IntPtr.Zero ? "available" : "missing")}");
         Console.WriteLine($"libvips threads  {defaultConcurrency} by default");
@@ -169,6 +172,7 @@ internal static class SvgReferenceRenderers
     public static void VerifyOutput(int longEdge)
     {
         ConfigureNetVips();
+        SvgBenchmarkFonts.CheckFontConfig();
         string outDir = IOPath.Combine(AppContext.BaseDirectory, $"svg-{longEdge}-verify");
         Directory.CreateDirectory(outDir);
 

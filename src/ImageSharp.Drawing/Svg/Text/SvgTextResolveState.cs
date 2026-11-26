@@ -47,7 +47,7 @@ internal sealed class SvgTextResolveState
     public SvgTextLayout? ActiveLayout { get; set; }
 
     /// <summary>
-    /// Gets the measured paths of package T2, by the element that holds the geometry (a <c>path</c>, or a
+    /// Gets the measured paths of <c>textPath</c>, by the element that holds the geometry (a <c>path</c>, or a
     /// <c>textPath</c> with a <c>path</c> attribute), the flattening tolerance, and the viewport. Many <c>textPath</c>
     /// elements that reference one path measure it once.
     /// </summary>
