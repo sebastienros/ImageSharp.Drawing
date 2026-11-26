@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" preserveAspectRatio="none">
+  <defs>
+    <radialGradient id="bump" r="0.5">
+      <stop offset="0.2" stop-color="#cc7722"/>
+      <stop offset="1" stop-color="#cc7722" stop-opacity="0"/>
+    </radialGradient>
+    <!-- primitiveUnits="objectBoundingBox": x and y of a light are fractions of the box; z and pointsAtZ are fractions
+         of the normalized diagonal sqrt((w^2 + h^2) / 2). surfaceScale is a plain number and does not scale. -->
+    <filter id="box-point" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="4">
+        <fePointLight x="0.2" y="0.25" z="0.3"/>
+      </feDiffuseLighting>
+    </filter>
+    <filter id="box-spot" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feSpecularLighting in="SourceAlpha" surfaceScale="4" specularExponent="8" result="s">
+        <feSpotLight x="0.1" y="0.5" z="0.5" pointsAtX="0.7" pointsAtY="0.5" pointsAtZ="0" limitingConeAngle="30"/>
+      </feSpecularLighting>
+      <feComposite in="s" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <!-- Light positions are in the user space of the filtered element, so they move and scale with its transform. -->
+    <filter id="user-point" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="4" lighting-color="#aaddff">
+        <fePointLight x="10" y="10" z="15"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- The same diffuse light in linearRGB (the default) and in sRGB: the lighting color converts to the color space
+         of the primitive first. -->
+    <filter id="linear">
+      <feDiffuseLighting surfaceScale="5" lighting-color="#c08040">
+        <feDistantLight azimuth="135" elevation="45"/>
+      </feDiffuseLighting>
+    </filter>
+    <filter id="srgb" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="5" lighting-color="#c08040">
+        <feDistantLight azimuth="135" elevation="45"/>
+      </feDiffuseLighting>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="110" height="50" fill="url(#bump)" filter="url(#box-point)"/>
+  <rect x="10" y="70" width="110" height="50" fill="url(#bump)" filter="url(#box-spot)"/>
+  <g transform="translate(130 10) scale(1.5)">
+    <rect width="40" height="70" fill="url(#bump)" filter="url(#user-point)"/>
+  </g>
+  <rect x="10" y="130" width="85" height="60" fill="url(#bump)" filter="url(#linear)"/>
+  <rect x="105" y="130" width="85" height="60" fill="url(#bump)" filter="url(#srgb)"/>
+</svg>

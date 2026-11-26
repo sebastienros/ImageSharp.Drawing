@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <!-- A bump: opaque in the middle, fading to transparent at the edge. -->
+    <radialGradient id="bump" r="0.5">
+      <stop offset="0.2" stop-color="#3366cc"/>
+      <stop offset="1" stop-color="#3366cc" stop-opacity="0"/>
+    </radialGradient>
+    <!-- feDistantLight: the light comes from the lower right (azimuth 45) at 50 degrees above the surface. -->
+    <filter id="distant" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="6" lighting-color="#ffeecc">
+        <feDistantLight azimuth="45" elevation="50"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- fePointLight: a light 25 units above the upper left of the bump, in the user space of the element. -->
+    <filter id="point" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="4" diffuseConstant="1.4">
+        <fePointLight x="125" y="25" z="25"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- feSpotLight: aims at the lower right of the bump with a cone of 20 degrees and a soft edge. -->
+    <filter id="spot" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="4" lighting-color="orange">
+        <feSpotLight x="10" y="110" z="60" pointsAtX="60" pointsAtY="160" specularExponent="3" limitingConeAngle="20"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- An emboss: the blurred alpha of a star lit from the upper left, multiplied with the star itself. -->
+    <filter id="emboss" x="-0.1" y="-0.1" width="1.2" height="1.2">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+      <feDiffuseLighting in="blur" surfaceScale="5" result="light">
+        <feDistantLight azimuth="225" elevation="40"/>
+      </feDiffuseLighting>
+      <feComposite in="light" in2="SourceGraphic" operator="arithmetic" k1="1"/>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="80" height="80" fill="url(#bump)" filter="url(#distant)"/>
+  <rect x="110" y="10" width="80" height="80" fill="url(#bump)" filter="url(#point)"/>
+  <rect x="10" y="110" width="80" height="80" fill="url(#bump)" filter="url(#spot)"/>
+  <path d="M150 112 L159 137 L186 138 L165 154 L172 180 L150 165 L128 180 L135 154 L114 138 L141 137 Z"
+        fill="#cc3333" filter="url(#emboss)"/>
+</svg>
