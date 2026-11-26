@@ -130,7 +130,7 @@ license text is available in the RichTextKit repository LICENSE file.
 
 ================================================================================
 
-W3C specifications (https://www.w3.org/TR/filter-effects-1/, https://www.w3.org/TR/SVG11/)
+W3C specifications (https://www.w3.org/TR/filter-effects-1/, https://www.w3.org/TR/SVG11/, https://www.w3.org/TR/css-color-4/)
 License: W3C Software and Document License
 
 The feTurbulence filter primitive follows the reference code that the W3C
@@ -146,6 +146,17 @@ This software includes material copied from or derived from Filter Effects
 Module Level 1 (https://www.w3.org/TR/filter-effects-1/) and Scalable Vector
 Graphics (SVG) 1.1 (Second Edition) (https://www.w3.org/TR/SVG11/).
 Copyright (c) 2018 and 2011 World Wide Web Consortium.
+https://www.w3.org/copyright/software-license-2023/
+
+The conversions between CSS color spaces follow the sample code of "CSS Color
+Module Level 4" (section "Sample code for Color Conversions"): the white
+points, the conversion matrices, and the transfer functions. The code was
+translated to C#.
+See also: src/ImageSharp.Drawing/Svg/Parsing/SvgCssColor.cs
+
+This software includes material copied from or derived from CSS Color Module
+Level 4 (https://www.w3.org/TR/css-color-4/).
+Copyright (c) 2026 World Wide Web Consortium.
 https://www.w3.org/copyright/software-license-2023/
 
 The full license text is available at
