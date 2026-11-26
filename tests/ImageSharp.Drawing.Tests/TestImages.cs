@@ -449,6 +449,25 @@ public static class TestImages
         public const string TextDecorations = "Svg/Text/text-decorations-synthetic.svg";
 
         /// <summary>
+        /// A synthetic diagram for the phase 4 filters: 96 cards, each with the drop shadow chain that design tools export
+        /// (a blur of the alpha, an offset, a flood, a composite, and a merge), joined by connectors.
+        /// </summary>
+        public const string FilterShadows = "Svg/Filters/filter-shadows-synthetic.svg";
+
+        /// <summary>
+        /// A synthetic illustration for the phase 4 filters: one large blur over a landscape of gradients and polygons,
+        /// behind a sharp translucent card.
+        /// </summary>
+        public const string FilterBlur = "Svg/Filters/filter-blur-synthetic.svg";
+
+        /// <summary>
+        /// A synthetic sheet for the phase 4 filters: six tiles, each with a chain of several primitive kinds
+        /// (turbulence, color matrix, composite, blend, morphology, flood, blur, merge, specular lighting, component
+        /// transfer, convolution, offset, and displacement map).
+        /// </summary>
+        public const string FilterChain = "Svg/Filters/filter-chain-synthetic.svg";
+
+        /// <summary>
         /// Stroked Feather icons. MIT license.
         /// </summary>
         public static readonly string[] FeatherIcons =

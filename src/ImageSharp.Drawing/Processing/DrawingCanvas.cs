@@ -506,6 +506,16 @@ public abstract partial class DrawingCanvas : IDisposable
     internal virtual DrawingOptions GetActiveOptions() => new();
 
     /// <summary>
+    /// Returns the processing configuration of the canvas, so that high-level drawing such as SVG filters can allocate
+    /// from its memory allocator, follow its degree of parallelism, and draw into nested canvases with it.
+    /// </summary>
+    /// <remarks>
+    /// A canvas implementation without a configuration returns <see cref="Configuration.Default"/>.
+    /// </remarks>
+    /// <returns>The configuration.</returns>
+    internal virtual Configuration GetConfiguration() => Configuration.Default;
+
+    /// <summary>
     /// Releases the canvas. Disposing the root canvas closes any open layers and clips and
     /// replays the recorded command timeline into the target frame; child region canvases
     /// share the root's command stream and do not flush on disposal.

@@ -71,8 +71,8 @@ internal sealed class SvgFeTile : SvgFilterPrimitive
     public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
     {
         // The input subregion rounded inward, inside the pixels that the input holds. The clamp keeps the conversions
-        // to int defined for a subregion far outside any image.
-        const float limit = 1 << 30;
+        // to int and the width of the rectangle (at most 2^30) defined for a subregion far larger than any image.
+        const float limit = 1 << 29;
         SvgFilterImage input = inputs[0];
         RectangleF bounds = context.ToFilter(this.inputSubregion);
         int left = (int)MathF.Ceiling(Math.Clamp(bounds.Left - EdgeTolerance, -limit, limit));

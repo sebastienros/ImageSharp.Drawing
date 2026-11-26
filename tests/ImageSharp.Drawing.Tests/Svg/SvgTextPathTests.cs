@@ -1,7 +1,6 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
-using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -24,6 +23,14 @@ public class SvgTextPathTests
     // An upward vertical line of length 100 from (20, 120), and a horizontal line of length 150 from (10, 50).
     private const string UpPath = "<path id=\"up\" d=\"M 20 120 L 20 20\"/>";
     private const string FlatPath = "<path id=\"flat\" d=\"M 10 50 L 160 50\"/>";
+
+    private readonly ITestOutputHelper output;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SvgTextPathTests"/> class.
+    /// </summary>
+    /// <param name="output">The test output.</param>
+    public SvgTextPathTests(ITestOutputHelper output) => this.output = output;
 
     [Fact]
     public void TextPath_PlacesEachClusterByTheMiddleOfItsAdvanceAndTurnsItWithThePath()
@@ -467,29 +474,51 @@ public class SvgTextPathTests
     [Fact]
     public void Robustness_LongPathsLongTextAndHugeValuesFinishInBoundedTime()
     {
-        // A path of 100 000 segments with 20 000 characters on it costs a binary search per cluster.
-        StringBuilder data = new("M 0 100");
-        for (int i = 1; i <= 100_000; i++)
+        // A path of n segments with n / 5 characters on it costs a binary search per cluster, and many text elements on
+        // the same path measure it once per load: ten times the input costs about ten times the time (SvgGrowth).
+        static string PathData(int segments)
         {
-            data.Append(CultureInfo.InvariantCulture, $" L {i * 0.01F} {100 + ((i % 2) * 0.5F)}");
+            StringBuilder data = new("M 0 100");
+            for (int i = 1; i <= segments; i++)
+            {
+                data.Append(CultureInfo.InvariantCulture, $" L {i * 0.01F} {100 + ((i % 2) * 0.5F)}");
+            }
+
+            return data.ToString();
         }
 
-        string text = new('a', 20_000);
-        Stopwatch watch = Stopwatch.StartNew();
-        SvgTextLayout layout = Layout($"<path id=\"p\" d=\"{data}\"/><text id=\"t\"><textPath href=\"#p\">{text}</textPath></text>", "t");
-        Assert.Equal(20_000, layout.Clusters.Length);
-        Assert.False(layout.Clusters[0].Skipped);
-        Assert.True(layout.Clusters[^1].Skipped);
-
-        // Many text elements on the same long path measure it once per load.
-        StringBuilder many = new(SvgOpen);
-        many.Append(CultureInfo.InvariantCulture, $"<defs><path id=\"p\" d=\"{data}\"/></defs>");
-        for (int i = 0; i < 2_000; i++)
+        static void LongText(int segments)
         {
-            many.Append("<text><textPath href=\"#p\">ab</textPath></text>");
+            string text = new('a', segments / 5);
+            SvgTextLayout layout = Layout($"<path id=\"p\" d=\"{PathData(segments)}\"/><text id=\"t\"><textPath href=\"#p\">{text}</textPath></text>", "t");
+            Assert.Equal(segments / 5, layout.Clusters.Length);
+            Assert.False(layout.Clusters[0].Skipped);
+            Assert.True(layout.Clusters[^1].Skipped);
         }
 
-        Assert.False(SvgDocument.Parse(many.Append("</svg>").ToString(), SvgTextRenderTests.Options).Nodes.IsEmpty);
+        static void ManyTexts(int segments)
+        {
+            StringBuilder many = new(SvgOpen);
+            many.Append(CultureInfo.InvariantCulture, $"<defs><path id=\"p\" d=\"{PathData(segments)}\"/></defs>");
+            for (int i = 0; i < segments / 50; i++)
+            {
+                many.Append("<text><textPath href=\"#p\">ab</textPath></text>");
+            }
+
+            Assert.False(SvgDocument.Parse(many.Append("</svg>").ToString(), SvgTextRenderTests.Options).Nodes.IsEmpty);
+        }
+
+        TimeSpan small = SvgGrowth.MeasureWarm(this.output, "10,000 segments, 2,000 characters, 200 texts", () =>
+        {
+            LongText(10_000);
+            ManyTexts(10_000);
+        });
+        TimeSpan large = SvgGrowth.Measure(this.output, "100,000 segments, 20,000 characters, 2,000 texts", () =>
+        {
+            LongText(100_000);
+            ManyTexts(100_000);
+        });
+        SvgGrowth.AssertLinear(small, large, 10);
 
         // Huge offsets and lengths, a zero length path, and a hostile curve size load and leave out what does not fit.
         string[] documents =
@@ -509,8 +538,6 @@ public class SvgTextPathTests
             using Image<Rgba32> image = new(50, 50);
             image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(parsed, new RectangleF(0, 0, 50, 50))));
         }
-
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(20), $"The documents took {watch.Elapsed}.");
     }
 
     private static bool HasInk(Image<Rgba32> image, Rectangle area)

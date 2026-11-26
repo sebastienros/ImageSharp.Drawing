@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <filter id="blur" x="-0.5" y="-0.5" width="2" height="2"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="glow" x="-0.5" y="-0.5" width="2" height="2" color-interpolation-filters="sRGB">
+      <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="thick"/>
+      <feFlood flood-color="#ff7f0e"/>
+      <feComposite in2="thick" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="tint" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.5  0 0 0 0 0.9  0 0 0 1 0"/>
+    </filter>
+    <pattern id="tile" patternUnits="userSpaceOnUse" width="20" height="20">
+      <circle cx="10" cy="10" r="5" fill="#1f77b4" filter="url(#blur)"/>
+    </pattern>
+    <marker id="dot" refX="6" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse">
+      <circle cx="6" cy="6" r="3" fill="#d62728" filter="url(#glow)"/>
+    </marker>
+    <mask id="soft" maskUnits="userSpaceOnUse" x="100" y="0" width="100" height="70">
+      <rect x="120" y="15" width="60" height="40" fill="#ffffff" filter="url(#blur)"/>
+    </mask>
+    <g id="star"><path d="M0,-12 L4,-4 L12,-4 L6,2 L8,11 L0,6 L-8,11 L-6,2 L-12,-4 L-4,-4 Z" fill="#2ca02c"/></g>
+  </defs>
+  <rect width="200" height="200" fill="#ffffff"/>
+  <!-- Filters inside pattern, marker, and mask content. -->
+  <rect x="5" y="5" width="90" height="60" fill="url(#tile)" stroke="#000000"/>
+  <rect x="100" y="0" width="100" height="70" fill="#9467bd" mask="url(#soft)"/>
+  <polyline points="15,90 50,75 85,90" fill="none" stroke="#7f7f7f" stroke-width="2" marker-start="url(#dot)" marker-mid="url(#dot)" marker-end="url(#dot)"/>
+  <!-- A filter on use, on the referenced content, and nested filters: the inner glow runs first, the outer blur on its result. -->
+  <use xlink:href="#star" x="125" y="90" filter="url(#tint)"/>
+  <g filter="url(#blur)">
+    <use xlink:href="#star" x="165" y="90" filter="url(#glow)"/>
+  </g>
+  <!-- A nested svg with a filter, and a filter inside a nested svg whose viewBox scales its content. -->
+  <svg x="5" y="110" width="90" height="40" viewBox="0 0 45 20" filter="url(#tint)">
+    <rect x="5" y="5" width="15" height="10" fill="#8c564b"/>
+    <rect x="25" y="5" width="15" height="10" fill="#e377c2" filter="url(#glow)"/>
+  </svg>
+  <!-- A filtered raster image (2 x 2 pixels, scaled up with nearest neighbour sampling). -->
+  <image x="110" y="115" width="30" height="30" image-rendering="pixelated" filter="url(#glow)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAG0lEQVR4nGO4pq7xX758y38GnQU6///X8/0HAEwyCPBt2R7uAAAAAElFTkSuQmCC"/>
+  <!-- Filtered text: a blurred shadow merged under the glyphs. -->
+  <filter id="textShadow" x="-0.2" y="-0.5" width="1.4" height="2" color-interpolation-filters="sRGB">
+    <feOffset in="SourceAlpha" dx="2" dy="2"/>
+    <feGaussianBlur stdDeviation="1.5"/>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <text x="10" y="185" font-family="Open Sans" font-size="22" fill="#1f77b4" filter="url(#textShadow)">Filter</text>
+  <text x="110" y="185" font-family="Open Sans" font-size="22" fill="#2ca02c" filter="url(#blur)">blur</text>
+</svg>

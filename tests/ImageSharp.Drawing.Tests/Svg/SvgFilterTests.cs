@@ -164,7 +164,7 @@ public class SvgFilterTests
         Assert.Equal(Color.White, initial.FilterColors.LightingColor.Color);
 
         SvgComputedStyle group = resolver.ComputeDocumentStyle(Index(tree, "g"));
-        Assert.True(group.Filter!.IsSingleUrl);
+        Assert.Equal(SvgFilterFunctionKind.Url, Assert.Single(group.Filter!.Functions.ToArray()).Kind);
         Assert.Equal(0.5F, group.FilterColors.FloodOpacity);
 
         // color-interpolation-filters inherits; filter, flood-color, flood-opacity, and lighting-color do not.

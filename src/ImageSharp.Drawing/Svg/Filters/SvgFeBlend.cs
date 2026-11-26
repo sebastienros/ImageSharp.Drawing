@@ -82,7 +82,7 @@ internal sealed class SvgFeBlend : SvgFilterPrimitive
             }
 
             // The blend writes over the backdrop, which is the destination of the source-over composite.
-            this.blender.Blend(Configuration.Default, backdrop, backdrop, source, 1F);
+            this.blender.Blend(context.Configuration, backdrop, backdrop, source, 1F);
             for (int x = 0; x < width; x++)
             {
                 Vector4 color = backdrop[x].ToScaledVector4();

@@ -79,18 +79,30 @@ internal abstract class SvgFilterPrimitive
     public virtual bool PreservesColorSpace => false;
 
     /// <summary>
-    /// Gets a value indicating whether the primitive maps each pixel on its own, as a color filter: it then reads its
-    /// input in whatever color space the input has and writes its output in
-    /// <see cref="SvgFilterRenderContext.OutputColorSpace"/>, converting in floating point with
-    /// <see cref="SvgFilterColor.Convert(System.Numerics.Vector4, SvgColorInterpolation, SvgColorInterpolation)"/>, and the
-    /// engine converts nothing for it.
+    /// Gets a value indicating whether the primitive handles color spaces itself: the engine converts none of its
+    /// inputs, the primitive reads each input in the color space that the input is tagged with, and it writes its output
+    /// in <see cref="SvgFilterRenderContext.OutputColorSpace"/>, which the engine chooses: sRGB for the last primitive of
+    /// a filter, <see cref="ColorSpace"/> otherwise. Conversions run in floating point with
+    /// <see cref="SvgFilterColor.Convert(System.Numerics.Vector4, SvgColorInterpolation, SvgColorInterpolation)"/>.
     /// </summary>
     /// <remarks>
     /// Storing linear light in 8 bits loses the dark colors: every sRGB value up to 12 becomes 0 or 1. Chromium fuses the
-    /// conversions into color filters, so a color matrix or a transfer function sees the exact converted value; a color
-    /// filter primitive does the same, and the result of the last primitive is written in sRGB directly.
+    /// conversions into color filters, so a color matrix or a transfer function sees the exact converted value. The
+    /// color filters (<c>feColorMatrix</c>, <c>feComponentTransfer</c>) do the same; the generators (<c>feFlood</c>,
+    /// <c>feImage</c>) write their result in the output space directly; and <c>feDisplacementMap</c>, whose inputs need
+    /// different treatment (the map converted, <c>in</c> not), converts each input as it needs.
     /// </remarks>
-    public virtual bool IsColorFilter => false;
+    public virtual bool HandlesColorSpaces => false;
+
+    /// <summary>
+    /// Gets a value indicating whether the engine may fill the output in bands of rows on several threads, calling
+    /// <see cref="Render"/> once per band with a band view of the output (<see cref="SvgFilterImage.GetBand"/>). This
+    /// holds for a primitive whose output pixels depend only on the inputs, the context, and their own position, and
+    /// whose scratch memory is local to the call, which is true of every primitive that does not override it. A
+    /// primitive that splits its own work over threads, or whose cost per call is large beyond its pixels, returns
+    /// <see langword="false"/>.
+    /// </summary>
+    public virtual bool CanRenderInBands => true;
 
     /// <summary>
     /// Gets a value indicating whether the default subregion is the filter region even when every input is the result of

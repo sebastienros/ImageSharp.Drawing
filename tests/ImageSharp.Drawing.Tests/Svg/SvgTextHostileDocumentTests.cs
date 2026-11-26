@@ -1,7 +1,6 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using SixLabors.Fonts;
@@ -14,19 +13,15 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
 /// Hostile documents for SVG text: each loads and draws within <see cref="SvgLimits"/> or fails with
-/// <see cref="InvalidImageContentException"/>, in time that grows linearly with the input. The time bounds are generous;
-/// the test output prints the measured times.
+/// <see cref="InvalidImageContentException"/>, in time that grows linearly with the input, or not at all once a limit
+/// stops the work. Each case compares the time of two input sizes (<see cref="SvgGrowth"/>), so the tests hold on a
+/// machine under load; the test output prints the measured times.
 /// </summary>
 public class SvgTextHostileDocumentTests
 {
     private const string SvgOpen =
         "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"200\" height=\"200\" "
         + "font-family=\"Open Sans\" font-size=\"10\">";
-
-    /// <summary>
-    /// The time limit of one case.
-    /// </summary>
-    private static readonly TimeSpan TimeLimit = TimeSpan.FromSeconds(20);
 
     private readonly ITestOutputHelper output;
 
@@ -42,14 +37,19 @@ public class SvgTextHostileDocumentTests
         SvgLoadOptions options = SvgTextDirectionRenderTests.Options;
         options.Limits = new SvgLimits { MaxTextCharacters = 200_000 };
         string text = new('a', 200_000);
-        this.Measure("200,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text}</text></svg>", options));
+        TimeSpan small = this.MeasureWarm("20,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text[..20_000]}</text></svg>", options));
+        TimeSpan large = this.Measure("200,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text}</text></svg>", options));
+        SvgGrowth.AssertLinear(small, large, 10);
         Assert.Throws<InvalidImageContentException>(
             () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text}b</text></svg>", options));
 
-        // With the default limits, a million glyphs reach the node limit first: each glyph is one draw node.
+        // With the default limits, a million glyphs reach the node limit first: each glyph is one draw node. Failing at
+        // the limit costs at most about twice as much as loading half of the text.
         string million = new('a', 1_000_000);
-        this.Measure("1,000,000 characters", () => Assert.Throws<InvalidImageContentException>(
+        TimeSpan below = this.Measure("500,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{million[..500_000]}</text></svg>", SvgTextDirectionRenderTests.Options));
+        TimeSpan above = this.Measure("1,000,000 characters", () => Assert.Throws<InvalidImageContentException>(
             () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{million}</text></svg>", SvgTextDirectionRenderTests.Options)));
+        SvgGrowth.AssertLinear(below, above, 2);
     }
 
     [Theory]
@@ -63,20 +63,23 @@ public class SvgTextHostileDocumentTests
         // Paint servers and clips in bounding box units look up the box of each tspan.
         const string defs = "<defs><linearGradient id=\"g\"><stop offset=\"0\" stop-color=\"red\"/><stop offset=\"1\" stop-color=\"blue\"/></linearGradient>"
             + "<clipPath id=\"c\" clipPathUnits=\"objectBoundingBox\"><rect width=\"0.5\" height=\"1\"/></clipPath></defs>";
-        TimeSpan small = this.Measure($"5,000 tspans{attributes}", () => this.LoadAndDraw(SvgOpen + defs + Tspans(5_000, attributes) + "</svg>"));
+        TimeSpan small = this.MeasureWarm($"5,000 tspans{attributes}", () => this.LoadAndDraw(SvgOpen + defs + Tspans(5_000, attributes) + "</svg>"));
         TimeSpan large = this.Measure($"50,000 tspans{attributes}", () => this.LoadAndDraw(SvgOpen + defs + Tspans(50_000, attributes) + "</svg>"));
 
         // Ten times the input may cost a little more than ten times the time, not a hundred times.
-        AssertLinear(small, large, 10);
+        SvgGrowth.AssertLinear(small, large, 10);
     }
 
     [Fact]
     public void DeepTspanNesting_StopsAtTheNestingLimit()
     {
-        // Baseline shifts, decorations, and textLength walk the ancestors of a cluster.
+        // Baseline shifts, decorations, and textLength walk the ancestors of a cluster, so the cost may grow with the
+        // square of the depth, but not faster.
         SvgLoadOptions options = SvgTextDirectionRenderTests.Options;
         int depth = options.Limits.MaxNestingDepth - 4;
-        this.Measure($"{depth} nested tspans", () => this.LoadAndDraw(SvgOpen + "<text y=\"50\">" + Nested(depth) + "</text></svg>"));
+        TimeSpan small = this.MeasureWarm($"{depth / 4} nested tspans", () => this.LoadAndDraw(SvgOpen + "<text y=\"50\">" + Nested(depth / 4) + "</text></svg>"));
+        TimeSpan large = this.Measure($"{depth} nested tspans", () => this.LoadAndDraw(SvgOpen + "<text y=\"50\">" + Nested(depth) + "</text></svg>"));
+        SvgGrowth.AssertLinear(small, large, 16);
         Assert.Throws<InvalidImageContentException>(
             () => SvgDocument.Parse(SvgOpen + "<text y=\"50\">" + Nested(options.Limits.MaxNestingDepth + 1) + "</text></svg>", options));
 
@@ -101,24 +104,32 @@ public class SvgTextHostileDocumentTests
     public void BidiControlsAndNestedEmbeddings_CostLinearTime()
     {
         // Explicit embeddings, overrides, isolates, and their terminators between letters of both directions.
-        TimeSpan small = this.Measure("20,000 bidi controls", () => this.LoadAndDraw(SvgOpen + $"<text x=\"100\" y=\"50\" font-family=\"Open Sans, me_quran\">{Controls(5_000)}</text></svg>"));
+        TimeSpan small = this.MeasureWarm("20,000 bidi controls", () => this.LoadAndDraw(SvgOpen + $"<text x=\"100\" y=\"50\" font-family=\"Open Sans, me_quran\">{Controls(5_000)}</text></svg>"));
         TimeSpan large = this.Measure("200,000 bidi controls", () => this.LoadAndDraw(SvgOpen + $"<text x=\"100\" y=\"50\" font-family=\"Open Sans, me_quran\">{Controls(50_000)}</text></svg>"));
-        AssertLinear(small, large, 10);
+        SvgGrowth.AssertLinear(small, large, 10);
 
-        // Nested unicode-bidi embeddings that alternate the direction, as deep as the nesting limit allows.
-        StringBuilder nested = new(SvgOpen + "<text x=\"100\" y=\"50\" font-family=\"Open Sans, me_quran\">");
+        // Nested unicode-bidi embeddings that alternate the direction, as deep as the nesting limit allows. The ancestors
+        // of each character are walked, so the cost may grow with the square of the depth, but not faster.
         int depth = SvgTextDirectionRenderTests.Options.Limits.MaxNestingDepth - 4;
-        for (int i = 0; i < depth; i++)
-        {
-            nested.Append(CultureInfo.InvariantCulture, $"<tspan direction=\"{(i % 2 == 0 ? "rtl" : "ltr")}\" unicode-bidi=\"{(i % 3 == 0 ? "bidi-override" : "embed")}\">aب");
-        }
+        TimeSpan shallow = this.MeasureWarm($"{depth / 4} nested embeddings", () => this.LoadAndDraw(Nested(depth / 4)));
+        TimeSpan deep = this.Measure($"{depth} nested embeddings", () => this.LoadAndDraw(Nested(depth)));
+        SvgGrowth.AssertLinear(shallow, deep, 16);
 
-        for (int i = 0; i < depth; i++)
+        static string Nested(int depth)
         {
-            nested.Append("</tspan>");
-        }
+            StringBuilder nested = new(SvgOpen + "<text x=\"100\" y=\"50\" font-family=\"Open Sans, me_quran\">");
+            for (int i = 0; i < depth; i++)
+            {
+                nested.Append(CultureInfo.InvariantCulture, $"<tspan direction=\"{(i % 2 == 0 ? "rtl" : "ltr")}\" unicode-bidi=\"{(i % 3 == 0 ? "bidi-override" : "embed")}\">aب");
+            }
 
-        this.Measure($"{depth} nested embeddings", () => this.LoadAndDraw(nested.Append("</text></svg>").ToString()));
+            for (int i = 0; i < depth; i++)
+            {
+                nested.Append("</tspan>");
+            }
+
+            return nested.Append("</text></svg>").ToString();
+        }
 
         static string Controls(int count)
         {
@@ -152,57 +163,83 @@ public class SvgTextHostileDocumentTests
             => SvgOpen + $"<text x=\"100\" y=\"50\" {attributes} font-family=\"Open Sans, me_quran\">"
                 + $"{prefix}{string.Concat(Enumerable.Repeat(unit, count))}</text></svg>";
 
-        TimeSpan small = this.Measure($"10,000 times {unit}", () => this.LoadAndDraw(Text(10_000)));
+        TimeSpan small = this.MeasureWarm($"10,000 times {unit}", () => this.LoadAndDraw(Text(10_000)));
         TimeSpan large = this.Measure($"100,000 times {unit}", () => this.LoadAndDraw(Text(100_000)));
-        AssertLinear(small, large, 10);
+        SvgGrowth.AssertLinear(small, large, 10);
     }
 
     [Fact]
     public void TrefFanOut_StopsAtTheCharacterLimit()
     {
         // Each tref copies the 100,000 characters of the referenced text: 1,000 of them would lay out 10^8 characters.
+        // Ten times as many tref elements fail at the same limit in about the same time.
         SvgLoadOptions options = SvgTextDirectionRenderTests.Options;
-        StringBuilder svg = new(SvgOpen);
-        svg.Append("<defs><text id=\"source\">").Append('a', 100_000).Append("</text></defs><text y=\"20\">");
-        for (int i = 0; i < 1_000; i++)
+        string FanOut(int count)
         {
-            svg.Append("<tref xlink:href=\"#source\"/>");
+            StringBuilder svg = new(SvgOpen);
+            svg.Append("<defs><text id=\"source\">").Append('a', 100_000).Append("</text></defs><text y=\"20\">");
+            for (int i = 0; i < count; i++)
+            {
+                svg.Append("<tref xlink:href=\"#source\"/>");
+            }
+
+            return svg.Append("</text></svg>").ToString();
         }
 
-        string document = svg.Append("</text></svg>").ToString();
-        this.Measure("1,000 tref of 100,000 characters", () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(document, options)));
+        string thousand = FanOut(1_000);
+        string tenThousand = FanOut(10_000);
+        TimeSpan small = this.MeasureWarm("1,000 tref of 100,000 characters", () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(thousand, options)));
+        TimeSpan large = this.Measure("10,000 tref of 100,000 characters", () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(tenThousand, options)));
+        SvgGrowth.AssertBounded(small, large);
 
         // A chain of tref references: only the character data of the referenced text counts, so the chain does not
-        // expand.
-        StringBuilder chain = new(SvgOpen + "<defs><text id=\"t0\">a</text>");
-        for (int i = 1; i < 2_000; i++)
+        // expand, and its cost is linear in its length.
+        static string Chain(int length)
         {
-            chain.Append(CultureInfo.InvariantCulture, $"<text id=\"t{i}\">b<tref xlink:href=\"#t{i - 1}\"/></text>");
+            StringBuilder chain = new(SvgOpen + "<defs><text id=\"t0\">a</text>");
+            for (int i = 1; i < length; i++)
+            {
+                chain.Append(CultureInfo.InvariantCulture, $"<text id=\"t{i}\">b<tref xlink:href=\"#t{i - 1}\"/></text>");
+            }
+
+            return chain.Append(CultureInfo.InvariantCulture, $"</defs><text y=\"20\"><tref xlink:href=\"#t{length - 1}\"/></text></svg>").ToString();
         }
 
-        chain.Append("</defs><text y=\"20\"><tref xlink:href=\"#t1999\"/></text></svg>");
-        this.Measure("a chain of 2,000 tref", () => this.LoadAndDraw(chain.ToString()));
+        TimeSpan shortChain = this.MeasureWarm("a chain of 200 tref", () => this.LoadAndDraw(Chain(200)));
+        TimeSpan longChain = this.Measure("a chain of 2,000 tref", () => this.LoadAndDraw(Chain(2_000)));
+        SvgGrowth.AssertLinear(shortChain, longChain, 10);
     }
 
     [Fact]
     public void UseStormOfDecoratedTextOnAPath_StopsAtALimit()
     {
-        StringBuilder svg = new(SvgOpen);
-        svg.Append("<defs><path id=\"p\" d=\"M0,100 Q100,0 200,100\"/><text id=\"l0\" text-decoration=\"underline\" textLength=\"50\"><textPath xlink:href=\"#p\">abcdefghij</textPath></text>");
-        for (int level = 1; level <= 6; level++)
+        // Ten uses per level: six levels would expand to 10^6 instances of the text, seven to 10^7. Both fail at a limit
+        // in about the same time, so the expansion stops at the limit instead of following the document.
+        static string Storm(int levels)
         {
-            svg.Append(CultureInfo.InvariantCulture, $"<g id=\"l{level}\">");
-            for (int i = 0; i < 10; i++)
+            StringBuilder svg = new(SvgOpen);
+            svg.Append("<defs><path id=\"p\" d=\"M0,100 Q100,0 200,100\"/><text id=\"l0\" text-decoration=\"underline\" textLength=\"50\"><textPath xlink:href=\"#p\">abcdefghij</textPath></text>");
+            for (int level = 1; level <= levels; level++)
             {
-                svg.Append(CultureInfo.InvariantCulture, $"<use xlink:href=\"#l{level - 1}\"/>");
+                svg.Append(CultureInfo.InvariantCulture, $"<g id=\"l{level}\">");
+                for (int i = 0; i < 10; i++)
+                {
+                    svg.Append(CultureInfo.InvariantCulture, $"<use xlink:href=\"#l{level - 1}\"/>");
+                }
+
+                svg.Append("</g>");
             }
 
-            svg.Append("</g>");
+            return svg.Append(CultureInfo.InvariantCulture, $"</defs><use xlink:href=\"#l{levels}\"/></svg>").ToString();
         }
 
-        string document = svg.Append("</defs><use xlink:href=\"#l6\"/></svg>").ToString();
-        this.Measure("10^6 uses of decorated text on a path", () => Assert.Throws<InvalidImageContentException>(
-            () => SvgDocument.Parse(document, SvgTextDirectionRenderTests.Options)));
+        string six = Storm(6);
+        string seven = Storm(7);
+        TimeSpan small = this.MeasureWarm("10^6 uses of decorated text on a path", () => Assert.Throws<InvalidImageContentException>(
+            () => SvgDocument.Parse(six, SvgTextDirectionRenderTests.Options)));
+        TimeSpan large = this.Measure("10^7 uses of decorated text on a path", () => Assert.Throws<InvalidImageContentException>(
+            () => SvgDocument.Parse(seven, SvgTextDirectionRenderTests.Options)));
+        SvgGrowth.AssertBounded(small, large);
     }
 
     [Fact]
@@ -227,18 +264,25 @@ public class SvgTextHostileDocumentTests
         }
 
         SvgLoadOptions options = new() { FontCollection = collection, DefaultFontFamily = "Open Sans", FallbackFontFamilies = families };
-        TimeSpan small = this.Measure("2,000 missing characters", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\">{Missing(2_000)}</text></svg>", options));
+        TimeSpan small = this.MeasureWarm("2,000 missing characters", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\">{Missing(2_000)}</text></svg>", options));
         TimeSpan large = this.Measure("20,000 missing characters", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\">{Missing(20_000)}</text></svg>", options));
-        AssertLinear(small, large, 10);
+        SvgGrowth.AssertLinear(small, large, 10);
 
         // A family list with thousands of names, which no face has.
-        StringBuilder names = new();
-        for (int i = 0; i < 5_000; i++)
-        {
-            names.Append(CultureInfo.InvariantCulture, $"Missing{i}, ");
-        }
+        TimeSpan few = this.MeasureWarm("500 family names", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\" font-family=\"{Names(500)}serif\">text</text></svg>", options));
+        TimeSpan many = this.Measure("5,000 family names", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\" font-family=\"{Names(5_000)}serif\">text</text></svg>", options));
+        SvgGrowth.AssertLinear(few, many, 10);
 
-        this.Measure("5,000 family names", () => this.LoadAndDraw(SvgOpen + $"<text y=\"20\" font-family=\"{names}serif\">text</text></svg>", options));
+        static string Names(int count)
+        {
+            StringBuilder names = new();
+            for (int i = 0; i < count; i++)
+            {
+                names.Append(CultureInfo.InvariantCulture, $"Missing{i}, ");
+            }
+
+            return names.ToString();
+        }
 
         // Distinct CJK ideographs: no face of the collection has them.
         static string Missing(int count)
@@ -264,13 +308,6 @@ public class SvgTextHostileDocumentTests
         return text.Append("</text>").ToString();
     }
 
-    private static void AssertLinear(TimeSpan small, TimeSpan large, int factor)
-    {
-        // A small run can be dominated by fixed costs, so it counts as at least 50 ms.
-        double reference = Math.Max(small.TotalMilliseconds, 50D);
-        Assert.True(large.TotalMilliseconds < reference * factor * 4, $"{small.TotalMilliseconds:0} ms grew to {large.TotalMilliseconds:0} ms.");
-    }
-
     private void LoadAndDraw(string svg, SvgLoadOptions options = null)
     {
         SvgDocument document = SvgDocument.Parse(svg, options ?? SvgTextDirectionRenderTests.Options);
@@ -278,13 +315,7 @@ public class SvgTextHostileDocumentTests
         image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, 200, 200))));
     }
 
-    private TimeSpan Measure(string name, Action action)
-    {
-        Stopwatch watch = Stopwatch.StartNew();
-        action();
-        watch.Stop();
-        this.output.WriteLine($"{name}: {watch.Elapsed.TotalMilliseconds:0} ms");
-        Assert.True(watch.Elapsed < TimeLimit, $"{name} took {watch.Elapsed}.");
-        return watch.Elapsed;
-    }
+    private TimeSpan Measure(string name, Action action) => SvgGrowth.Measure(this.output, name, action);
+
+    private TimeSpan MeasureWarm(string name, Action action) => SvgGrowth.MeasureWarm(this.output, name, action);
 }

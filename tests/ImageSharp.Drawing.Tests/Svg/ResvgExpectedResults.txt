@@ -23,7 +23,7 @@
 # - A nearest-neighbour criterion (distance 64, 60 pixels) passes about the same share of Chrome-passed tests (90.3%) but
 #   37.1% of Chrome-failed tests, and misses color changes up to 64. The range criterion was chosen for that reason.
 #
-# Text (phase 3, package T1). The runner loads the fonts of the suite (fonts/) and maps the generic families as the resvg
+# Text (phase 3). The runner loads the fonts of the suite (fonts/) and maps the generic families as the resvg
 # test harness does (serif Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display,
 # monospace Noto Mono). Chromium with the same fonts (render-svg.js --resvg-fonts) passes 59 of the 340 text tests that
 # are not undefined behavior. 253 text tests draw a 0.5 wide crosshair line. At 500 px its horizontal stroke covers

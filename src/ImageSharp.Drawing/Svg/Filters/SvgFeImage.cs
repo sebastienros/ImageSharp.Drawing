@@ -27,7 +27,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </list>
 /// <para>
 /// A missing <c>href</c>, a reference to nothing, and a resource that does not load give a transparent result. The
-/// rendered pixels are sRGB. The primitive is a generator flagged as a color filter, as <c>feFlood</c> is: its result is
+/// rendered pixels are sRGB. The primitive handles color spaces itself, as <c>feFlood</c> does: its result is
 /// written in sRGB when it is the last primitive and converted to the color space of the primitive otherwise.
 /// </para>
 /// </remarks>
@@ -52,7 +52,11 @@ internal sealed class SvgFeImage : SvgFilterPrimitive
     }
 
     /// <inheritdoc/>
-    public override bool IsColorFilter => true;
+    public override bool HandlesColorSpaces => true;
+
+    /// <inheritdoc/>
+    /// <remarks>Each call renders the referenced content through a nested canvas, a cost per call beyond the pixels.</remarks>
+    public override bool CanRenderInBands => false;
 
     /// <summary>
     /// Creates the primitive of an <c>feImage</c> element.

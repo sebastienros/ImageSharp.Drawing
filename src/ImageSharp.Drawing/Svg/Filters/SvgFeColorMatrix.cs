@@ -48,7 +48,7 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
     }
 
     /// <inheritdoc/>
-    public override bool IsColorFilter => true;
+    public override bool HandlesColorSpaces => true;
 
     /// <summary>
     /// Creates the primitive of an <c>feColorMatrix</c> element.

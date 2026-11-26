@@ -62,7 +62,10 @@ internal static class SvgBenchmarkCorpus
         "Dashboard",
         "PatternChart",
         "TextHeavy",
-        "TextDecorations"
+        "TextDecorations",
+        "FilterShadows",
+        "FilterBlur",
+        "FilterChain"
     ];
 
     /// <summary>
@@ -101,6 +104,9 @@ internal static class SvgBenchmarkCorpus
         "PatternChart" => [TestImages.Svg.PatternChart],
         "TextHeavy" => [TestImages.Svg.TextHeavy],
         "TextDecorations" => [TestImages.Svg.TextDecorations],
+        "FilterShadows" => [TestImages.Svg.FilterShadows],
+        "FilterBlur" => [TestImages.Svg.FilterBlur],
+        "FilterChain" => [TestImages.Svg.FilterChain],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 
