@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g1">
+      <stop offset="0" stop-color="oklch(0.6 0.15 140)"/>
+      <stop offset="1" stop-color="lab(30 20 -60)"/>
+    </linearGradient>
+    <linearGradient id="g2">
+      <stop offset="0" style="stop-color: hwb(120 0% 50%)"/>
+      <stop offset="0.5" style="stop-color: color(srgb-linear 0 0.2 0)"/>
+      <stop offset="1" style="stop-color: rgb(0 0 128 / 50%)"/>
+    </linearGradient>
+    <radialGradient id="g3" style="color: oklab(0.5 -0.1 0.1)">
+      <stop offset="0" stop-color="currentColor"/>
+      <stop offset="1" style="stop-color: color-mix(in srgb, green 50%, navy)"/>
+    </radialGradient>
+    <linearGradient id="g4">
+      <stop offset="0" stop-color="lch(50 60 140)" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="color(display-p3 0 0.4 0)"/>
+    </linearGradient>
+    <filter id="flood" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="oklch(0.5 0.15 140)"/>
+    </filter>
+    <filter id="flood2" x="0" y="0" width="1" height="1">
+      <feFlood style="flood-color: color-mix(in oklab, green, navy 30%)"/>
+    </filter>
+    <filter id="flood3" x="0" y="0" width="1" height="1" style="color: hwb(120 10% 40%)">
+      <feFlood flood-color="currentColor"/>
+    </filter>
+    <filter id="light" x="0" y="0" width="1" height="1">
+      <feDiffuseLighting lighting-color="lab(50 -40 30)" surfaceScale="2"><feDistantLight azimuth="45" elevation="60"/></feDiffuseLighting>
+    </filter>
+    <filter id="light2" x="0" y="0" width="1" height="1">
+      <feSpecularLighting style="lighting-color: rgb(from green r g b / 80%)" specularExponent="10"><fePointLight x="20" y="20" z="30"/></feSpecularLighting>
+    </filter>
+  </defs>
+  <!-- Row 1: the new color functions in gradient stops. -->
+  <rect x="5" y="5" width="40" height="40" fill="url(#g1)"/>
+  <rect x="55" y="5" width="40" height="40" fill="url(#g2)"/>
+  <rect x="105" y="5" width="40" height="40" fill="url(#g3)"/>
+  <rect x="155" y="5" width="40" height="40" fill="url(#g4)"/>
+
+  <!-- Row 2: flood-color with the new functions and currentColor. -->
+  <rect x="5" y="55" width="40" height="40" fill="red" filter="url(#flood)"/>
+  <rect x="55" y="55" width="40" height="40" fill="red" filter="url(#flood2)"/>
+  <rect x="105" y="55" width="40" height="40" fill="red" filter="url(#flood3)"/>
+  <rect x="155" y="55" width="40" height="40" fill="red" filter="url(#flood3)" style="color: navy"/>
+
+  <!-- Row 3: lighting-color. -->
+  <rect x="5" y="105" width="40" height="40" fill="green" filter="url(#light)"/>
+  <rect x="55" y="105" width="40" height="40" fill="green" filter="url(#light2)"/>
+
+  <!-- Row 3 and 4: color with the new functions and currentColor in fill and stroke. -->
+  <rect x="105" y="105" width="40" height="40" style="color: oklch(0.5 0.15 140); fill: currentColor"/>
+  <rect x="155" y="105" width="40" height="40" fill="none" stroke="currentColor" stroke-width="8" color="lch(30 40 270)"/>
+  <g style="color: lab(46 -50 50)">
+    <rect x="5" y="155" width="40" height="40" fill="currentColor"/>
+    <rect x="55" y="155" width="40" height="40" fill="currentColor" style="color: hsl(120deg 100% 25% / 0.5)"/>
+  </g>
+  <rect x="105" y="155" width="40" height="40" style="color: light-dark(green, red); fill: currentColor"/>
+  <rect x="155" y="155" width="40" height="40" style="--c: oklch(0.4 0.1 260); color: var(--c); fill: currentColor"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100" font-family="Open Sans">
+  <!-- Text inside embedded SVG images draws with the fonts of the outer load options: a percent-encoded data URL with
+       an explicit family, and a base64 data URL whose text takes the default family. -->
+  <image x="5" y="5" width="90" height="40" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2290%22%20height=%2240%22%3E%3Crect%20width=%2290%22%20height=%2240%22%20fill=%22%23e8f0e8%22/%3E%3Ctext%20x=%226%22%20y=%2227%22%20font-family=%22Open%20Sans%22%20font-size=%2218%22%20fill=%22green%22%3EPlain%3C/text%3E%3C/svg%3E"/>
+  <image x="105" y="5" width="90" height="40" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MCIgaGVpZ2h0PSI0MCI+PHJlY3Qgd2lkdGg9IjkwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZThlOGYwIi8+PHRleHQgeD0iNiIgeT0iMjciIGZvbnQtc2l6ZT0iMTgiIGZpbGw9Im5hdnkiIHN0eWxlPSJsZXR0ZXItc3BhY2luZzogMXB4Ij5CYXNlNjQ8L3RleHQ+PC9zdmc+"/>
+  <image x="5" y="55" width="180" height="40" preserveAspectRatio="none" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2290%22%20height=%2240%22%3E%3Crect%20width=%2290%22%20height=%2240%22%20fill=%22%23e8f0e8%22/%3E%3Ctext%20x=%226%22%20y=%2227%22%20font-family=%22Open%20Sans%22%20font-size=%2218%22%20fill=%22green%22%3EPlain%3C/text%3E%3C/svg%3E"/>
+</svg>

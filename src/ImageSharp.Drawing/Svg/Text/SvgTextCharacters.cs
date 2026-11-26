@@ -299,13 +299,14 @@ internal sealed partial class SvgTextCharacters
             ref readonly SvgTextAttributes attributes = ref this.tree.GetText(span.Element);
             int count = span.AddressableEnd - span.AddressableStart;
             float fontSize = span.Style.FontSize;
+            SvgUnitBasis spanUnits = units.WithFont(span.Style.Text);
             ReadOnlySpan<int> addressed = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(this.addressable).Slice(span.AddressableStart, count);
 
             ReadOnlySpan<SvgLength> x = this.tree.GetTextLengths(attributes.X);
             for (int k = 0; k < x.Length && k < count; k++)
             {
                 ref SvgTextCharacter c = ref characters[addressed[k]];
-                c.X = SvgUnits.ToUser(x[k], viewport.Width, fontSize, units, 0F);
+                c.X = SvgUnits.ToUser(x[k], viewport.Width, fontSize, spanUnits, 0F);
                 c.Flags |= SvgTextCharacterFlags.HasX;
             }
 
@@ -313,7 +314,7 @@ internal sealed partial class SvgTextCharacters
             for (int k = 0; k < y.Length && k < count; k++)
             {
                 ref SvgTextCharacter c = ref characters[addressed[k]];
-                c.Y = SvgUnits.ToUser(y[k], viewport.Height, fontSize, units, 0F);
+                c.Y = SvgUnits.ToUser(y[k], viewport.Height, fontSize, spanUnits, 0F);
                 c.Flags |= SvgTextCharacterFlags.HasY;
             }
 
@@ -321,7 +322,7 @@ internal sealed partial class SvgTextCharacters
             for (int k = 0; k < dx.Length && k < count; k++)
             {
                 ref SvgTextCharacter c = ref characters[addressed[k]];
-                c.Dx = SvgUnits.ToUser(dx[k], viewport.Width, fontSize, units, 0F);
+                c.Dx = SvgUnits.ToUser(dx[k], viewport.Width, fontSize, spanUnits, 0F);
                 c.Flags |= SvgTextCharacterFlags.HasShift;
             }
 
@@ -329,7 +330,7 @@ internal sealed partial class SvgTextCharacters
             for (int k = 0; k < dy.Length && k < count; k++)
             {
                 ref SvgTextCharacter c = ref characters[addressed[k]];
-                c.Dy = SvgUnits.ToUser(dy[k], viewport.Height, fontSize, units, 0F);
+                c.Dy = SvgUnits.ToUser(dy[k], viewport.Height, fontSize, spanUnits, 0F);
                 c.Flags |= SvgTextCharacterFlags.HasShift;
             }
 

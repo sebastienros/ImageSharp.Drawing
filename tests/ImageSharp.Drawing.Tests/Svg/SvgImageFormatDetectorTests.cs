@@ -214,7 +214,7 @@ public class SvgImageFormatDetectorTests
     [Fact]
     public void DefaultConfiguration_DoesNotDetectSvg()
     {
-        // The types of this package are loaded at this point; the default configuration is unchanged by them.
+        // The decoder types are loaded at this point; the default configuration is unchanged by them.
         Assert.NotNull(SvgFormat.Instance);
         Assert.DoesNotContain(Configuration.Default.ImageFormats, format => format is SvgFormat);
         Assert.False(Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension("svg", out _));

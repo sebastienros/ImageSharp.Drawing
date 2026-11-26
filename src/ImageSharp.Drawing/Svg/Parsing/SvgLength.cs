@@ -120,7 +120,9 @@ internal readonly struct SvgLength
 
     /// <summary>
     /// Parses a list of non-negative lengths separated by whitespace and an optional comma, as used by
-    /// <c>stroke-dasharray</c>, and appends them to <paramref name="values"/>. Nothing is appended on failure.
+    /// <c>stroke-dasharray</c>, and appends them to <paramref name="values"/>. Nothing is appended on failure. An entry may
+    /// be a math function (<c>calc()</c>, <c>min()</c>, <c>max()</c>, <c>clamp()</c>), whose spaces and commas are inside
+    /// its parentheses; the Chromium oracle accepts them in the attribute and in CSS.
     /// </summary>
     /// <param name="source">The characters to parse.</param>
     /// <param name="values">The list that receives the lengths.</param>
@@ -133,7 +135,7 @@ internal readonly struct SvgLength
         {
             // A trailing comma fails the separator, and a value that is not a non-negative length fails the list.
             if ((values.Count > start && !SvgNumberParser.TrySkipCommaWhitespace(ref source))
-                || !TryRead(source, out SvgLength value, out int length)
+                || !(SvgCalc.IsMathFunction(source) ? TryReadMathFunction(source, out SvgLength value, out int length) : TryRead(source, out value, out length))
                 || value.Value < 0)
             {
                 values.RemoveRange(start, values.Count - start);
@@ -145,6 +147,34 @@ internal readonly struct SvgLength
         }
 
         return values.Count > start;
+    }
+
+    /// <summary>
+    /// Reads a math function of a non-negative length at the start of a list entry: the characters up to its matching
+    /// closing parenthesis. A negative result becomes zero, as CSS clamps math functions to the range of the property.
+    /// </summary>
+    /// <param name="source">The characters, starting with the function name.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the length.</param>
+    /// <param name="length">When this method returns <see langword="true"/>, contains the number of characters read.</param>
+    /// <returns><see langword="true"/> if a valid math function of a length type was read; otherwise, <see langword="false"/>.</returns>
+    private static bool TryReadMathFunction(ReadOnlySpan<char> source, out SvgLength value, out int length)
+    {
+        int depth = 0;
+        for (length = 0; length < source.Length; length++)
+        {
+            if (source[length] == '(')
+            {
+                depth++;
+            }
+            else if (source[length] == ')' && --depth == 0)
+            {
+                length++;
+                return SvgCalc.TryParseLength(source[..length], true, out value);
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     /// <summary>

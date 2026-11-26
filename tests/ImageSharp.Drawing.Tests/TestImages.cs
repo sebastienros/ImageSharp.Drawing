@@ -468,6 +468,15 @@ public static class TestImages
         public const string FilterChain = "Svg/Filters/filter-chain-synthetic.svg";
 
         /// <summary>
+        /// A synthetic dashboard of 48 cards for the CSS features of phase 5: custom properties set per card and used in
+        /// colors and lengths, <c>calc()</c> and <c>max()</c>, geometry properties and <c>d: path()</c> from CSS, the
+        /// <c>oklch()</c>, <c>lab()</c>, <c>color-mix()</c>, and relative color functions, basic-shape clips
+        /// (<c>inset()</c> with rounded corners, <c>circle()</c>, <c>polygon()</c>), and the CSS <c>transform</c> with
+        /// <c>transform-box</c>.
+        /// </summary>
+        public const string CssFeatures = "Svg/Css/css-features-synthetic.svg";
+
+        /// <summary>
         /// Stroked Feather icons. MIT license.
         /// </summary>
         public static readonly string[] FeatherIcons =

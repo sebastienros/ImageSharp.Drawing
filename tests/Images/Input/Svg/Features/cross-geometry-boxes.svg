@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <pattern id="pat" patternContentUnits="objectBoundingBox" width="0.5" height="0.5">
+      <rect width="0.25" height="0.25" fill="green"/>
+      <rect x="0.25" y="0.25" width="0.25" height="0.25" fill="navy"/>
+    </pattern>
+    <pattern id="pat2" width="0.25" height="0.25">
+      <circle cx="5" cy="5" r="5" fill="green"/>
+    </pattern>
+    <linearGradient id="lg"><stop offset="0" stop-color="green"/><stop offset="1" stop-color="navy"/></linearGradient>
+    <mask id="mk" maskContentUnits="objectBoundingBox">
+      <rect width="0.5" height="1" fill="white"/>
+    </mask>
+    <mask id="mk2">
+      <rect x="0" y="0" width="200" height="200" fill="white" style="width: 130px"/>
+    </mask>
+    <clipPath id="cp" clipPathUnits="objectBoundingBox">
+      <circle cx="0.5" cy="0.5" r="0.5"/>
+    </clipPath>
+    <filter id="f" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="green"/>
+    </filter>
+    <filter id="f2">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+    <filter id="f3" primitiveUnits="objectBoundingBox">
+      <feOffset dx="0.25" dy="0"/>
+    </filter>
+    <rect id="u" width="1" height="1" fill="green" style="width: 30px; height: 30px"/>
+    <marker id="m" markerWidth="6" markerHeight="6" refX="3" refY="3" markerUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="navy" style="width: 3px"/>
+    </marker>
+  </defs>
+
+  <!-- Row 1: a pattern and a gradient in bounding box units on CSS geometry. -->
+  <rect x="0" y="0" width="1" height="1" fill="url(#pat)" style="x: 5px; y: 5px; width: 40px; height: 40px"/>
+  <circle cx="0" cy="0" r="1" fill="url(#pat2)" style="cx: 75px; cy: 25px; r: 20px"/>
+  <ellipse cx="0" cy="0" rx="1" ry="1" fill="url(#lg)" style="cx: 125px; cy: 25px; rx: 20px; ry: 10px"/>
+  <rect x="155" y="5" width="1" height="1" fill="url(#lg)" style="width: 40px; height: 20px; rx: 5px"/>
+
+  <!-- Row 2: masks and a clipPath in bounding box units on CSS geometry. -->
+  <rect x="5" y="55" width="1" height="1" fill="green" mask="url(#mk)" style="width: 40px; height: 40px"/>
+  <circle cx="75" cy="75" r="1" fill="green" clip-path="url(#cp)" style="r: 20px"/>
+  <rect x="105" y="55" width="40" height="40" fill="green" mask="url(#mk2)"/>
+  <rect x="155" y="55" width="1" height="1" fill="green" style="width: 40px; height: 40px; clip-path: circle(50%)"/>
+
+  <!-- Row 3: filter regions from CSS geometry. -->
+  <rect x="5" y="105" width="1" height="1" fill="red" filter="url(#f)" style="width: 40px; height: 40px"/>
+  <circle cx="75" cy="125" r="1" fill="green" filter="url(#f2)" style="r: 15px"/>
+  <rect x="105" y="105" width="1" height="1" fill="green" filter="url(#f3)" style="width: 20px; height: 40px"/>
+  <rect x="155" y="105" width="1" height="1" fill="green" style="width: 40px; height: 40px; filter: drop-shadow(3px 3px 0 navy)"/>
+
+  <!-- Row 4: use with CSS x and y, a referenced rect with CSS width; clip boxes of CSS geometry; markers. -->
+  <use href="#u" style="x: 10px; y: 160px"/>
+  <circle cx="0" cy="0" r="1" fill="green" stroke="navy" stroke-width="6" style="cx: 75px; cy: 175px; r: 15px; clip-path: inset(0 50% 0 0) stroke-box"/>
+  <circle cx="0" cy="0" r="1" fill="green" stroke="navy" stroke-width="6" style="cx: 125px; cy: 175px; r: 15px; clip-path: inset(0 50% 0 0) fill-box"/>
+  <path d="M 0 0" style="d: path('M 155 160 L 175 190 L 195 160')" stroke="green" fill="none" marker-start="url(#m)" marker-mid="url(#m)" marker-end="url(#m)"/>
+</svg>

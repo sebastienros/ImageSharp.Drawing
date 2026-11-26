@@ -77,10 +77,10 @@ public class SvgStyleHostileDocumentTests
 
     private static void Load(string document) => _ = SvgDocument.Parse(document);
 
-    private static string CustomValueDocument(string value)
+    internal static string CustomValueDocument(string value)
         => SvgOpen + $"<g style=\"--long: {value}\"><g><rect width=\"10\" height=\"10\" style=\"fill: var(--long)\"/></g></g></svg>";
 
-    private static string ManyCustomPropertiesDocument(int count)
+    internal static string ManyCustomPropertiesDocument(int count)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<g style=\"");
@@ -98,7 +98,7 @@ public class SvgStyleHostileDocumentTests
         return builder.Append("</g></svg>").ToString();
     }
 
-    private static string DeepCustomPropertiesDocument(int depth, int perLevel)
+    internal static string DeepCustomPropertiesDocument(int depth, int perLevel)
     {
         StringBuilder builder = new(SvgOpen);
         for (int level = 0; level < depth; level++)
@@ -121,7 +121,7 @@ public class SvgStyleHostileDocumentTests
         return builder.Append("</svg>").ToString();
     }
 
-    private static string PolygonDocument(int vertices)
+    internal static string PolygonDocument(int vertices)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect width=\"200\" height=\"200\" style=\"clip-path: polygon(nonzero");
@@ -133,7 +133,7 @@ public class SvgStyleHostileDocumentTests
         return builder.Append(")\"/></svg>").ToString();
     }
 
-    private static string PathDocument(string declaration, int segments)
+    internal static string PathDocument(string declaration, int segments)
     {
         StringBuilder data = new("M 0 0");
         for (int i = 0; i < segments; i++)

@@ -144,7 +144,7 @@ public class SvgCompositingTests
         Assert.Contains(document.Nodes.ToArray(), n => n.Kind == SvgRenderNodeKind.Draw && n.Bounds == new RectangleF(0, 0, 10, 10));
     }
 
-    // Cycles through every reference kind that this package follows, alone and mixed with use, load and render.
+    // Cycles through every reference kind of the compositing features, alone and mixed with use, load and render.
     [Theory]
     [InlineData("<clipPath id=\"a\"><rect width=\"10\" height=\"10\" clip-path=\"url(#b)\"/></clipPath>"
         + "<clipPath id=\"b\"><rect width=\"10\" height=\"10\" clip-path=\"url(#a)\"/></clipPath><rect width=\"20\" height=\"20\" clip-path=\"url(#a)\"/>")]

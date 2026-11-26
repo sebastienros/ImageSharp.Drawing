@@ -84,6 +84,7 @@ internal sealed partial class SvgResolver
     /// <param name="shape">The shape.</param>
     /// <param name="referenceBox">The reference box, or <see langword="null"/> when the element has none.</param>
     /// <param name="fontSize">The computed font size of the element, for font-relative lengths.</param>
+    /// <param name="text">The computed text style of the element, whose font <c>ch</c> refers to.</param>
     /// <param name="transform">The transform from the box coordinates to document user space.</param>
     /// <param name="geometry">The list that receives the geometry.</param>
     /// <param name="coverage">When this method returns <see cref="SvgClipKind.Coverage"/>, contains the path.</param>
@@ -95,6 +96,7 @@ internal sealed partial class SvgResolver
         SvgClipShape shape,
         RectangleF? referenceBox,
         float fontSize,
+        SvgTextStyle text,
         Matrix3x2 transform,
         List<(IPath Path, Matrix3x2 Transform)> geometry,
         out IPath? coverage)
@@ -102,7 +104,7 @@ internal sealed partial class SvgResolver
         coverage = null;
         if (referenceBox is not RectangleF box
             || !float.IsFinite(box.X + box.Y + box.Width + box.Height)
-            || this.BuildClipShapePath(shape, box, fontSize) is not IPath path)
+            || BuildClipShapePath(shape, box, fontSize, this.units.WithFont(text)) is not IPath path)
         {
             return SvgClipKind.Empty;
         }
@@ -127,13 +129,14 @@ internal sealed partial class SvgResolver
     /// <param name="shape">The shape.</param>
     /// <param name="referenceBox">The reference box in the user space of <paramref name="target"/>, or <see langword="null"/>.</param>
     /// <param name="fontSize">The computed font size, for font-relative lengths.</param>
+    /// <param name="text">The computed text style, whose font <c>ch</c> refers to.</param>
     /// <param name="target">The clipped element.</param>
     /// <returns>The scope to close with <see cref="EndClipScope(in SvgClipScope)"/>.</returns>
-    private SvgClipScope BeginShapeClipScope(SvgClipShape shape, RectangleF? referenceBox, float fontSize, in SvgClipTarget target)
+    private SvgClipScope BeginShapeClipScope(SvgClipShape shape, RectangleF? referenceBox, float fontSize, SvgTextStyle text, in SvgClipTarget target)
     {
         List<(IPath Path, Matrix3x2 Transform)> geometry = this.clipGeometry ??= [];
         int first = geometry.Count;
-        SvgClipKind kind = this.ClassifyClipShape(shape, referenceBox, fontSize, target.Transform, geometry, out IPath? coverage);
+        SvgClipKind kind = this.ClassifyClipShape(shape, referenceBox, fontSize, text, target.Transform, geometry, out IPath? coverage);
         int value = 0;
         if (kind == SvgClipKind.Geometry)
         {
@@ -199,8 +202,9 @@ internal sealed partial class SvgResolver
     /// <param name="shape">The shape.</param>
     /// <param name="box">The reference box.</param>
     /// <param name="fontSize">The computed font size, for font-relative lengths.</param>
+    /// <param name="units">The unit basis, with the font of the element for <c>ch</c>.</param>
     /// <returns>The outline, or <see langword="null"/> when the shape has no area.</returns>
-    private IPath? BuildClipShapePath(SvgClipShape shape, RectangleF box, float fontSize)
+    private static IPath? BuildClipShapePath(SvgClipShape shape, RectangleF box, float fontSize, SvgUnitBasis units)
     {
         float width = box.Width;
         float height = box.Height;
@@ -208,50 +212,50 @@ internal sealed partial class SvgResolver
         switch (shape.Kind)
         {
             case SvgBasicShapeKind.None:
-                return BuildRoundedRectangle(box, null, box, fontSize, this.units);
+                return BuildRoundedRectangle(box, null, box, fontSize, units);
 
             case SvgBasicShapeKind.Inset:
             {
-                float top = this.ToBoxLength(lengths[0], height, fontSize);
-                float right = this.ToBoxLength(lengths[1], width, fontSize);
-                float bottom = this.ToBoxLength(lengths[2], height, fontSize);
-                float left = this.ToBoxLength(lengths[3], width, fontSize);
+                float top = ToBoxLength(lengths[0], height, fontSize, units);
+                float right = ToBoxLength(lengths[1], width, fontSize, units);
+                float bottom = ToBoxLength(lengths[2], height, fontSize, units);
+                float left = ToBoxLength(lengths[3], width, fontSize, units);
 
                 // CSS Shapes: insets of one dimension that add up to more than the box reduce in proportion to fit.
                 ReduceInsets(ref left, ref right, width);
                 ReduceInsets(ref top, ref bottom, height);
                 RectangleF rectangle = new(box.X + left, box.Y + top, width - left - right, height - top - bottom);
-                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, this.units);
+                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, units);
             }
 
             case SvgBasicShapeKind.Xywh:
             {
                 RectangleF rectangle = new(
-                    box.X + this.ToBoxLength(lengths[0], width, fontSize),
-                    box.Y + this.ToBoxLength(lengths[1], height, fontSize),
-                    this.ToBoxLength(lengths[2], width, fontSize),
-                    this.ToBoxLength(lengths[3], height, fontSize));
-                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, this.units);
+                    box.X + ToBoxLength(lengths[0], width, fontSize, units),
+                    box.Y + ToBoxLength(lengths[1], height, fontSize, units),
+                    ToBoxLength(lengths[2], width, fontSize, units),
+                    ToBoxLength(lengths[3], height, fontSize, units));
+                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, units);
             }
 
             case SvgBasicShapeKind.Rect:
             {
                 // auto is 0% for the top and left edges and 100% for the right and bottom edges. CSS Shapes Level 2 clamps
                 // the bottom edge to the top edge and the right edge to the left edge, so the rectangle is never negative.
-                float top = lengths[0].IsSpecified ? this.ToBoxLength(lengths[0], height, fontSize) : 0F;
-                float right = lengths[1].IsSpecified ? this.ToBoxLength(lengths[1], width, fontSize) : width;
-                float bottom = lengths[2].IsSpecified ? this.ToBoxLength(lengths[2], height, fontSize) : height;
-                float left = lengths[3].IsSpecified ? this.ToBoxLength(lengths[3], width, fontSize) : 0F;
+                float top = lengths[0].IsSpecified ? ToBoxLength(lengths[0], height, fontSize, units) : 0F;
+                float right = lengths[1].IsSpecified ? ToBoxLength(lengths[1], width, fontSize, units) : width;
+                float bottom = lengths[2].IsSpecified ? ToBoxLength(lengths[2], height, fontSize, units) : height;
+                float left = lengths[3].IsSpecified ? ToBoxLength(lengths[3], width, fontSize, units) : 0F;
                 RectangleF rectangle = new(box.X + left, box.Y + top, MathF.Max(right - left, 0F), MathF.Max(bottom - top, 0F));
-                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, this.units);
+                return BuildRoundedRectangle(rectangle, shape.Radii, box, fontSize, units);
             }
 
             case SvgBasicShapeKind.Circle:
             case SvgBasicShapeKind.Ellipse:
             {
                 SvgShapePosition position = shape.Position;
-                float x = this.ToBoxLength(position.X, width, fontSize);
-                float y = this.ToBoxLength(position.Y, height, fontSize);
+                float x = ToBoxLength(position.X, width, fontSize, units);
+                float y = ToBoxLength(position.Y, height, fontSize, units);
                 float cx = box.X + (position.XFromEnd ? width - x : x);
                 float cy = box.Y + (position.YFromEnd ? height - y : y);
 
@@ -268,7 +272,7 @@ internal sealed partial class SvgResolver
                     // the normalized diagonal of the box.
                     rx = shape.RadiusXKind switch
                     {
-                        SvgShapeRadiusKind.Length => this.ToBoxLength(lengths[0], SvgUnits.Diagonal(box.Size), fontSize),
+                        SvgShapeRadiusKind.Length => ToBoxLength(lengths[0], SvgUnits.Diagonal(box.Size), fontSize, units),
                         SvgShapeRadiusKind.FarthestSide => MathF.Max(farX, farY),
                         _ => MathF.Min(nearX, nearY),
                     };
@@ -279,14 +283,14 @@ internal sealed partial class SvgResolver
                 {
                     rx = shape.RadiusXKind switch
                     {
-                        SvgShapeRadiusKind.Length => this.ToBoxLength(lengths[0], width, fontSize),
+                        SvgShapeRadiusKind.Length => ToBoxLength(lengths[0], width, fontSize, units),
                         SvgShapeRadiusKind.FarthestSide => farX,
                         _ => nearX,
                     };
 
                     ry = shape.RadiusYKind switch
                     {
-                        SvgShapeRadiusKind.Length => this.ToBoxLength(lengths[1], height, fontSize),
+                        SvgShapeRadiusKind.Length => ToBoxLength(lengths[1], height, fontSize, units),
                         SvgShapeRadiusKind.FarthestSide => farY,
                         _ => nearY,
                     };
@@ -312,8 +316,8 @@ internal sealed partial class SvgResolver
                 for (int i = 0; i < count; i++)
                 {
                     points[i] = new PointF(
-                        box.X + this.ToBoxLength(lengths[2 * i], width, fontSize),
-                        box.Y + this.ToBoxLength(lengths[(2 * i) + 1], height, fontSize));
+                        box.X + ToBoxLength(lengths[2 * i], width, fontSize, units),
+                        box.Y + ToBoxLength(lengths[(2 * i) + 1], height, fontSize, units));
                 }
 
                 Polygon polygon = new(new LinearLineSegment(points));
@@ -343,9 +347,10 @@ internal sealed partial class SvgResolver
     /// <param name="length">The length.</param>
     /// <param name="percentBase">The size that a percentage refers to.</param>
     /// <param name="fontSize">The computed font size.</param>
+    /// <param name="units">The unit basis.</param>
     /// <returns>The length in user units; 0 for an unspecified length.</returns>
-    private float ToBoxLength(SvgLength length, float percentBase, float fontSize)
-        => SvgUnits.ToUser(length, percentBase, fontSize, this.units, 0F);
+    private static float ToBoxLength(SvgLength length, float percentBase, float fontSize, SvgUnitBasis units)
+        => SvgUnits.ToUser(length, percentBase, fontSize, units, 0F);
 
     /// <summary>
     /// Reduces two opposite insets in proportion when they add up to more than the size of the box.
@@ -538,7 +543,7 @@ internal sealed partial class SvgResolver
                     return false;
                 }
 
-                bounds = GetStrokeBounds(path, in style, GetStrokeWidth(in style, context.Viewport));
+                bounds = GetStrokeBounds(path, in style, this.GetStrokeWidth(in style, context.Viewport));
                 return float.IsFinite(bounds.Width) && float.IsFinite(bounds.Height);
             }
 
@@ -552,7 +557,7 @@ internal sealed partial class SvgResolver
                     return false;
                 }
 
-                float width = GetStrokeWidth(in style, context.Viewport);
+                float width = this.GetStrokeWidth(in style, context.Viewport);
                 if (style.Stroke.Kind != SvgPaintKind.None && width > 0F)
                 {
                     bounds = RectangleF.Inflate(bounds, width / 2F, width / 2F);
@@ -631,8 +636,9 @@ internal sealed partial class SvgResolver
                     return false;
                 }
 
-                float x = SvgUnits.ToUser(use.X, context.Viewport.Width, style.FontSize, this.units, 0F);
-                float y = SvgUnits.ToUser(use.Y, context.Viewport.Height, style.FontSize, this.units, 0F);
+                SvgUnitBasis useUnits = this.units.WithFont(style.Text);
+                float x = SvgUnits.ToUser(use.X, context.Viewport.Width, style.FontSize, useUnits, 0F);
+                float y = SvgUnits.ToUser(use.Y, context.Viewport.Height, style.FontSize, useUnits, 0F);
                 Matrix3x2 transform = this.TryGetLocalTransform(target, in targetStyle, context.Viewport, out Matrix3x2 local) ? local : Matrix3x2.Identity;
                 bounds = TransformBounds(box, transform * Matrix3x2.CreateTranslation(x, y));
                 return true;
@@ -694,10 +700,8 @@ internal sealed partial class SvgResolver
     /// <param name="style">The computed style.</param>
     /// <param name="viewport">The viewport, for percentages.</param>
     /// <returns>The width.</returns>
-    private static float GetStrokeWidth(in SvgComputedStyle style, SizeF viewport)
-        => style.StrokeWidth.Unit == SvgLengthUnit.Percent
-            ? style.StrokeWidth.Value * SvgUnits.Diagonal(viewport) / 100F
-            : style.StrokeWidth.Value;
+    private float GetStrokeWidth(in SvgComputedStyle style, SizeF viewport)
+        => SvgUnits.ToUser(style.StrokeWidth, SvgUnits.Diagonal(viewport), style.FontSize, this.units, 0F);
 
     /// <summary>
     /// Returns the union of the bounds of a shape and of its stroke outline.

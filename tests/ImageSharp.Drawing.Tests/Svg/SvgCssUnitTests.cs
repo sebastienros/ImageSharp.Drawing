@@ -4,6 +4,7 @@
 using SixLabors.Fonts;
 using SixLabors.Fonts.Unicode;
 using SixLabors.ImageSharp.Drawing.Svg;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
@@ -161,5 +162,44 @@ public class SvgCssUnitTests
         {
             SvgCalcTable.Exit(previous);
         }
+    }
+
+    // A math function in the radii of a basic shape is one value, also with spaces and a slash inside it, as the Chromium
+    // oracle reads it. Split at its spaces, the radii were invalid and the whole clip-path was dropped.
+    [Theory]
+    [InlineData("inset(4px round calc(4px * 2))")]
+    [InlineData("xywh(4px 4px 32px 32px round calc(4px + 4px) / min(8px, 20%))")]
+    [InlineData("rect(4px 36px 36px 4px round max(2px, 8px))")]
+    public void MathFunctionsInBasicShapeRadii_KeepTheShape(string shape)
+    {
+        SvgDocument document = SvgDocument.Parse(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"40\" height=\"40\">"
+            + $"<rect width=\"40\" height=\"40\" fill=\"green\" style=\"clip-path: {shape}\"/></svg>");
+        using Image<Rgba32> image = document.Render<Rgba32>();
+
+        // The inset clips the margin, and the radius of 8 also clips the corner of the inset rectangle.
+        Assert.Equal(0, image[1, 20].A);
+        Assert.Equal(0, image[5, 5].A);
+        Assert.Equal(255, image[20, 20].A);
+        Assert.Equal(255, image[5, 20].A);
+    }
+
+    // stroke-dasharray takes math functions as list entries, in the attribute and in CSS, as the Chromium oracle renders
+    // them. Without them the list was invalid and the line drew solid.
+    [Theory]
+    [InlineData("stroke-dasharray=\"calc(5px + 5px) 10\"", "")]
+    [InlineData("", "stroke-dasharray: calc(5px + 5px), min(10px, 50%)")]
+    [InlineData("", "--d: 10px; stroke-dasharray: calc(var(--d) * 1) max(var(--d), 1px)")]
+    public void MathFunctionsInDashArrays_AreLengths(string attributes, string style)
+    {
+        SvgDocument document = SvgDocument.Parse(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"10\">"
+            + $"<line x1=\"0\" y1=\"5\" x2=\"100\" y2=\"5\" stroke=\"green\" stroke-width=\"4\" {attributes} style=\"{style}\"/></svg>");
+        using Image<Rgba32> image = document.Render<Rgba32>();
+
+        Assert.Equal(255, image[5, 5].A);
+        Assert.Equal(0, image[15, 5].A);
+        Assert.Equal(255, image[25, 5].A);
+        Assert.Equal(0, image[35, 5].A);
     }
 }

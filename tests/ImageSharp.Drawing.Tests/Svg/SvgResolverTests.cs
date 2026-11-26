@@ -188,7 +188,7 @@ public class SvgResolverTests
 
         Assert.Equal(new SvgLength(20, SvgLengthUnit.Px), style.TransformOriginX);
         Assert.Equal(new SvgLength(30, SvgLengthUnit.Percent), style.TransformOriginY);
-        Assert.Equal(new Vector2(20F, 15F), style.GetTransformOrigin(new SizeF(100F, 50F)));
+        Assert.Equal(new Vector2(20F, 15F), style.GetTransformOrigin(new SizeF(100F, 50F), SvgUnitBasis.ForRoot(96F)));
     }
 
     // CSS Transforms 1: the effective transform is translate(origin) transform translate(-origin).

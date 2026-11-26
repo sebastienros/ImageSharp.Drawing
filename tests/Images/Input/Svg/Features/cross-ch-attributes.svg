@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" font-family="Open Sans" font-size="35">
+  <!-- ch in attributes other than the shapes: text positions, marker sizes and reference points, pattern tiles, use, and
+       image. At 35px Open Sans 1ch is 20.02px, so the Chromium oracle, which rounds ch to whole pixels, draws the same. -->
+  <defs>
+    <marker id="m" markerWidth="1ch" markerHeight="1ch" refX="0.5ch" refY="0.5ch" markerUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="navy"/>
+    </marker>
+    <pattern id="p" patternUnits="userSpaceOnUse" width="2ch" height="2ch">
+      <rect width="1ch" height="1ch" fill="green"/>
+    </pattern>
+    <rect id="u" width="30" height="30" fill="green"/>
+  </defs>
+  <text x="1ch" y="30" fill="green">x</text>
+  <text x="3ch" y="30" fill="green">x<tspan dx="1ch">y</tspan></text>
+  <path d="M 20 60 H 90" stroke="green" stroke-width="2" marker-end="url(#m)" marker-start="url(#m)"/>
+  <rect x="100" y="40" width="95" height="50" fill="url(#p)"/>
+  <use href="#u" x="1ch" y="100"/>
+  <use href="#u" x="100" y="5ch"/>
+  <image x="2ch" y="150" width="2ch" height="2ch" preserveAspectRatio="none" image-rendering="pixelated"
+         href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFklEQVR4nGNgaGAAISiFwoFQUDYSBwDMNAgB89lUgAAAAABJRU5ErkJggg=="/>
+  <rect x="5ch" y="150" width="1ch" height="2ch" fill="green"/>
+</svg>

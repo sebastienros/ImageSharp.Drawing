@@ -1,0 +1,542 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<style>
+svg { --cw: 92px; --ch: 92px; --pad: 6px; --radius: 10px; --gap: 8px; --ink: oklch(0.32 0.03 250); --paper: oklch(0.98 0.005 250); --base: 70px; }
+.card { --tint: oklch(0.95 0.03 var(--hue)); --accent: oklch(0.62 0.16 var(--hue)); --soft: color-mix(in oklab, var(--accent) 35%, white); }
+.bg { x: var(--pad); y: var(--pad); width: calc(var(--cw) - 2 * var(--pad)); height: calc(var(--ch) - 2 * var(--pad)); fill: var(--tint); stroke: var(--soft); stroke-width: calc(var(--pad) / 4); clip-path: inset(0 round var(--radius)); }
+.dot { cx: calc(var(--cw) - 3 * var(--pad)); cy: calc(3 * var(--pad)); r: calc(var(--pad) * 1.5); fill: var(--accent); clip-path: circle(45%); }
+.bar { width: calc((var(--cw) - 4 * var(--pad)) / 7); fill: var(--soft); clip-path: inset(0 round calc(var(--pad) / 2) calc(var(--pad) / 2) 0 0); }
+.bar.hot { fill: color-mix(in srgb, var(--accent) 80%, black); }
+.spark { fill: hsl(from var(--accent) h s l / 40%); stroke: var(--accent); stroke-width: max(1px, calc(var(--pad) / 4)); }
+.ring { fill: none; stroke: lab(70 -20 40 / 0.6); stroke-width: 3px; r: calc(var(--pad) * 2.5); cx: calc(2.2 * var(--pad) + 4px); cy: calc(3 * var(--pad) + 2px); stroke-dasharray: var(--dash); transform-box: fill-box; transform-origin: center; transform: rotate(-90deg); }
+.frame { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--radius)), calc(100% - var(--radius)) 100%, 0 100%); }
+</style>
+<rect width="800" height="600" style="fill: var(--paper)"/>
+<g class="card frame" style="--hue: 0; --dash: 18.8 100; transform: translate(8px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 10; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 37; --dash: 31.0 100; transform: translate(106px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 31; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 74; --dash: 43.2 100; transform: translate(204px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 27; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 111; --dash: 55.5 100; transform: translate(302px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 23; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 148; --dash: 67.7 100; transform: translate(400px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 19; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 185; --dash: 79.9 100; transform: translate(498px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 15; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 37; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 222; --dash: 92.1 100; transform: translate(596px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 33; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 36; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 259; --dash: 29.1 100; transform: translate(694px, 8px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 32; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 296; --dash: 41.4 100; transform: translate(8px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 28; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 333; --dash: 53.6 100; transform: translate(106px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 24; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 10; --dash: 65.8 100; transform: translate(204px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 20; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 47; --dash: 78.0 100; transform: translate(302px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 19; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 11; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 84; --dash: 90.2 100; transform: translate(400px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 37; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 121; --dash: 27.3 100; transform: translate(498px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 33; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 158; --dash: 39.5 100; transform: translate(596px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 29; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 195; --dash: 51.7 100; transform: translate(694px, 106px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 25; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 232; --dash: 63.9 100; transform: translate(8px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 16; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 269; --dash: 76.1 100; transform: translate(106px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 12; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 306; --dash: 88.4 100; transform: translate(204px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 38; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 19; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 343; --dash: 25.4 100; transform: translate(302px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 34; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 37; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 20; --dash: 37.6 100; transform: translate(400px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 30; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 33; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 57; --dash: 49.8 100; transform: translate(498px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 37; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 21; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 94; --dash: 62.0 100; transform: translate(596px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 17; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 131; --dash: 74.3 100; transform: translate(694px, 204px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 13; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 168; --dash: 86.5 100; transform: translate(8px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 39; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 205; --dash: 23.5 100; transform: translate(106px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 35; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 19; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 242; --dash: 35.7 100; transform: translate(204px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 26; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 279; --dash: 47.9 100; transform: translate(302px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 19; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 22; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 33; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 316; --dash: 60.2 100; transform: translate(400px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 37; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 18; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 353; --dash: 72.4 100; transform: translate(498px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 33; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 14; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 30; --dash: 84.6 100; transform: translate(596px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 10; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 67; --dash: 21.6 100; transform: translate(694px, 302px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 31; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 104; --dash: 33.8 100; transform: translate(8px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 27; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 141; --dash: 46.1 100; transform: translate(106px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 23; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 178; --dash: 58.3 100; transform: translate(204px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 19; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 215; --dash: 70.5 100; transform: translate(302px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 15; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 37; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 252; --dash: 82.7 100; transform: translate(400px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 33; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 36; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 289; --dash: 19.7 100; transform: translate(498px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 29; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 32; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 326; --dash: 32.0 100; transform: translate(596px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 28; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 3; --dash: 44.2 100; transform: translate(694px, 400px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 24; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 16; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 40; --dash: 56.4 100; transform: translate(8px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 20; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 12; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 77; --dash: 68.6 100; transform: translate(106px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 27; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 38; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 19; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 30; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 11; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 114; --dash: 80.8 100; transform: translate(204px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 34; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 15; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 26; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 37; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 151; --dash: 93.1 100; transform: translate(302px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 11; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 22; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 33; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 14; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 25; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 188; --dash: 30.1 100; transform: translate(400px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 18; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 29; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 10; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 21; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 225; --dash: 42.3 100; transform: translate(498px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar hot" style="--v: 25; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 36; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 17; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 28; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -7 l 8 2 l 8 -4 l 8 5 l 8 -1 l 8 -7 l 8 2 l 8 -4 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 262; --dash: 54.5 100; transform: translate(596px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 32; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 13; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 24; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 35; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 16; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 -2 l 8 7 l 8 1 l 8 -5 l 8 4 l 8 -2 l 8 7 l 8 1 V 56 H 12 Z')"/>
+</g>
+<g class="card frame" style="--hue: 299; --dash: 66.7 100; transform: translate(694px, 498px)">
+<rect class="bg"/>
+<circle class="dot"/>
+<circle class="ring"/>
+<rect class="bar" style="--v: 39; x: calc(2 * var(--pad) + 0 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 20; x: calc(2 * var(--pad) + 1 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 31; x: calc(2 * var(--pad) + 2 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar hot" style="--v: 12; x: calc(2 * var(--pad) + 3 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<rect class="bar" style="--v: 23; x: calc(2 * var(--pad) + 4 * (var(--cw) - 4 * var(--pad)) / 5); y: calc(var(--base) - var(--v) * 1px); height: calc(var(--v) * 1px)"/>
+<path class="spark" d="M 0 0" style="d: path('M 12 50 l 8 3 l 8 -3 l 8 6 l 8 0 l 8 -6 l 8 3 l 8 -3 l 8 6 V 56 H 12 Z')"/>
+</g>
+</svg>

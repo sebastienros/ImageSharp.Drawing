@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- CSS transform with transform-box, combined with clip-path shapes and their reference boxes. -->
+  <rect x="5" y="5" width="40" height="40" fill="green" style="transform-box: fill-box; transform-origin: center; transform: rotate(45deg); clip-path: inset(10%)"/>
+  <rect x="55" y="5" width="40" height="40" fill="green" style="transform-box: fill-box; transform: scale(0.5) translate(50%, 50%); clip-path: circle(50%)"/>
+  <rect x="105" y="5" width="40" height="40" fill="green" style="transform: translate(5px, 5px) scale(0.8); clip-path: circle(50% at 0 0) view-box"/>
+  <rect x="155" y="5" width="40" height="40" fill="green" stroke="navy" stroke-width="8" style="transform-box: stroke-box; transform-origin: 0 0; transform: scale(0.75); clip-path: inset(0 0 50% 0) stroke-box"/>
+
+  <g style="transform: translate(0, 50px)">
+    <rect x="5" y="5" width="40" height="40" fill="green" style="clip-path: polygon(0 0, 100% 0, 50% 100%) view-box"/>
+    <rect x="55" y="5" width="40" height="40" fill="green" style="transform-box: view-box; transform-origin: 75px 25px; transform: rotate(90deg); clip-path: polygon(0 0, 100% 0, 50% 100%)"/>
+    <rect x="105" y="5" width="40" height="40" fill="green" style="transform-box: fill-box; transform-origin: 50% 50%; transform: skewX(20deg); clip-path: ellipse(40% 30%)"/>
+    <rect x="155" y="5" width="40" height="40" fill="green" style="transform: rotate(calc(90deg / 2)); transform-box: fill-box; transform-origin: center; clip-path: inset(25% round 25%)"/>
+  </g>
+
+  <!-- A nested svg with a viewBox: view-box refers to its view box size. -->
+  <svg x="0" y="100" width="100" height="100" viewBox="0 0 50 50">
+    <rect x="5" y="5" width="40" height="40" fill="green" style="clip-path: circle(25% at 50% 50%) view-box; transform-box: view-box; transform-origin: 50% 50%; transform: rotate(10deg)"/>
+  </svg>
+  <svg x="100" y="100" width="100" height="100" viewBox="10 10 50 50">
+    <rect x="10" y="10" width="50" height="50" fill="green" style="clip-path: inset(10% 20% 30% 0) view-box; transform: translate(5%, 0)"/>
+  </svg>
+</svg>

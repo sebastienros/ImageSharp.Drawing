@@ -149,6 +149,7 @@ internal sealed partial class SvgResolver
 
         // In bounding box units every length is a fraction of the box, so a percentage is a fraction of 1.
         float fontSize = context.Style.FontSize;
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
         SizeF viewport = context.Viewport;
         float x;
         float y;
@@ -156,17 +157,17 @@ internal sealed partial class SvgResolver
         float height;
         if (boxUnits)
         {
-            x = bounds.X + (SvgUnits.ToUser(attributes.X, 1F, fontSize, this.units, 0F) * bounds.Width);
-            y = bounds.Y + (SvgUnits.ToUser(attributes.Y, 1F, fontSize, this.units, 0F) * bounds.Height);
-            width = SvgUnits.ToUser(attributes.Width, 1F, fontSize, this.units, 0F) * bounds.Width;
-            height = SvgUnits.ToUser(attributes.Height, 1F, fontSize, this.units, 0F) * bounds.Height;
+            x = bounds.X + (SvgUnits.ToUser(attributes.X, 1F, fontSize, units, 0F) * bounds.Width);
+            y = bounds.Y + (SvgUnits.ToUser(attributes.Y, 1F, fontSize, units, 0F) * bounds.Height);
+            width = SvgUnits.ToUser(attributes.Width, 1F, fontSize, units, 0F) * bounds.Width;
+            height = SvgUnits.ToUser(attributes.Height, 1F, fontSize, units, 0F) * bounds.Height;
         }
         else
         {
-            x = SvgUnits.ToUser(attributes.X, viewport.Width, fontSize, this.units, 0F);
-            y = SvgUnits.ToUser(attributes.Y, viewport.Height, fontSize, this.units, 0F);
-            width = SvgUnits.ToUser(attributes.Width, viewport.Width, fontSize, this.units, 0F);
-            height = SvgUnits.ToUser(attributes.Height, viewport.Height, fontSize, this.units, 0F);
+            x = SvgUnits.ToUser(attributes.X, viewport.Width, fontSize, units, 0F);
+            y = SvgUnits.ToUser(attributes.Y, viewport.Height, fontSize, units, 0F);
+            width = SvgUnits.ToUser(attributes.Width, viewport.Width, fontSize, units, 0F);
+            height = SvgUnits.ToUser(attributes.Height, viewport.Height, fontSize, units, 0F);
         }
 
         if (!(width > 0F) || !(height > 0F) || !float.IsFinite(width) || !float.IsFinite(height) || !float.IsFinite(x) || !float.IsFinite(y))
@@ -207,7 +208,7 @@ internal sealed partial class SvgResolver
             Vector2 origin = Vector2.Zero;
             if (this.tree.GetStyle(transformElement).IsSpecified(SvgPropertyId.TransformOrigin))
             {
-                origin = this.ComputeDocumentStyle(transformElement).GetTransformOrigin(viewport);
+                origin = this.ComputeDocumentStyle(transformElement).GetTransformOrigin(viewport, this.units);
             }
 
             Matrix3x2 patternTransform = SvgComputedStyle.ApplyTransformOrigin(attributes.Transform, origin);

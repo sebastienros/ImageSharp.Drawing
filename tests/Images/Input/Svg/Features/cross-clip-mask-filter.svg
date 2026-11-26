@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Basic-shape clips with masks, filters, opacity, blend modes, and inside paint servers and use. -->
+  <defs>
+    <mask id="mk"><rect width="200" height="200" fill="white" style="clip-path: circle(30px at 25px 25px)"/></mask>
+    <mask id="mk2" maskUnits="userSpaceOnUse" x="55" y="5" width="40" height="40">
+      <rect x="55" y="5" width="40" height="40" fill="white"/>
+    </mask>
+    <filter id="blur"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="off" x="-50%" y="-50%" width="200%" height="200%"><feOffset dx="5" dy="5"/></filter>
+    <pattern id="pt" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="green" style="clip-path: circle(8px)"/>
+    </pattern>
+    <g id="g"><rect width="40" height="40" fill="green" style="clip-path: polygon(50% 0, 100% 100%, 0 100%)"/></g>
+    <symbol id="s" viewBox="0 0 20 20"><rect width="20" height="20" fill="navy" style="clip-path: circle(50%) view-box"/></symbol>
+  </defs>
+  <!-- Row 1: a shape clip inside a mask; a shape clip with a mask on the same element; with a filter (filter first). -->
+  <rect x="5" y="5" width="40" height="40" fill="green" mask="url(#mk)"/>
+  <rect x="55" y="5" width="40" height="40" fill="green" mask="url(#mk2)" style="clip-path: inset(5px round 10px)"/>
+  <rect x="105" y="5" width="40" height="40" fill="green" filter="url(#blur)" style="clip-path: inset(5px)"/>
+  <rect x="155" y="5" width="30" height="30" fill="green" filter="url(#off)" style="clip-path: circle(50%)"/>
+
+  <!-- Row 2: opacity and blend modes with a shape clip; a group with a shape clip and a filter. -->
+  <rect x="5" y="55" width="40" height="40" fill="green" opacity="0.5" style="clip-path: ellipse(50% 30%)"/>
+  <rect x="55" y="55" width="40" height="40" fill="navy"/>
+  <rect x="55" y="55" width="40" height="40" fill="yellow" style="mix-blend-mode: difference; clip-path: polygon(0 0, 100% 0, 0 100%)"/>
+  <g style="clip-path: circle(20px at 125px 75px); filter: drop-shadow(0 0 3px navy)"><rect x="105" y="55" width="40" height="40" fill="green"/></g>
+  <g style="filter: blur(1px); clip-path: inset(0 50% 0 0) fill-box"><circle cx="175" cy="75" r="20" fill="green"/></g>
+
+  <!-- Row 3: pattern content with a shape clip; use of a group with a clip; symbol with view-box. -->
+  <rect x="5" y="105" width="40" height="40" fill="url(#pt)"/>
+  <use href="#g" x="55" y="105"/>
+  <use href="#s" x="105" y="105" width="40" height="40"/>
+  <use href="#g" x="155" y="105" style="clip-path: inset(0 0 50% 0)"/>
+
+  <!-- Row 4: an evenodd polygon clip (a coverage layer) under a mask and a filter. -->
+  <rect x="5" y="155" width="40" height="40" fill="green" mask="url(#mk)" transform="translate(0 150)" style="clip-path: polygon(evenodd, 0 0, 100% 0, 0 100%, 100% 100%)"/>
+  <rect x="55" y="155" width="40" height="40" fill="green" filter="url(#blur)" style="clip-path: polygon(evenodd, 0 0, 100% 0, 0 100%, 100% 100%)"/>
+  <rect x="105" y="155" width="40" height="40" fill="green" opacity="0.6" style="clip-path: path(evenodd, 'M 0 0 h 40 v 40 h -40 z M 10 10 h 20 v 20 h -20 z')"/>
+</svg>

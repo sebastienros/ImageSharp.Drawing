@@ -331,9 +331,20 @@ internal sealed partial class SvgPropertyParser
                 continue;
             }
 
+            // A math function is one value: its spaces and slashes are inside its parentheses.
             int length = 0;
-            while (length < rest.Length && rest[length] != '/' && !SvgNumberParser.IsWhitespace(rest[length]))
+            int depth = 0;
+            while (length < rest.Length && (depth > 0 || (rest[length] != '/' && !SvgNumberParser.IsWhitespace(rest[length]))))
             {
+                if (rest[length] == '(')
+                {
+                    depth++;
+                }
+                else if (rest[length] == ')')
+                {
+                    depth--;
+                }
+
                 length++;
             }
 

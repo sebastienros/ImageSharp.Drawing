@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+  <style>
+    rect:lang(fr) { width: 40px; height: 40px; }
+    g:lang(de) { --c: green; --w: 30px; }
+    circle:lang(en-US) { r: 15px; cx: 175px; }
+    :lang(ja) > rect { --p: path('M 0 0'); x: 55px; }
+    path:lang(es) { d: path('M 105 55 h 40 v 40 z'); }
+  </style>
+  <rect x="5" y="5" width="1" height="1" fill="green" xml:lang="fr-CA"/>
+  <g lang="de-DE">
+    <rect x="55" y="5" style="fill: var(--c, red); width: var(--w, 1px); height: var(--w, 1px)"/>
+  </g>
+  <rect x="105" y="5" width="40" height="40" fill="navy" lang="it" style="fill: var(--c, navy)"/>
+  <circle cx="0" cy="25" r="1" fill="green" lang="en-us"/>
+  <g xml:lang="ja"><rect x="5" y="55" width="40" height="40" fill="green"/></g>
+  <path d="M 0 0" fill="green" lang="es-MX"/>
+  <path d="M 155 55 h 40 v 40 z" fill="green" xml:lang="fr" lang="es"/>
+</svg>

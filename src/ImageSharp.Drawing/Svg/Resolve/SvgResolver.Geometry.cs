@@ -116,7 +116,7 @@ internal sealed partial class SvgResolver
     /// <param name="index">The element index.</param>
     /// <param name="style">The computed style of the element.</param>
     /// <returns>The path, or <see langword="null"/>.</returns>
-    private IPath? GetPathData(int index, in SvgComputedStyle style)
+    internal IPath? GetPathData(int index, in SvgComputedStyle style)
     {
         // inherit from a parent without a declaration takes the d attribute of the parent, which only a path has; the
         // parent of a path element is never a path.

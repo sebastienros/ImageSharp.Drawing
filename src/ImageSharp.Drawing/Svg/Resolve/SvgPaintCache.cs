@@ -253,7 +253,7 @@ internal sealed class SvgPaintCache
         // transform-box: view-box, also in bounding box units, where the origin is then used in the unit square. Chromium
         // does the same: there 50% and 100px give the same origin for a gradient painted in a 200 x 200 viewport.
         Vector2 origin = gradient.Attributes.HasTransform
-            ? SvgComputedStyle.ResolveTransformOrigin(gradient.TransformOriginX, gradient.TransformOriginY, viewport)
+            ? SvgComputedStyle.ResolveTransformOrigin(gradient.TransformOriginX, gradient.TransformOriginY, viewport, fontSize, this.units)
             : Vector2.Zero;
 
         SvgGradientKey key = new(element, box, fontSize, opacity, origin);
