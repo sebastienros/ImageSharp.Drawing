@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bump" r="0.5">
+      <stop offset="0.2" stop-color="#6644aa"/>
+      <stop offset="1" stop-color="#6644aa" stop-opacity="0"/>
+    </radialGradient>
+    <!-- A huge surfaceScale: the normal overflows and gives no light where the surface slopes; flat parts stay lit. -->
+    <filter id="huge-scale" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="1e30"><feDistantLight azimuth="45" elevation="45"/></feDiffuseLighting>
+    </filter>
+    <!-- A huge specularExponent is clamped to 128; a huge specularConstant saturates the highlight. -->
+    <filter id="huge-exponent" color-interpolation-filters="sRGB">
+      <feSpecularLighting surfaceScale="5" specularConstant="1e30" specularExponent="1e30">
+        <fePointLight x="100" y="30" z="30"/>
+      </feSpecularLighting>
+    </filter>
+    <!-- A huge diffuseConstant saturates every lit pixel. -->
+    <filter id="huge-constant" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="5" diffuseConstant="1e30"><feDistantLight azimuth="45" elevation="10"/></feDiffuseLighting>
+    </filter>
+    <!-- A point light far below the surface lights nothing: the result is opaque black. -->
+    <filter id="below" color-interpolation-filters="sRGB">
+      <feDiffuseLighting><fePointLight x="40" y="100" z="-1e30"/></feDiffuseLighting>
+    </filter>
+    <!-- A spot light that points at its own position has no direction and gives no light. -->
+    <filter id="degenerate" color-interpolation-filters="sRGB">
+      <feDiffuseLighting><feSpotLight x="100" y="100" z="20" pointsAtX="100" pointsAtY="100" pointsAtZ="20"/></feDiffuseLighting>
+    </filter>
+    <!-- Invalid numbers take the initial values: surfaceScale 1, diffuseConstant 1, azimuth and elevation 0. -->
+    <filter id="invalid" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="5px" diffuseConstant="1 2" kernelUnitLength="-3">
+        <feDistantLight azimuth="10deg" elevation="none"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- No light source: the result is transparent, so only the source graphic of the merge shows. -->
+    <filter id="no-light" color-interpolation-filters="sRGB">
+      <feDiffuseLighting result="l"><desc>no light</desc></feDiffuseLighting>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="l"/></feMerge>
+    </filter>
+    <!-- Several light sources: the first one counts. lighting-color="currentColor" takes the color of the primitive. -->
+    <filter id="several" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="5" lighting-color="currentColor" color="#44ee88">
+        <title>lights</title>
+        <feDistantLight azimuth="270" elevation="45"/>
+        <fePointLight x="0" y="0" z="1"/>
+      </feDiffuseLighting>
+    </filter>
+    <!-- A cone of 89 degrees limits only the pixels behind the light; a negative angle gives the same cone. -->
+    <filter id="cone" color-interpolation-filters="sRGB">
+      <feDiffuseLighting surfaceScale="3">
+        <feSpotLight x="140" y="140" z="10" pointsAtX="200" pointsAtY="200" pointsAtZ="0" limitingConeAngle="-89"/>
+      </feDiffuseLighting>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="60" height="60" fill="url(#bump)" filter="url(#huge-scale)"/>
+  <rect x="70" y="5" width="60" height="60" fill="url(#bump)" filter="url(#huge-exponent)"/>
+  <rect x="135" y="5" width="60" height="60" fill="url(#bump)" filter="url(#huge-constant)"/>
+  <rect x="5" y="70" width="60" height="60" fill="url(#bump)" filter="url(#below)"/>
+  <rect x="70" y="70" width="60" height="60" fill="url(#bump)" filter="url(#degenerate)"/>
+  <rect x="135" y="70" width="60" height="60" fill="url(#bump)" filter="url(#invalid)"/>
+  <rect x="5" y="135" width="60" height="60" fill="url(#bump)" filter="url(#no-light)"/>
+  <rect x="70" y="135" width="60" height="60" fill="url(#bump)" filter="url(#several)"/>
+  <rect x="135" y="135" width="60" height="60" fill="url(#bump)" filter="url(#cone)"/>
+</svg>

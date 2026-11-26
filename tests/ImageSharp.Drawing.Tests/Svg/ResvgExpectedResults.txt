@@ -150,33 +150,33 @@ filters/feConvolveMatrix/targetX=0.svg fail filters: X3 (feConvolveMatrix)
 filters/feConvolveMatrix/targetX=2.svg fail filters: X3 (feConvolveMatrix)
 filters/feConvolveMatrix/targetX=3.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
 filters/feConvolveMatrix/unset-order.svg fail filters: X3 (feConvolveMatrix)
-filters/feDiffuseLighting/complex-transform.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/diffuseConstant=-1.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/diffuseConstant=0.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/diffuseConstant=5.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/lighting-color=currentColor-without-color.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/lighting-color=currentColor.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/lighting-color=hsla.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/lighting-color=inherit.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/lighting-color=seagreen.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/linearRGB-color-interpolation.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/multiple-light-sources.svg fail filters: X4 (feDiffuseLighting, feDistantLight, fePointLight)
-filters/feDiffuseLighting/no-light-source.svg fail filters: X4 (feDiffuseLighting)
-filters/feDiffuseLighting/single-light-source-with-comment.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/single-light-source-with-desc.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/single-light-source-with-invalid-child.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/single-light-source-with-title-and-desc.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/single-light-source-with-title.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/single-light-source.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/surfaceScale=-10.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/surfaceScale=0.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/surfaceScale=1.33.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDiffuseLighting/surfaceScale=5.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
+filters/feDiffuseLighting/complex-transform.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (20255 mismatched pixels against the reference)
+filters/feDiffuseLighting/diffuseConstant=-1.svg pass
+filters/feDiffuseLighting/diffuseConstant=0.svg pass
+filters/feDiffuseLighting/diffuseConstant=5.svg pass
+filters/feDiffuseLighting/lighting-color=currentColor-without-color.svg pass
+filters/feDiffuseLighting/lighting-color=currentColor.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (25024 mismatched pixels against the reference)
+filters/feDiffuseLighting/lighting-color=hsla.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (21173 mismatched pixels against the reference)
+filters/feDiffuseLighting/lighting-color=inherit.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/lighting-color=seagreen.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (25024 mismatched pixels against the reference)
+filters/feDiffuseLighting/linearRGB-color-interpolation.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (30594 mismatched pixels against the reference)
+filters/feDiffuseLighting/multiple-light-sources.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/no-light-source.svg pass
+filters/feDiffuseLighting/single-light-source-with-comment.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/single-light-source-with-desc.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/single-light-source-with-invalid-child.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/single-light-source-with-title-and-desc.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/single-light-source-with-title.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/single-light-source.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/surfaceScale=-10.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (53525 mismatched pixels against the reference)
+filters/feDiffuseLighting/surfaceScale=0.svg pass
+filters/feDiffuseLighting/surfaceScale=1.33.svg pass
+filters/feDiffuseLighting/surfaceScale=5.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (19403 mismatched pixels against the reference)
 filters/feDisplacementMap/simple-case.svg pass
-filters/feDistantLight/default-attributes.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDistantLight/negative-azimuth-and-elevation.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDistantLight/only-azimuth.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
-filters/feDistantLight/only-elevation.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
+filters/feDistantLight/default-attributes.svg pass
+filters/feDistantLight/negative-azimuth-and-elevation.svg pass
+filters/feDistantLight/only-azimuth.svg pass
+filters/feDistantLight/only-elevation.svg pass
 filters/feDropShadow/hsla-color.svg fail filters: X2 (feDropShadow)
 filters/feDropShadow/only-stdDeviation.svg fail filters: X2 (feDropShadow)
 filters/feDropShadow/stdDeviation=0.svg fail filters: X2 (feDropShadow)
@@ -259,30 +259,30 @@ filters/feOffset/only-dy.svg pass
 filters/feOffset/percentage-values.svg pass
 filters/feOffset/simple-case.svg pass
 filters/feOffset/with-primitiveUnits=objectBoundingBox.svg pass
-filters/fePointLight/complex-transform.svg fail filters: X4 (feDiffuseLighting, fePointLight)
-filters/fePointLight/custom-attributes.svg fail filters: X4 (feDiffuseLighting, fePointLight)
-filters/fePointLight/default-attributes.svg fail filters: X4 (feDiffuseLighting, fePointLight)
-filters/fePointLight/primitiveUnits=objectBoundingBox.svg fail filters: X4 (feDiffuseLighting, fePointLight)
-filters/feSpecularLighting/lighting-color=hsla.svg fail filters: X4 (fePointLight, feSpecularLighting)
-filters/feSpecularLighting/specularExponent=0.svg fail filters: X4 (feSpecularLighting, feSpotLight)
-filters/feSpecularLighting/specularExponent=256.svg fail filters: X4 (feSpecularLighting, feSpotLight)
-filters/feSpecularLighting/with-feDistantLight.svg fail filters: X4 (feDistantLight, feSpecularLighting)
-filters/feSpecularLighting/with-fePointLight.svg fail filters: X4 (fePointLight, feSpecularLighting)
-filters/feSpecularLighting/with-feSpotLight-and-specular-and-exponent.svg fail filters: X4 (feSpecularLighting, feSpotLight)
-filters/feSpecularLighting/with-feSpotLight-and-specularConstant=5.svg fail filters: X4 (feSpecularLighting, feSpotLight)
-filters/feSpecularLighting/with-feSpotLight.svg fail filters: X4 (feSpecularLighting, feSpotLight)
-filters/feSpotLight/complex-transform.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/custom-attributes.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/default-attributes.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/limitingConeAngle-anti-aliasing.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/limitingConeAngle=-30.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/limitingConeAngle=0.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/limitingConeAngle=30.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/primitiveUnits=objectBoundingBox.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/specularExponent=-10.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/specularExponent=0.5.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/specularExponent=10.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
-filters/feSpotLight/with-all-pointsAt.svg fail filters: X4 (feDiffuseLighting, feSpotLight)
+filters/fePointLight/complex-transform.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (518 mismatched pixels against the reference)
+filters/fePointLight/custom-attributes.svg pass
+filters/fePointLight/default-attributes.svg pass
+filters/fePointLight/primitiveUnits=objectBoundingBox.svg pass
+filters/feSpecularLighting/lighting-color=hsla.svg pass
+filters/feSpecularLighting/specularExponent=0.svg fail reference: the reference does not draw the element for a specularExponent outside 1 to 128; SVG 1.1 gives that range without an error rule, and this render clamps the exponent to 1 as Chromium does (173263 mismatched pixels)
+filters/feSpecularLighting/specularExponent=256.svg fail reference: the small highlight differs around its edge; this render clamps the exponent to 128 as Chromium does, which fails by 110 pixels too; the cause in the reference is not established
+filters/feSpecularLighting/with-feDistantLight.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (37519 mismatched pixels against the reference)
+filters/feSpecularLighting/with-fePointLight.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (31516 mismatched pixels against the reference)
+filters/feSpecularLighting/with-feSpotLight-and-specular-and-exponent.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (19293 mismatched pixels against the reference)
+filters/feSpecularLighting/with-feSpotLight-and-specularConstant=5.svg fail reference: the reference gives the saturated highlight a lower alpha; this render follows the specular equation with alpha max(Sr, Sg, Sb) on a premultiplied result, as Chromium does (166150 mismatched pixels)
+filters/feSpecularLighting/with-feSpotLight.svg pass
+filters/feSpotLight/complex-transform.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (518 mismatched pixels against the reference)
+filters/feSpotLight/custom-attributes.svg fail reference: the reference renders the relief flatter, as if surfaceScale and the light heights were device pixels at the 500 px size; Filter Effects gives them in user units, and Chromium renders the same as this render (34768 mismatched pixels against the reference)
+filters/feSpotLight/default-attributes.svg pass
+filters/feSpotLight/limitingConeAngle-anti-aliasing.svg pass
+filters/feSpotLight/limitingConeAngle=-30.svg pass
+filters/feSpotLight/limitingConeAngle=0.svg pass
+filters/feSpotLight/limitingConeAngle=30.svg pass
+filters/feSpotLight/primitiveUnits=objectBoundingBox.svg pass
+filters/feSpotLight/specularExponent=-10.svg pass
+filters/feSpotLight/specularExponent=0.5.svg pass
+filters/feSpotLight/specularExponent=10.svg pass
+filters/feSpotLight/with-all-pointsAt.svg pass
 filters/feTile/complex-transform.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feTile/empty-region.svg fail filters: X2 (feTile)
 filters/feTile/simple-case.svg fail filters: X2 (feTile)

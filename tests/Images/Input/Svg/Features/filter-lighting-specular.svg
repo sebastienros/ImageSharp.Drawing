@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bump" r="0.5">
+      <stop offset="0.2" stop-color="#2a8a5a"/>
+      <stop offset="1" stop-color="#2a8a5a" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Each highlight is added to the element: arithmetic k2 = k3 = 1. The specular result has the alpha of its largest
+         color channel, so it is transparent where there is no highlight. -->
+    <filter id="distant" color-interpolation-filters="sRGB">
+      <feSpecularLighting in="SourceAlpha" surfaceScale="6" specularConstant="1.2" specularExponent="12" result="s">
+        <feDistantLight azimuth="225" elevation="45"/>
+      </feSpecularLighting>
+      <feComposite in="s" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <filter id="point" color-interpolation-filters="sRGB">
+      <feSpecularLighting in="SourceAlpha" surfaceScale="5" specularExponent="20" lighting-color="#ffdd88" result="s">
+        <fePointLight x="135" y="35" z="40"/>
+      </feSpecularLighting>
+      <feComposite in="s" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <filter id="spot" color-interpolation-filters="sRGB">
+      <feSpecularLighting in="SourceAlpha" surfaceScale="5" specularConstant="1.5" specularExponent="4" lighting-color="#88ccff" result="s">
+        <feSpotLight x="20" y="120" z="50" pointsAtX="55" pointsAtY="155" specularExponent="2" limitingConeAngle="35"/>
+      </feSpecularLighting>
+      <feComposite in="s" in2="SourceGraphic" operator="arithmetic" k2="1" k3="1"/>
+    </filter>
+    <!-- The specular result alone, in linearRGB (the default), over a dark square. -->
+    <filter id="alone">
+      <feSpecularLighting surfaceScale="8" specularExponent="6" lighting-color="#ff8040">
+        <feDistantLight azimuth="300" elevation="35"/>
+      </feSpecularLighting>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="80" height="80" fill="url(#bump)" filter="url(#distant)"/>
+  <rect x="110" y="10" width="80" height="80" fill="url(#bump)" filter="url(#point)"/>
+  <rect x="10" y="110" width="80" height="80" fill="url(#bump)" filter="url(#spot)"/>
+  <rect x="110" y="110" width="80" height="80" fill="#202040"/>
+  <rect x="110" y="110" width="80" height="80" fill="url(#bump)" filter="url(#alone)"/>
+</svg>
