@@ -19,7 +19,12 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// The steps for single features are partial methods in files of their own: <see cref="ApplyBaselineShift"/>
 /// (<c>SvgTextPositioner.Baselines.cs</c>), <see cref="ApplyVerticalAdvance"/> (<c>SvgTextPositioner.Vertical.cs</c>),
 /// <see cref="ReorderClusters"/> (<c>SvgTextPositioner.Bidi.cs</c>), and <see cref="ApplyTextLength"/>
-/// (<c>SvgTextPositioner.TextLength.cs</c>), which runs after the walk and before text anchoring.
+/// (<c>SvgTextPositioner.LengthAdjust.cs</c>), which runs after the walk and before text anchoring.
+/// </para>
+/// <para>
+/// Inside a <c>textPath</c> the walk lays the text out on a straight line that starts at (0, 0), and stage 6
+/// (<see cref="SvgTextPaths"/>) maps that line onto the path: the first cluster of a <c>textPath</c> and the first
+/// cluster after one start text chunks, and absolute positions across the line do not apply on a path.
 /// </para>
 /// </remarks>
 internal static partial class SvgTextPositioner
@@ -68,6 +73,7 @@ internal static partial class SvgTextPositioner
         SvgTextContent content = layout.Content;
         Span<SvgTextCluster> clusters = layout.Clusters;
         SvgTextCharacter[] characters = content.Characters;
+        bool verticalFlow = content.Directions?.IsVertical == true;
         float penX = 0F;
         float penY = 0F;
 
@@ -78,14 +84,30 @@ internal static partial class SvgTextPositioner
             SvgTextSpan span = content.Spans[cluster.Span];
             SvgComputedStyle style = span.Style;
 
+            // Text on a path (SVG 2 "resolve character positioning"): a textPath starts a text chunk, and inside it the
+            // absolute position across the line (y in horizontal text, x in vertical text) is ignored. As in Chromium,
+            // the pen restarts at (0, 0) on the path, so the text before the path moves neither the start along the
+            // path nor the offset across it, and the text after a path starts a chunk of its own, which text anchoring
+            // measures without the path text. Stage 6 maps these line positions onto the path.
+            int textPath = span.TextPath;
             bool startsChunk = i == 0;
-            if ((first.Flags & SvgTextCharacterFlags.HasX) != 0)
+            if (i > 0 && textPath != content.Spans[clusters[i - 1].Span].TextPath)
+            {
+                startsChunk = true;
+                if (textPath >= 0)
+                {
+                    penX = 0F;
+                    penY = 0F;
+                }
+            }
+
+            if ((first.Flags & SvgTextCharacterFlags.HasX) != 0 && !(textPath >= 0 && verticalFlow))
             {
                 penX = first.X;
                 startsChunk = true;
             }
 
-            if ((first.Flags & SvgTextCharacterFlags.HasY) != 0)
+            if ((first.Flags & SvgTextCharacterFlags.HasY) != 0 && !(textPath >= 0 && !verticalFlow))
             {
                 penY = first.Y;
                 startsChunk = true;

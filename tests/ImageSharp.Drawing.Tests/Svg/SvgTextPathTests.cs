@@ -14,8 +14,8 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
 /// Tests of SVG text on a path (<c>textPath</c>) and of <c>textLength</c> with <c>lengthAdjust</c>. The expected
-/// positions follow the text layout of Chromium (Blink <c>SvgTextLayoutAlgorithm</c>), which the project follows where
-/// SVG leaves a choice: a cluster sits on the path at the middle of its advance and turns with the path.
+/// positions follow SVG 2 and, where SVG leaves a choice, the rendered output of Chromium, which the project follows: a
+/// cluster sits on the path at the middle of its advance and turns with the path.
 /// </summary>
 public class SvgTextPathTests
 {
@@ -193,6 +193,71 @@ public class SvgTextPathTests
     }
 
     [Fact]
+    public void TextPath_RotateTurnsTheShiftAcrossThePathWithTheGlyph()
+    {
+        SvgTextLayout layout = Layout(
+            FlatPath + "<text id=\"t\" rotate=\"90\" dy=\"-10\"><textPath href=\"#flat\" startOffset=\"50\">a</textPath></text>",
+            "t");
+        SvgTextCluster a = layout.Clusters[0];
+
+        // Chromium: the middle of the advance stays at (60 + w / 2, 50), and the offset of the pen from it, half an
+        // advance back and 10 up, turns by 90 degrees with the glyph.
+        float half = a.Width / 2F;
+        Assert.Equal(90F, a.Rotation, 3);
+        Assert.Equal(60F + half + 10F, a.X, 3);
+        Assert.Equal(50F - half, a.Y, 3);
+    }
+
+    [Fact]
+    public void TextPath_TextAfterThePathCancelsTheShiftOfItsFirstCluster()
+    {
+        SvgTextLayout layout = Layout(
+            FlatPath + "<text id=\"t\"><textPath href=\"#flat\">a</textPath><tspan dy=\"10\">b</tspan>c</text>",
+            "t");
+
+        // Chromium: the first cluster after the path lies on the end point despite its dy, as SVG 2 defines path_end.
+        Assert.Equal(160F, layout.Clusters[1].X, 3);
+        Assert.Equal(50F, layout.Clusters[1].Y, 3);
+        Assert.Equal(160F + layout.Clusters[1].Width, layout.Clusters[2].X, 3);
+        Assert.Equal(50F, layout.Clusters[2].Y, 3);
+    }
+
+    [Theory]
+    [InlineData("start", 1F)]
+    [InlineData("middle", 0.5F)]
+    [InlineData("end", 0F)]
+    public void TextPath_TextAfterATextPathWithoutAPathMovesByItsOwnAdvances(string anchor, float share)
+    {
+        SvgTextLayout layout = Layout(
+            $"<text id=\"t\" x=\"100\" y=\"100\" text-anchor=\"{anchor}\">"
+            + "Some<textPath>long</textPath><tspan dy=\"40\">text</tspan></text>",
+            "t");
+        Span<SvgTextCluster> clusters = layout.Clusters;
+        float path = clusters[4].Width + clusters[5].Width + clusters[6].Width + clusters[7].Width;
+        float after = clusters[8].Width + clusters[9].Width + clusters[10].Width + clusters[11].Width;
+
+        // Chromium: the hidden path text keeps its advances on the line that restarts at (0, 0) with the path. The text
+        // after it, anchored as a chunk of its own, then moves right by its own advances; its dy applies.
+        Assert.True(clusters[4].Skipped);
+        Assert.Equal(path + (share * after), clusters[8].X, 3);
+        Assert.Equal(40F, clusters[8].Y, 3);
+    }
+
+    [Fact]
+    public void TextPath_AnchorMeasuresThePathTextWithoutTheTextAfterIt()
+    {
+        SvgTextLayout layout = Layout(
+            FlatPath + "<text id=\"t\" text-anchor=\"middle\"><textPath href=\"#flat\" startOffset=\"50%\">ab</textPath>cd</text>",
+            "t");
+        SvgTextCluster a = layout.Clusters[0];
+        SvgTextCluster b = layout.Clusters[1];
+
+        // Chromium: "ab" centres on the start offset, 75 along the path; "cd" starts at the end point.
+        Assert.Equal(10F + 75F - ((a.Width + b.Width) / 2F), a.X, 3);
+        Assert.Equal(160F, layout.Clusters[2].X, 3);
+    }
+
+    [Fact]
     public void TextPath_TspanPositionInsideThePathStartsAChunk()
     {
         SvgTextLayout layout = Layout(
@@ -287,6 +352,46 @@ public class SvgTextPathTests
         Assert.Equal(plain.Clusters[2].X + 10F, layout.Clusters[2].X, 2);
         Assert.Equal(plain.Clusters[3].X + 20F, layout.Clusters[3].X, 2);
         Assert.Equal(10F, layout.Clusters[4].X, 3);
+    }
+
+    [Fact]
+    public void TextLength_TextAfterTheElementMovesUpToTheNextChunkOnEitherAxis()
+    {
+        SvgTextLayout plain = Layout("<text id=\"t\" x=\"10\" y=\"50\">a<tspan>bc</tspan>d<tspan y=\"90\">e</tspan></text>", "t");
+        string length = (plain.Clusters[1].Width + plain.Clusters[2].Width + 10F).ToString(CultureInfo.InvariantCulture);
+        SvgTextLayout layout = Layout(
+            $"<text id=\"t\" x=\"10\" y=\"50\">a<tspan textLength=\"{length}\">bc</tspan>d<tspan y=\"90\">e</tspan></text>",
+            "t");
+
+        // Chromium: a chunk that only y starts also ends the shift of the text after the element.
+        Assert.Equal(plain.Clusters[3].X + 20F, layout.Clusters[3].X, 2);
+        Assert.Equal(plain.Clusters[4].X, layout.Clusters[4].X, 3);
+    }
+
+    [Fact]
+    public void TextLength_LaterChunksStartWhereTheAdvancesBeforeThemEnd()
+    {
+        SvgTextLayout plain = Layout("<text id=\"t\"><tspan x=\"10\" y=\"50\">ab</tspan>c<tspan x=\"10\" y=\"90\">de</tspan></text>", "t");
+        float natural = 0F;
+        foreach (SvgTextCluster cluster in plain.Clusters)
+        {
+            natural += cluster.Width;
+        }
+
+        string inner = (plain.Clusters[0].Width + plain.Clusters[1].Width + 4F).ToString(CultureInfo.InvariantCulture);
+        string outer = (natural + 90F).ToString(CultureInfo.InvariantCulture);
+        SvgTextLayout layout = Layout(
+            $"<text id=\"t\" textLength=\"{outer}\"><tspan x=\"10\" y=\"50\" textLength=\"{inner}\">ab</tspan>c<tspan x=\"10\" y=\"90\">de</tspan></text>",
+            "t");
+
+        // The inner element spreads 4 and moves "c" by 8. On the virtual line of the text element the second chunk
+        // starts where the advances of "abc" end, without those shifts, as in Chromium (the resvg test
+        // text/textLength/on-text-and-tspan), so the outer difference is 90 over three gaps of 30. The second chunk
+        // keeps its start at x = 10.
+        Assert.Equal(10F, layout.Clusters[3].X, 3);
+        Assert.Equal(plain.Clusters[4].X + 30F, layout.Clusters[4].X, 2);
+        Assert.Equal(plain.Clusters[1].X + 4F + 30F, layout.Clusters[1].X, 2);
+        Assert.Equal(plain.Clusters[2].X + 8F + 30F, layout.Clusters[2].X, 2);
     }
 
     [Fact]
