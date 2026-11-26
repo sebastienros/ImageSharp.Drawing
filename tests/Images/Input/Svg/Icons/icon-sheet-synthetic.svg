@@ -1,0 +1,464 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="640" viewBox="0 0 640 640">
+<rect width="640" height="640" fill="#ffffff"/>
+<defs>
+<symbol id="f-activity" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></g></symbol>
+<symbol id="f-alert-octagon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></g></symbol>
+<symbol id="f-archive" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></g></symbol>
+<symbol id="f-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></g></symbol>
+<symbol id="f-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></g></symbol>
+<symbol id="f-compass" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></g></symbol>
+<symbol id="f-cpu" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /><rect x="9" y="9" width="6" height="6" /><line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" /><line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" /><line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" /></g></symbol>
+<symbol id="f-database" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></g></symbol>
+<symbol id="f-feather" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" /><line x1="16" y1="8" x2="2" y2="22" /><line x1="17.5" y1="15" x2="9" y2="15" /></g></symbol>
+<symbol id="f-gift" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></g></symbol>
+<symbol id="f-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></g></symbol>
+<symbol id="f-heart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></g></symbol>
+<symbol id="f-image" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></g></symbol>
+<symbol id="f-layers" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></g></symbol>
+<symbol id="f-map-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></g></symbol>
+<symbol id="f-monitor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></g></symbol>
+<symbol id="f-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></g></symbol>
+<symbol id="f-star" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></g></symbol>
+<symbol id="f-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></g></symbol>
+<symbol id="f-truck" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></g></symbol>
+<symbol id="f-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></g></symbol>
+<symbol id="f-wifi" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></g></symbol>
+<symbol id="f-x-octagon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></g></symbol>
+<symbol id="f-zap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></g></symbol>
+<symbol id="b-bell-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901" />
+</g></symbol>
+<symbol id="b-bookmark-star-fill" viewBox="0 0 16 16"><g fill="currentColor"><path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5M8.16 4.1a.178.178 0 0 0-.32 0l-.634 1.285a.18.18 0 0 1-.134.098l-1.42.206a.178.178 0 0 0-.098.303L6.58 6.993c.042.041.061.1.051.158L6.39 8.565a.178.178 0 0 0 .258.187l1.27-.668a.18.18 0 0 1 .165 0l1.27.668a.178.178 0 0 0 .257-.187L9.368 7.15a.18.18 0 0 1 .05-.158l1.028-1.001a.178.178 0 0 0-.098-.303l-1.42-.206a.18.18 0 0 1-.134-.098z" />
+</g></symbol>
+<symbol id="b-bug-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M4.978.855a.5.5 0 1 0-.956.29l.41 1.352A5 5 0 0 0 3 6h10a5 5 0 0 0-1.432-3.503l.41-1.352a.5.5 0 1 0-.956-.29l-.291.956A5 5 0 0 0 8 1a5 5 0 0 0-2.731.811l-.29-.956z" />
+  <path d="M13 6v1H8.5v8.975A5 5 0 0 0 13 11h.5a.5.5 0 0 1 .5.5v.5a.5.5 0 1 0 1 0v-.5a1.5 1.5 0 0 0-1.5-1.5H13V9h1.5a.5.5 0 0 0 0-1H13V7h.5A1.5 1.5 0 0 0 15 5.5V5a.5.5 0 0 0-1 0v.5a.5.5 0 0 1-.5.5zm-5.5 9.975V7H3V6h-.5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 0-1 0v.5A1.5 1.5 0 0 0 2.5 7H3v1H1.5a.5.5 0 0 0 0 1H3v1h-.5A1.5 1.5 0 0 0 1 11.5v.5a.5.5 0 1 0 1 0v-.5a.5.5 0 0 1 .5-.5H3a5 5 0 0 0 4.5 4.975" />
+</g></symbol>
+<symbol id="b-camera-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0" />
+  <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0" />
+</g></symbol>
+<symbol id="b-chat-dots-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M16 8c0 3.866-3.582 7-8 7a9 9 0 0 1-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7M5 8a1 1 0 1 0-2 0 1 1 0 0 0 2 0m4 0a1 1 0 1 0-2 0 1 1 0 0 0 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+</g></symbol>
+<symbol id="b-cloud-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383" />
+</g></symbol>
+<symbol id="b-envelope-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm3.436-.586L16 11.801V4.697z" />
+</g></symbol>
+<symbol id="b-gear-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z" />
+</g></symbol>
+<symbol id="b-geo-alt-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6" />
+</g></symbol>
+<symbol id="b-heart-fill" viewBox="0 0 16 16"><g fill="currentColor"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314" />
+</g></symbol>
+<symbol id="b-house-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L8 2.207l6.646 6.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293z" />
+  <path d="m8 3.293 6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293z" />
+</g></symbol>
+<symbol id="b-lightning-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641z" />
+</g></symbol>
+<symbol id="b-puzzle-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M3.112 3.645A1.5 1.5 0 0 1 4.605 2H7a.5.5 0 0 1 .5.5v.382c0 .696-.497 1.182-.872 1.469a.5.5 0 0 0-.115.118l-.012.025L6.5 4.5v.003l.003.01q.005.015.036.053a.9.9 0 0 0 .27.194C7.09 4.9 7.51 5 8 5c.492 0 .912-.1 1.19-.24a.9.9 0 0 0 .271-.194.2.2 0 0 0 .036-.054l.003-.01v-.008l-.012-.025a.5.5 0 0 0-.115-.118c-.375-.287-.872-.773-.872-1.469V2.5A.5.5 0 0 1 9 2h2.395a1.5 1.5 0 0 1 1.493 1.645L12.645 6.5h.237c.195 0 .42-.147.675-.48.21-.274.528-.52.943-.52.568 0 .947.447 1.154.862C15.877 6.807 16 7.387 16 8s-.123 1.193-.346 1.638c-.207.415-.586.862-1.154.862-.415 0-.733-.246-.943-.52-.255-.333-.48-.48-.675-.48h-.237l.243 2.855A1.5 1.5 0 0 1 11.395 14H9a.5.5 0 0 1-.5-.5v-.382c0-.696.497-1.182.872-1.469a.5.5 0 0 0 .115-.118l.012-.025.001-.006v-.003l-.003-.01a.2.2 0 0 0-.036-.053.9.9 0 0 0-.27-.194C8.91 11.1 8.49 11 8 11s-.912.1-1.19.24a.9.9 0 0 0-.271.194.2.2 0 0 0-.036.054l-.003.01v.002l.001.006.012.025c.016.027.05.068.115.118.375.287.872.773.872 1.469v.382a.5.5 0 0 1-.5.5H4.605a1.5 1.5 0 0 1-1.493-1.645L3.356 9.5h-.238c-.195 0-.42.147-.675.48-.21.274-.528.52-.943.52-.568 0-.947-.447-1.154-.862C.123 9.193 0 8.613 0 8s.123-1.193.346-1.638C.553 5.947.932 5.5 1.5 5.5c.415 0 .733.246.943.52.255.333.48.48.675.48h.238z" />
+</g></symbol>
+<symbol id="b-shield-fill-check" viewBox="0 0 16 16"><g fill="currentColor"><path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.8 11.8 0 0 0 2.517-2.453c1.678-2.195 3.061-5.513 2.465-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.146a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793z" />
+</g></symbol>
+<symbol id="b-star-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
+</g></symbol>
+<symbol id="b-trash-fill" viewBox="0 0 16 16"><g fill="currentColor"><path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
+</g></symbol>
+</defs>
+<use xlink:href="#f-activity" x="4" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-alert-octagon" x="36" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-archive" x="68" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-box" x="100" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-camera" x="132" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-compass" x="164" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-cpu" x="196" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-database" x="228" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-feather" x="260" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-gift" x="292" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-globe" x="324" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-heart" x="356" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-image" x="388" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-layers" x="420" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-map-pin" x="452" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-monitor" x="484" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-settings" x="516" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-star" x="548" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-sun" x="580" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-truck" x="612" y="4" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-user" x="4" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-wifi" x="36" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-x-octagon" x="68" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-zap" x="100" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bell-fill" x="132" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bug-fill" x="196" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-camera-fill" x="228" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-cloud-fill" x="292" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-envelope-fill" x="324" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-gear-fill" x="356" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-heart-fill" x="420" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-house-fill" x="452" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-lightning-fill" x="484" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-star-fill" x="580" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-trash-fill" x="612" y="36" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-activity" x="4" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-alert-octagon" x="36" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-archive" x="68" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-box" x="100" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-camera" x="132" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-compass" x="164" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-cpu" x="196" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-database" x="228" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-feather" x="260" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-gift" x="292" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-globe" x="324" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-heart" x="356" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-image" x="388" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-layers" x="420" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-map-pin" x="452" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-monitor" x="484" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-settings" x="516" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-star" x="548" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-sun" x="580" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-truck" x="612" y="68" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-user" x="4" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-wifi" x="36" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-x-octagon" x="68" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-zap" x="100" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bell-fill" x="132" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bug-fill" x="196" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-camera-fill" x="228" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-cloud-fill" x="292" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-envelope-fill" x="324" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-gear-fill" x="356" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-heart-fill" x="420" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-house-fill" x="452" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-lightning-fill" x="484" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-star-fill" x="580" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-trash-fill" x="612" y="100" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-activity" x="4" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-alert-octagon" x="36" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-archive" x="68" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-box" x="100" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-camera" x="132" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-compass" x="164" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-cpu" x="196" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-database" x="228" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-feather" x="260" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-gift" x="292" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-globe" x="324" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-heart" x="356" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-image" x="388" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-layers" x="420" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-map-pin" x="452" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-monitor" x="484" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-settings" x="516" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-star" x="548" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-sun" x="580" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-truck" x="612" y="132" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-user" x="4" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-wifi" x="36" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-x-octagon" x="68" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-zap" x="100" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bell-fill" x="132" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bug-fill" x="196" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-camera-fill" x="228" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-cloud-fill" x="292" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-envelope-fill" x="324" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-gear-fill" x="356" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-heart-fill" x="420" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-house-fill" x="452" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-lightning-fill" x="484" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-star-fill" x="580" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-trash-fill" x="612" y="164" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-activity" x="4" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-alert-octagon" x="36" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-archive" x="68" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-box" x="100" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-camera" x="132" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-compass" x="164" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-cpu" x="196" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-database" x="228" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-feather" x="260" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-gift" x="292" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-globe" x="324" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-heart" x="356" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-image" x="388" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-layers" x="420" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-map-pin" x="452" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-monitor" x="484" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-settings" x="516" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-star" x="548" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-sun" x="580" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-truck" x="612" y="196" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-user" x="4" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-wifi" x="36" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-x-octagon" x="68" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-zap" x="100" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bell-fill" x="132" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bug-fill" x="196" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-camera-fill" x="228" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-cloud-fill" x="292" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-envelope-fill" x="324" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-gear-fill" x="356" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-heart-fill" x="420" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-house-fill" x="452" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-lightning-fill" x="484" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-star-fill" x="580" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-trash-fill" x="612" y="228" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-activity" x="4" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-alert-octagon" x="36" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-archive" x="68" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-box" x="100" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-camera" x="132" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-compass" x="164" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-cpu" x="196" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-database" x="228" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-feather" x="260" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-gift" x="292" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-globe" x="324" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-heart" x="356" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-image" x="388" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-layers" x="420" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-map-pin" x="452" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-monitor" x="484" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-settings" x="516" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-star" x="548" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-sun" x="580" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-truck" x="612" y="260" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-user" x="4" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-wifi" x="36" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-x-octagon" x="68" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-zap" x="100" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-bell-fill" x="132" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-bug-fill" x="196" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-camera-fill" x="228" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-cloud-fill" x="292" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-envelope-fill" x="324" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-gear-fill" x="356" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-heart-fill" x="420" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-house-fill" x="452" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-lightning-fill" x="484" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-star-fill" x="580" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#b-trash-fill" x="612" y="292" width="24" height="24" color="#cf222e"/>
+<use xlink:href="#f-activity" x="4" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-alert-octagon" x="36" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-archive" x="68" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-box" x="100" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-camera" x="132" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-compass" x="164" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-cpu" x="196" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-database" x="228" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-feather" x="260" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-gift" x="292" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-globe" x="324" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-heart" x="356" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-image" x="388" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-layers" x="420" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-map-pin" x="452" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-monitor" x="484" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-settings" x="516" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-star" x="548" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-sun" x="580" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-truck" x="612" y="324" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-user" x="4" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-wifi" x="36" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-x-octagon" x="68" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-zap" x="100" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-bell-fill" x="132" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-bug-fill" x="196" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-camera-fill" x="228" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-cloud-fill" x="292" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-envelope-fill" x="324" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-gear-fill" x="356" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-heart-fill" x="420" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-house-fill" x="452" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-lightning-fill" x="484" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-star-fill" x="580" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#b-trash-fill" x="612" y="356" width="24" height="24" color="#8250df"/>
+<use xlink:href="#f-activity" x="4" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-alert-octagon" x="36" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-archive" x="68" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-box" x="100" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-camera" x="132" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-compass" x="164" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-cpu" x="196" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-database" x="228" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-feather" x="260" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-gift" x="292" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-globe" x="324" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-heart" x="356" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-image" x="388" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-layers" x="420" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-map-pin" x="452" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-monitor" x="484" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-settings" x="516" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-star" x="548" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-sun" x="580" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-truck" x="612" y="388" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-user" x="4" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-wifi" x="36" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-x-octagon" x="68" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-zap" x="100" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bell-fill" x="132" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-bug-fill" x="196" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-camera-fill" x="228" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-cloud-fill" x="292" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-envelope-fill" x="324" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-gear-fill" x="356" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-heart-fill" x="420" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-house-fill" x="452" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-lightning-fill" x="484" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-star-fill" x="580" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#b-trash-fill" x="612" y="420" width="24" height="24" color="#24292f"/>
+<use xlink:href="#f-activity" x="4" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-alert-octagon" x="36" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-archive" x="68" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-box" x="100" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-camera" x="132" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-compass" x="164" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-cpu" x="196" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-database" x="228" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-feather" x="260" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-gift" x="292" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-globe" x="324" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-heart" x="356" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-image" x="388" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-layers" x="420" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-map-pin" x="452" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-monitor" x="484" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-settings" x="516" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-star" x="548" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-sun" x="580" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-truck" x="612" y="452" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-user" x="4" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-wifi" x="36" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-x-octagon" x="68" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-zap" x="100" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bell-fill" x="132" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-bug-fill" x="196" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-camera-fill" x="228" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-cloud-fill" x="292" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-envelope-fill" x="324" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-gear-fill" x="356" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-heart-fill" x="420" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-house-fill" x="452" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-lightning-fill" x="484" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-star-fill" x="580" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#b-trash-fill" x="612" y="484" width="24" height="24" color="#0969da"/>
+<use xlink:href="#f-activity" x="4" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-alert-octagon" x="36" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-archive" x="68" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-box" x="100" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-camera" x="132" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-compass" x="164" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-cpu" x="196" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-database" x="228" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-feather" x="260" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-gift" x="292" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-globe" x="324" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-heart" x="356" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-image" x="388" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-layers" x="420" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-map-pin" x="452" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-monitor" x="484" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-settings" x="516" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-star" x="548" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-sun" x="580" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-truck" x="612" y="516" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-user" x="4" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-wifi" x="36" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-x-octagon" x="68" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-zap" x="100" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bell-fill" x="132" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-bug-fill" x="196" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-camera-fill" x="228" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-cloud-fill" x="292" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-envelope-fill" x="324" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-gear-fill" x="356" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-heart-fill" x="420" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-house-fill" x="452" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-lightning-fill" x="484" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-star-fill" x="580" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#b-trash-fill" x="612" y="548" width="24" height="24" color="#1a7f37"/>
+<use xlink:href="#f-activity" x="4" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-alert-octagon" x="36" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-archive" x="68" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-box" x="100" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-camera" x="132" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-compass" x="164" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-cpu" x="196" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-database" x="228" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-feather" x="260" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-gift" x="292" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-globe" x="324" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-heart" x="356" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-image" x="388" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-layers" x="420" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-map-pin" x="452" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-monitor" x="484" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-settings" x="516" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-star" x="548" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-sun" x="580" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-truck" x="612" y="580" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-user" x="4" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-wifi" x="36" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-x-octagon" x="68" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#f-zap" x="100" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bell-fill" x="132" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bookmark-star-fill" x="164" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-bug-fill" x="196" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-camera-fill" x="228" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-chat-dots-fill" x="260" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-cloud-fill" x="292" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-envelope-fill" x="324" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-gear-fill" x="356" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-geo-alt-fill" x="388" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-heart-fill" x="420" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-house-fill" x="452" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-lightning-fill" x="484" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-puzzle-fill" x="516" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-shield-fill-check" x="548" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-star-fill" x="580" y="612" width="24" height="24" color="#9a6700"/>
+<use xlink:href="#b-trash-fill" x="612" y="612" width="24" height="24" color="#9a6700"/>
+</svg>

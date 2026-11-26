@@ -215,6 +215,9 @@ License: MIT
 24 icons from the feather-icons 4.29.2 npm package, unchanged.
 Location: tests/Images/Input/Svg/Icons/Feather
 
+tests/Images/Input/Svg/Icons/icon-sheet-synthetic.svg is derived from these
+icons: it holds each of them as a symbol and draws the symbols in a grid.
+
 Copyright (c) 2013-2023 Cole Bemis
 
 Feather is distributed under the MIT License. The full license text is in
@@ -227,6 +230,9 @@ License: MIT
 
 16 icons from the bootstrap-icons 1.13.2 npm package, unchanged.
 Location: tests/Images/Input/Svg/Icons/Bootstrap
+
+tests/Images/Input/Svg/Icons/icon-sheet-synthetic.svg is derived from these
+icons: it holds each of them as a symbol and draws the symbols in a grid.
 
 Copyright (c) 2019-2024 The Bootstrap Authors
 

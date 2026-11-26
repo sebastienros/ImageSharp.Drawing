@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: accepted. Phases 0 to 5 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, section 16 the phase 4 (filters) results, and section 17 the phase 5 (decoder, CSS, and SVG 2) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md` to `SVG_IMPLEMENTATION_PHASE5.md`; phase 6 (performance) is planned in `SVG_IMPLEMENTATION_PHASE6.md`.
+Status: accepted. Phases 0 to 5 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, section 16 the phase 4 (filters) results, and section 17 the phase 5 (decoder, CSS, and SVG 2) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md` to `SVG_IMPLEMENTATION_PHASE5.md`; phase 6 (performance) is planned in `SVG_IMPLEMENTATION_PHASE6.md` and in progress: section 18 holds its baseline (the comparison matrix, peak memory, the ranked targets, and their profiles).
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -355,6 +355,10 @@ Sizes: 100, 1000, and 4000 pixels on the long edge. Small sizes expose fixed ove
 | Patterns, markers, and an embedded image | Phase 2 paint and content | `pattern-chart-synthetic.svg`, synthetic |
 | Text-heavy document | Shaping and glyph drawing | `text-heavy-synthetic.svg` and `text-decorations-synthetic.svg`, synthetic |
 | Filter-heavy documents | Phase 4 filters | `filter-shadows-synthetic.svg` (96 drop shadows), `filter-blur-synthetic.svg` (one large blur), `filter-chain-synthetic.svg` (chains of several primitive kinds), synthetic |
+| Custom properties and CSS functions | Phase 5 CSS | `css-features-synthetic.svg` (48 cards), synthetic |
+| Chart with text | Thin strokes, text labels, line series | `chart-dashboard-synthetic.svg` (phase 6), synthetic |
+| Map with many strokes | Stroker and stroke rasterization | `street-map-synthetic.svg` (phase 6, 3,600 strokes), synthetic |
+| Icon sprite | `symbol` and `use` | `icon-sheet-synthetic.svg` (phase 6, 400 instances of the 40 corpus icons, MIT) |
 
 ### 9.3 Fairness rules
 
@@ -824,6 +828,333 @@ Phase 5 adds two needs to section 15.4: a way to turn off the default features t
 | `white-space` values `preserve-spaces`, `discard`, `text-wrap-mode`, `white-space-trim` | Chromium renders no difference in SVG text. |
 | `font-variant-east-asian` | Parsed and applied, but not verified: no font of the suite or of the test fonts has the features. |
 | Animation, scripting, `foreignObject`, SVG fonts | Non-goals (section 2). |
+
+## 18. Phase 6 Baseline
+
+This section is the measured state at the start of phase 6 (commit a8614c9): the comparison matrix, the peak memory of the processes, the ranked targets, a profile of each target, the answers to the open items of section 1 of `SVG_IMPLEMENTATION_PHASE6.md`, and the patterns of the ImageSharp source that apply. No product code changed for it.
+
+### 18.1 Method
+
+- Machine: a shared 4-core Intel Xeon 2.30 GHz container (AVX-512), .NET 10.0.15, Ubuntu 24.04.5, BenchmarkDotNet 0.15.8, concurrent workstation GC. The machine is noisy: the same case moves by more than its error column between runs.
+- Matrix: `LoadSvg`, `RenderSvg` (`SvgSkia`, `ImageSharp`, `ImageSharp_SingleThreaded`), and `LoadAndRenderSvg` (all five methods) for every corpus entry at 100, 1000, and 4000 pixels, short job (3 warmup, 3 measured iterations, 1 launch). The error column is the 99.9% interval of BenchmarkDotNet; with 3 iterations it is wide. A difference counts only where the intervals do not overlap.
+- Deciding runs: every cell that could rank a target ran again with 5 warmup and 15 measured iterations (`LoadAndRenderSvg` and `RenderSvg` at 1000 pixels for every entry, `LoadAndRenderSvg` at 4000 pixels for twelve entries and at 100 pixels for four). Only these runs rank targets.
+- Comparability: before the timings counted, every renderer's output at 1000 pixels was compared with the Chromium oracle (`--verify svg 1000`, `tests/SvgTools/render-svg.js` with the benchmark font, `compare-png.js` with a pixel threshold of 32). Every renderer draws every document, with one exception: Svg.Skia and NetVips render `CssFeatures` black (67.2% total difference for both, 0.02% for ImageSharp.Drawing), so its cells are not comparable. The three new documents differ from the oracle by 0.02% to 0.43% total difference for every renderer (antialiasing of thin lines and glyphs).
+- `RenderSvg` of Svg.Skia replays its recorded picture. For the three filter documents at 100 and 1000 pixels the replay is far cheaper than the first draw: FilterChain 2.5 ms against 67 ms for `LoadAndRenderSvg` minus `LoadSvg` at 1000 pixels, FilterShadows 1.9 against 23 ms; for the documents without filters the two agree (Tiger 6.9 against 6.7 ms, Icons 14.2 against 15.4 ms). Skia seems to keep filter results between replays (not verified in its source, which is not read). These render cells are marked not comparable; at 4000 pixels the two agree again (FilterShadows 397 against 420 ms).
+- Peak memory: `--peak <renderer> <entry> <long edge> [single]` (`SvgPeakMemory` in the benchmark project) loads and renders every document of an entry once in a fresh process and prints the high-water mark of the resident set, `VmHWM` of `/proc/self/status`; the script that starts the processes also reads `ru_maxrss` through `wait4` and both agree within 0.6 MB. The baseline of a renderer is the same run with a document of one pixel (the runtime, the renderer library, and its fonts loaded); the net peak is the median of three processes minus that baseline (Paris: one process). The output image is part of the peak (64 MB at 4000 × 4000 pixels).
+- Profiles: `--profile svg <iterations> <entry or file> <long edge> [single]` prints the stage times, the allocation per stage, the spread of the iteration times, the collections of each generation, and the GC pause time per iteration. CPU samples come from `perf` (cpu-clock, 999 Hz, frame-pointer call graphs, `DOTNET_PerfMapEnabled=1` and `DOTNET_EnableWriteXorExecute=0` so that JIT frames resolve), about 20 s of work per profile. The EventPipe thread-time sampler of `dotnet-trace` is not used for shares inside hot loops: it suspends threads at GC polls, so it put 30% to 80% of the render samples into a `BulkMoveWithWriteBarrier` call under `WorkerScratch.CreateContext`, which runs once per band of an item and does no loop of its own; `perf` puts less than 2% there. Allocation by type and call site comes from the GC allocation tick events of `dotnet-trace --profile gc-verbose` (one sample per about 100 KB), with stacks.
+- Three documents were added to the corpus, because common kinds of SVG were missing: `Chart` (`Svg/Charts/chart-dashboard-synthetic.svg`, a 2 × 2 dashboard of charts as a charting library exports it: grid lines, ticks, about 110 text labels, line series of 365 points, an area, bars, legends), `StreetMap` (`Svg/Maps/street-map-synthetic.svg`, 665 KB, water and parks, 600 buildings, and 1,792 roads drawn as a casing and a fill stroke with round caps and joins: a map with many strokes, where Paris has fills only), and `IconSheet` (`Svg/Icons/icon-sheet-synthetic.svg`, the 40 icons of the corpus as `symbol` elements of one sprite, drawn 400 times through `use` with `currentColor`). The first two are synthetic; the third is derived from the Feather and Bootstrap icons of the corpus (MIT, licenses in `Svg/Icons`).
+
+### 18.2 Matrix
+
+Short job, times in ms. "Allocated" is the managed allocation of ImageSharp.Drawing per operation, an absolute value; the managed allocation of the native renderers is not comparable and is not shown (section 2 of the phase 6 plan). "Faster reference" names a reference renderer that is faster than the faster ImageSharp.Drawing column with separated intervals, and, separately, one that is faster than the one-thread column.
+
+Load (`LoadSvg`, no size):
+
+| Document | ImageSharp.Drawing | Allocated | Svg.Skia |
+|---|---|---|---|
+| Tiger | 1.59 ± 0.137 | 1.9 MB | 5.76 ± 3.55 |
+| Paris30k | 593 ± 397 | 264.2 MB | 2428 ± 2067 |
+| Icons | 0.559 ± 0.074 | 882 KB | 3.99 ± 1.47 |
+| SoftIceCream | 0.296 ± 0.036 | 268 KB | 1.65 ± 4.91 |
+| Moose | 1.17 ± 0.685 | 999 KB | 5.26 ± 2.00 |
+| StyledLandscape | 0.162 ± 0.193 | 212 KB | 1.72 ± 5.17 |
+| Dashboard | 1.22 ± 4.05 | 1.4 MB | 5.29 ± 3.43 |
+| PatternChart | 0.488 ± 0.521 | 530 KB | 7.87 ± 12.7 |
+| TextHeavy | 4.34 ± 2.55 | 4.8 MB | 114 ± 462 |
+| TextDecorations | 3.98 ± 2.52 | 4.0 MB | 147 ± 433 |
+| FilterShadows | 2.10 ± 4.65 | 1.8 MB | 18.7 ± 7.68 |
+| FilterBlur | 0.147 ± 0.097 | 208 KB | 1.86 ± 9.75 |
+| FilterChain | 0.142 ± 0.088 | 201 KB | 1.40 ± 1.93 |
+| CssFeatures | 13.4 ± 8.48 | 14.4 MB | 31.0 ± 12.9 |
+| Chart | 2.16 ± 3.98 | 2.4 MB | 31.4 ± 87.1 |
+| StreetMap | 19.1 ± 28.0 | 10.2 MB | 75.6 ± 40.8 |
+| IconSheet | 1.88 ± 1.40 | 1.6 MB | 35.2 ± 12.1 |
+
+Render of a loaded document (`RenderSvg`; Svg.Skia replays its picture, NetVips cannot render a loaded document):
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated | Svg.Skia (replay) | Faster reference |
+|---|---|---|---|---|---|---|
+| Tiger | 100 | 1.99 ± 0.250 | 3.25 ± 9.70 | 569 KB | 1.00 ± 0.933 |  |
+| Tiger | 1000 | 9.70 ± 3.16 | 24.8 ± 14.0 | 1.9 MB | 6.62 ± 0.238 | one thread: Svg.Skia faster ×3.8 |
+| Tiger | 4000 | 64.4 ± 39.4 | 241 ± 976 | 5.3 MB | 44.9 ± 16.1 |  |
+| Paris30k | 100 | 160 ± 524 | 211 ± 92.5 | 71.2 MB | 73.5 ± 11.1 | one thread: Svg.Skia faster ×2.9 |
+| Paris30k | 1000 | 235 ± 255 | 418 ± 1383 | 84.6 MB | 2308 ± 4917 |  |
+| Paris30k | 4000 | 461 ± 372 | 1346 ± 953 | 129.1 MB | 50917 ± 28289 |  |
+| Icons | 100 | 2.66 ± 2.23 | 4.53 ± 0.904 | 523 KB | 1.56 ± 2.13 |  |
+| Icons | 1000 | 53.2 ± 26.7 | 164 ± 291 | 3.3 MB | 17.1 ± 4.54 | Svg.Skia faster ×3.1 |
+| Icons | 4000 | 645 ± 245 | 2279 ± 2316 | 12.7 MB | 254 ± 178 |  |
+| SoftIceCream | 100 | 0.284 ± 0.379 | 0.489 ± 1.17 | 71 KB | 0.159 ± 0.025 |  |
+| SoftIceCream | 1000 | 11.6 ± 5.74 | 22.6 ± 2.46 | 299 KB | 6.19 ± 2.16 | one thread: Svg.Skia faster ×3.7 |
+| SoftIceCream | 4000 | 105 ± 43.8 | 356 ± 360 | 1.3 MB | 102 ± 12.1 |  |
+| Moose | 100 | 1.36 ± 0.605 | 3.49 ± 0.239 | 268 KB | 1.09 ± 0.017 | one thread: Svg.Skia faster ×3.2 |
+| Moose | 1000 | 48.5 ± 38.0 | 167 ± 14.3 | 1.2 MB | 51.0 ± 0.652 | one thread: Svg.Skia faster ×3.3 |
+| Moose | 4000 | 520 ± 470 | 1574 ± 1700 | 4.1 MB | 542 ± 48.1 |  |
+| StyledLandscape | 100 | 0.245 ± 0.204 | 0.368 ± 0.193 | 100 KB | 0.073 ± 0.066 | one thread: Svg.Skia faster ×5.1 |
+| StyledLandscape | 1000 | 6.76 ± 10.00 | 17.8 ± 23.7 | 306 KB | 3.98 ± 5.73 |  |
+| StyledLandscape | 4000 | 78.0 ± 43.2 | 273 ± 1010 | 1.2 MB | 92.2 ± 51.0 |  |
+| Dashboard | 100 | 5.52 ± 2.63 | 4.71 ± 11.4 | 1.9 MB | 0.590 ± 0.212 |  |
+| Dashboard | 1000 | 53.1 ± 115 | 65.8 ± 181 | 4.5 MB | 9.32 ± 0.508 |  |
+| Dashboard | 4000 | 353 ± 227 | 715 ± 61.5 | 11.6 MB | 182 ± 620 |  |
+| PatternChart | 100 | 1.82 ± 0.771 | 1.98 ± 0.737 | 1.0 MB | 0.546 ± 0.164 | Svg.Skia faster ×3.3, one thread: Svg.Skia faster ×3.6 |
+| PatternChart | 1000 | 15.7 ± 11.3 | 33.0 ± 2.16 | 2.0 MB | 25.0 ± 26.5 |  |
+| PatternChart | 4000 | 185 ± 144 | 406 ± 29.6 | 5.4 MB | 546 ± 1498 |  |
+| TextHeavy | 100 | 8.67 ± 5.06 | 11.6 ± 2.26 | 6.3 MB | 0.501 ± 1.67 | Svg.Skia faster ×17.3, one thread: Svg.Skia faster ×23.2 |
+| TextHeavy | 1000 | 14.7 ± 7.55 | 26.7 ± 2.81 | 8.1 MB | 0.961 ± 0.971 | Svg.Skia faster ×15.3, one thread: Svg.Skia faster ×27.7 |
+| TextHeavy | 4000 | 57.5 ± 59.1 | 178 ± 289 | 12.6 MB | 10.5 ± 5.46 |  |
+| TextDecorations | 100 | 6.68 ± 5.09 | 14.1 ± 1.54 | 6.8 MB | 1.01 ± 1.72 | one thread: Svg.Skia faster ×14.0 |
+| TextDecorations | 1000 | 12.9 ± 9.32 | 27.6 ± 28.7 | 7.4 MB | 1.61 ± 3.68 |  |
+| TextDecorations | 4000 | 54.6 ± 26.0 | 181 ± 200 | 11.9 MB | 19.8 ± 25.0 |  |
+| FilterShadows | 100 | 5.62 ± 13.6 | 3.27 ± 7.27 | 2.3 MB | 0.453 ± 1.02 | not comparable (replay ≪ first draw) |
+| FilterShadows | 1000 | 59.8 ± 70.5 | 63.3 ± 5.38 | 5.3 MB | 2.07 ± 2.14 | not comparable (replay ≪ first draw) |
+| FilterShadows | 4000 | 495 ± 263 | 823 ± 2459 | 40.2 MB | 397 ± 576 |  |
+| FilterBlur | 100 | 1.28 ± 0.953 | 1.08 ± 0.032 | 161 KB | 0.125 ± 0.397 | not comparable (replay ≪ first draw) |
+| FilterBlur | 1000 | 28.1 ± 21.4 | 74.2 ± 25.5 | 3.2 MB | 7.81 ± 1.99 | not comparable (replay ≪ first draw) |
+| FilterBlur | 4000 | 544 ± 459 | 1372 ± 411 | 47.5 MB | 223 ± 146 | one thread: Svg.Skia faster ×6.2 |
+| FilterChain | 100 | 1.25 ± 3.15 | 1.23 ± 0.125 | 176 KB | 0.064 ± 0.016 | not comparable (replay ≪ first draw) |
+| FilterChain | 1000 | 38.4 ± 78.6 | 69.0 ± 15.0 | 3.0 MB | 2.52 ± 3.85 | not comparable (replay ≪ first draw) |
+| FilterChain | 4000 | 526 ± 544 | 1375 ± 2210 | 41.4 MB | 1232 ± 1049 |  |
+| CssFeatures | 100 | 4.48 ± 6.48 | 7.04 ± 6.11 | 2.5 MB | 0.034 ± 0.037 | not comparable |
+| CssFeatures | 1000 | 25.8 ± 35.3 | 58.8 ± 30.0 | 4.3 MB | 0.309 ± 0.086 | not comparable |
+| CssFeatures | 4000 | 134 ± 136 | 358 ± 32.9 | 11.8 MB | 4.76 ± 10.3 | not comparable |
+| Chart | 100 | 2.03 ± 3.15 | 4.15 ± 1.60 | 1.6 MB | 0.383 ± 0.626 | one thread: Svg.Skia faster ×10.8 |
+| Chart | 1000 | 8.27 ± 3.81 | 16.0 ± 14.5 | 2.4 MB | 3.56 ± 0.151 | Svg.Skia faster ×2.3 |
+| Chart | 4000 | 62.7 ± 60.4 | 188 ± 743 | 5.2 MB | 19.2 ± 41.5 |  |
+| StreetMap | 100 | 17.7 ± 8.76 | 30.3 ± 110 | 8.6 MB | 3.41 ± 8.50 |  |
+| StreetMap | 1000 | 49.1 ± 80.0 | 118 ± 35.1 | 16.7 MB | 59.6 ± 1.11 | one thread: Svg.Skia faster ×2.0 |
+| StreetMap | 4000 | 237 ± 173 | 652 ± 1743 | 48.8 MB | 370 ± 110 |  |
+| IconSheet | 100 | 3.29 ± 2.79 | 5.09 ± 3.63 | 2.4 MB | 1.37 ± 4.91 |  |
+| IconSheet | 1000 | 9.34 ± 8.97 | 21.3 ± 12.1 | 2.9 MB | 6.45 ± 1.59 | one thread: Svg.Skia faster ×3.3 |
+| IconSheet | 4000 | 51.1 ± 17.4 | 153 ± 116 | 5.3 MB | 42.6 ± 50.0 |  |
+
+Load and render (`LoadAndRenderSvg`, a new output per document inside the measured time):
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated | Svg.Skia | NetVips | NetVips, one thread | Faster reference |
+|---|---|---|---|---|---|---|---|---|
+| Tiger | 100 | 4.34 ± 3.16 | 5.00 ± 0.450 | 3.6 MB | 6.06 ± 0.102 | 6.32 ± 2.06 | 6.59 ± 2.34 |  |
+| Tiger | 1000 | 13.1 ± 13.1 | 24.9 ± 10.9 | 6.9 MB | 12.2 ± 11.4 | 28.8 ± 25.4 | 27.2 ± 13.0 |  |
+| Tiger | 4000 | 80.6 ± 190 | 191 ± 271 | 13.0 MB | 69.4 ± 140 | 164 ± 80.0 | 172 ± 97.1 |  |
+| Paris30k | 100 | 873 ± 1499 | 910 ± 1054 | 392.1 MB | 2232 ± 1345 | 1278 ± 2438 | 1123 ± 493 |  |
+| Paris30k | 1000 | 1007 ± 1430 | 1170 ± 2319 | 428.7 MB | 4718 ± 3266 | 2366 ± 5198 | 2355 ± 1926 |  |
+| Paris30k | 4000 | 1443 ± 782 | 2445 ± 5875 | 509.4 MB | 87473 ± 56106 | 36744 ± 4773 | 36587 ± 11910 |  |
+| Icons | 100 | 4.43 ± 9.33 | 4.72 ± 4.04 | 1.8 MB | 5.56 ± 0.634 | 20.3 ± 13.3 | 20.2 ± 46.4 |  |
+| Icons | 1000 | 80.1 ± 52.2 | 72.1 ± 2.61 | 4.3 MB | 24.0 ± 9.25 | 153 ± 36.7 | 128 ± 103 | Svg.Skia faster ×3.0 |
+| Icons | 4000 | 614 ± 980 | 1403 ± 2705 | 18.2 MB | 995 ± 533 | 2807 ± 1395 | 3464 ± 628 |  |
+| SoftIceCream | 100 | 0.771 ± 0.623 | 1.13 ± 3.03 | 424 KB | 2.11 ± 4.84 | 2.28 ± 5.00 | 2.43 ± 2.16 |  |
+| SoftIceCream | 1000 | 9.81 ± 5.62 | 22.0 ± 18.4 | 753 KB | 9.59 ± 7.09 | 31.7 ± 13.6 | 31.1 ± 11.1 |  |
+| SoftIceCream | 4000 | 106 ± 212 | 332 ± 652 | 1.8 MB | 160 ± 512 | 521 ± 351 | 515 ± 223 |  |
+| Moose | 100 | 2.87 ± 3.90 | 4.49 ± 5.88 | 1.8 MB | 5.31 ± 3.22 | 8.55 ± 4.90 | 8.34 ± 16.3 |  |
+| Moose | 1000 | 38.0 ± 84.4 | 106 ± 84.9 | 3.6 MB | 42.3 ± 4.34 | 198 ± 377 | 194 ± 19.6 |  |
+| Moose | 4000 | 466 ± 140 | 1474 ± 410 | 7.8 MB | 606 ± 367 | 2399 ± 610 | 2426 ± 1340 | one thread: Svg.Skia faster ×2.4 |
+| StyledLandscape | 100 | 0.726 ± 0.106 | 0.821 ± 2.26 | 352 KB | 1.43 ± 1.87 | 1.35 ± 2.35 | 1.32 ± 0.926 |  |
+| StyledLandscape | 1000 | 7.15 ± 10.8 | 16.3 ± 11.0 | 606 KB | 6.41 ± 6.90 | 9.69 ± 6.20 | 8.53 ± 7.29 |  |
+| StyledLandscape | 4000 | 73.9 ± 52.6 | 225 ± 87.6 | 1.5 MB | 146 ± 339 | 283 ± 134 | 282 ± 65.2 |  |
+| Dashboard | 100 | 7.12 ± 6.46 | 5.48 ± 0.518 | 3.5 MB | 6.28 ± 9.76 | 13.7 ± 3.97 | 13.2 ± 3.63 |  |
+| Dashboard | 1000 | 109 ± 276 | 65.7 ± 74.7 | 6.6 MB | 14.2 ± 18.9 | 979 ± 2037 | 1126 ± 2546 |  |
+| Dashboard | 4000 | 372 ± 110 | 712 ± 333 | 14.4 MB | 466 ± 3758 | 64014 ± 37210 | 59793 ± 8282 |  |
+| PatternChart | 100 | 2.85 ± 6.25 | 3.23 ± 4.00 | 1.6 MB | 14.3 ± 22.7 | 6.85 ± 7.34 | 7.52 ± 10.0 |  |
+| PatternChart | 1000 | 16.2 ± 5.87 | 47.1 ± 12.1 | 2.6 MB | 62.3 ± 221 | 184 ± 96.4 | 200 ± 519 |  |
+| PatternChart | 4000 | 215 ± 559 | 393 ± 85.6 | 6.1 MB | 667 ± 2252 | 3868 ± 2995 | 3860 ± 1342 |  |
+| TextHeavy | 100 | 11.6 ± 20.5 | 15.8 ± 19.6 | 11.4 MB | 106 ± 414 | 53.4 ± 5.78 | 56.3 ± 39.9 |  |
+| TextHeavy | 1000 | 73.1 ± 808 | 44.5 ± 4.10 | 13.0 MB | 89.0 ± 284 | 89.4 ± 77.4 | 84.1 ± 80.7 |  |
+| TextHeavy | 4000 | 144 ± 165 | 159 ± 877 | 18.0 MB | 109 ± 100 | 417 ± 134 | 383 ± 175 |  |
+| TextDecorations | 100 | 10.9 ± 10.3 | 15.3 ± 13.6 | 11.2 MB | 140 ± 116 | 35.0 ± 15.3 | 37.4 ± 67.6 |  |
+| TextDecorations | 1000 | 61.7 ± 74.6 | 42.3 ± 17.8 | 11.8 MB | 187 ± 1229 | 61.4 ± 56.5 | 56.8 ± 15.5 |  |
+| TextDecorations | 4000 | 186 ± 1977 | 129 ± 39.7 | 16.6 MB | 168 ± 28.6 | 279 ± 172 | 315 ± 405 |  |
+| FilterShadows | 100 | 10.5 ± 3.26 | 5.25 ± 7.75 | 4.6 MB | 25.6 ± 20.0 | 10.1 ± 4.78 | 10.8 ± 11.4 |  |
+| FilterShadows | 1000 | 90.7 ± 215 | 77.2 ± 405 | 8.0 MB | 51.1 ± 166 | 1048 ± 1576 | 994 ± 877 |  |
+| FilterShadows | 4000 | 341 ± 273 | 693 ± 195 | 43.5 MB | 442 ± 1198 | 19163 ± 5803 | 19214 ± 1054 |  |
+| FilterBlur | 100 | 1.52 ± 3.25 | 1.31 ± 0.689 | 390 KB | 1.99 ± 6.29 | 3.75 ± 2.12 | 3.76 ± 4.21 |  |
+| FilterBlur | 1000 | 36.0 ± 48.6 | 114 ± 690 | 3.4 MB | 32.1 ± 12.8 | 139 ± 50.4 | 138 ± 43.3 |  |
+| FilterBlur | 4000 | 608 ± 370 | 1319 ± 1919 | 47.4 MB | 685 ± 529 | 8656 ± 3596 | 8608 ± 792 |  |
+| FilterChain | 100 | 2.60 ± 5.46 | 1.63 ± 1.58 | 409 KB | 1.98 ± 1.88 | 4.17 ± 1.90 | 4.21 ± 5.00 |  |
+| FilterChain | 1000 | 49.1 ± 169 | 76.6 ± 106 | 3.2 MB | 84.6 ± 175 | 424 ± 312 | 432 ± 565 |  |
+| FilterChain | 4000 | 506 ± 140 | 1098 ± 151 | 41.7 MB | 1072 ± 288 | 46006 ± 12388 | 44072 ± 13565 |  |
+| CssFeatures | 100 | 54.8 ± 123 | 35.2 ± 244 | 17.7 MB | 34.7 ± 57.6 | 4.14 ± 6.20 | 4.26 ± 6.53 | not comparable |
+| CssFeatures | 1000 | 75.4 ± 224 | 79.7 ± 91.9 | 20.1 MB | 29.8 ± 20.6 | 6.91 ± 6.80 | 6.82 ± 14.8 | not comparable |
+| CssFeatures | 4000 | 217 ± 244 | 334 ± 142 | 28.3 MB | 49.4 ± 29.6 | 54.8 ± 17.1 | 65.1 ± 140 | not comparable |
+| Chart | 100 | 4.82 ± 0.679 | 5.17 ± 2.84 | 4.3 MB | 39.1 ± 78.3 | 13.8 ± 4.99 | 15.2 ± 16.3 |  |
+| Chart | 1000 | 9.75 ± 5.97 | 17.3 ± 21.7 | 5.3 MB | 36.6 ± 62.2 | 26.1 ± 7.87 | 27.2 ± 21.2 |  |
+| Chart | 4000 | 56.1 ± 44.1 | 144 ± 45.8 | 8.4 MB | 53.8 ± 18.6 | 139 ± 55.5 | 143 ± 108 | one thread: Svg.Skia faster ×2.7 |
+| StreetMap | 100 | 40.8 ± 58.9 | 107 ± 219 | 20.0 MB | 125 ± 335 | 85.4 ± 170 | 95.6 ± 59.1 |  |
+| StreetMap | 1000 | 69.6 ± 133 | 146 ± 399 | 28.1 MB | 239 ± 414 | 207 ± 157 | 195 ± 117 |  |
+| StreetMap | 4000 | 205 ± 125 | 536 ± 142 | 60.1 MB | 388 ± 279 | 630 ± 646 | 670 ± 332 |  |
+| IconSheet | 100 | 5.39 ± 5.72 | 6.92 ± 2.04 | 4.0 MB | 47.2 ± 57.2 | 21.0 ± 0.687 | 15.4 ± 14.7 |  |
+| IconSheet | 1000 | 11.3 ± 12.5 | 27.7 ± 46.2 | 4.7 MB | 43.1 ± 79.5 | 35.7 ± 24.4 | 32.7 ± 9.24 |  |
+| IconSheet | 4000 | 46.4 ± 14.4 | 119 ± 10.6 | 7.1 MB | 97.1 ± 32.7 | 167 ± 119 | 193 ± 137 |  |
+
+Deciding runs (5 warmup, 15 measured iterations), load and render:
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated | Svg.Skia | NetVips | NetVips, one thread | Faster reference |
+|---|---|---|---|---|---|---|---|---|
+| Tiger | 1000 | 14.0 ± 0.892 | 24.8 ± 1.27 | 6.9 MB | 12.5 ± 0.530 | — | — | Svg.Skia faster ×1.1, one thread: Svg.Skia faster ×2.0 |
+| Tiger | 4000 | 60.1 ± 1.23 | 166 ± 7.36 | 13.0 MB | 67.7 ± 9.75 | — | — | one thread: Svg.Skia faster ×2.5 |
+| Paris30k | 1000 | 844 ± 35.7 | 1033 ± 51.6 | 428.7 MB | 4093 ± 262 | — | — |  |
+| Icons | 100 | 4.20 ± 0.440 | 4.40 ± 0.238 | 1.8 MB | 5.76 ± 0.237 | — | — |  |
+| Icons | 1000 | 69.4 ± 6.39 | 73.6 ± 2.08 | 4.3 MB | 19.4 ± 2.02 | — | — | Svg.Skia faster ×3.6, one thread: Svg.Skia faster ×3.8 |
+| Icons | 4000 | 619 ± 38.4 | 1233 ± 61.0 | 18.2 MB | 858 ± 19.2 | — | — | one thread: Svg.Skia faster ×1.4 |
+| SoftIceCream | 1000 | 8.81 ± 0.278 | 21.1 ± 0.697 | 753 KB | 9.29 ± 0.283 | — | — | one thread: Svg.Skia faster ×2.3 |
+| SoftIceCream | 4000 | 102 ± 4.45 | 306 ± 7.62 | 1.8 MB | 134 ± 10.4 | — | — | one thread: Svg.Skia faster ×2.3 |
+| Moose | 1000 | 36.2 ± 1.61 | 98.8 ± 0.491 | 3.6 MB | 42.0 ± 0.093 | — | — | one thread: Svg.Skia faster ×2.4 |
+| Moose | 4000 | 435 ± 19.8 | 1535 ± 48.7 | 7.8 MB | 576 ± 22.8 | — | — | one thread: Svg.Skia faster ×2.7 |
+| StyledLandscape | 1000 | 6.37 ± 0.281 | 15.2 ± 0.617 | 606 KB | 4.65 ± 0.183 | — | — | Svg.Skia faster ×1.4, one thread: Svg.Skia faster ×3.3 |
+| StyledLandscape | 4000 | 74.8 ± 4.56 | 234 ± 14.1 | 1.5 MB | 135 ± 24.1 | — | — | one thread: Svg.Skia faster ×1.7 |
+| Dashboard | 100 | 6.55 ± 0.523 | 5.61 ± 0.229 | 3.5 MB | 5.78 ± 0.201 | — | — |  |
+| Dashboard | 1000 | 87.8 ± 16.5 | 59.5 ± 1.92 | 6.7 MB | 13.8 ± 0.419 | — | — | Svg.Skia faster ×4.3 |
+| Dashboard | 4000 | 325 ± 23.1 | 702 ± 25.7 | 14.4 MB | 206 ± 2.39 | — | — | Svg.Skia faster ×1.6, one thread: Svg.Skia faster ×3.4 |
+| PatternChart | 1000 | 15.3 ± 0.319 | 33.4 ± 1.68 | 2.6 MB | 41.9 ± 10.8 | — | — |  |
+| TextHeavy | 100 | 10.5 ± 0.320 | 13.9 ± 0.351 | 11.4 MB | 82.4 ± 5.23 | 55.8 ± 3.35 | 53.9 ± 2.29 |  |
+| TextHeavy | 1000 | 18.7 ± 1.36 | 29.7 ± 1.02 | 13.0 MB | 84.9 ± 9.87 | 88.4 ± 5.73 | 85.0 ± 5.97 |  |
+| TextHeavy | 4000 | 54.5 ± 3.65 | 123 ± 1.24 | 18.0 MB | 99.1 ± 0.965 | — | — | one thread: Svg.Skia faster ×1.2 |
+| TextDecorations | 100 | 11.3 ± 0.863 | 13.8 ± 0.713 | 11.1 MB | 131 ± 12.1 | 32.8 ± 1.48 | 33.7 ± 2.95 |  |
+| TextDecorations | 1000 | 19.2 ± 1.97 | 33.8 ± 5.87 | 11.8 MB | 137 ± 15.1 | 60.2 ± 4.73 | 58.9 ± 3.36 |  |
+| FilterShadows | 100 | 10.9 ± 1.19 | 5.01 ± 0.138 | 4.6 MB | 25.0 ± 1.90 | 9.72 ± 0.616 | 9.65 ± 0.356 |  |
+| FilterShadows | 1000 | 85.3 ± 16.0 | 65.6 ± 5.62 | 8.0 MB | 41.3 ± 1.79 | 978 ± 90.8 | 877 ± 67.8 | Svg.Skia faster ×1.6 |
+| FilterShadows | 4000 | 460 ± 41.1 | 681 ± 4.40 | 43.5 MB | 438 ± 15.5 | — | — | one thread: Svg.Skia faster ×1.6 |
+| FilterBlur | 1000 | 30.8 ± 1.73 | 72.9 ± 0.512 | 3.4 MB | 26.2 ± 1.15 | — | — | Svg.Skia faster ×1.2, one thread: Svg.Skia faster ×2.8 |
+| FilterBlur | 4000 | 513 ± 21.0 | 1250 ± 37.0 | 47.4 MB | 663 ± 21.1 | — | — | one thread: Svg.Skia faster ×1.9 |
+| FilterChain | 100 | 1.69 ± 0.187 | 1.24 ± 0.088 | 408 KB | 2.19 ± 0.167 | — | — |  |
+| FilterChain | 1000 | 44.0 ± 5.96 | 68.2 ± 0.389 | 3.2 MB | 68.2 ± 6.36 | — | — |  |
+| Chart | 1000 | 9.21 ± 0.682 | 16.0 ± 0.173 | 5.3 MB | 28.9 ± 0.991 | — | — |  |
+| Chart | 4000 | 40.7 ± 1.46 | 118 ± 2.16 | 8.4 MB | 46.9 ± 1.58 | — | — | one thread: Svg.Skia faster ×2.5 |
+| StreetMap | 1000 | 62.2 ± 5.44 | 120 ± 1.26 | 28.1 MB | 114 ± 2.23 | — | — | one thread: Svg.Skia faster ×1.0 |
+| StreetMap | 4000 | 215 ± 14.0 | 578 ± 38.4 | 60.1 MB | 424 ± 13.9 | — | — | one thread: Svg.Skia faster ×1.4 |
+| IconSheet | 1000 | 11.2 ± 0.385 | 20.5 ± 0.415 | 4.7 MB | 35.1 ± 1.42 | — | — |  |
+| IconSheet | 4000 | 45.9 ± 3.19 | 122 ± 7.60 | 7.1 MB | 82.4 ± 6.14 | — | — | one thread: Svg.Skia faster ×1.5 |
+
+FilterShadows at 1000 pixels ran twice with the default threads in this job: 48.5 ± 3.0 ms and 85.3 ± 16.0 ms (the table shows the second); the one-thread runs gave 61.5 ± 1.7 and 65.6 ± 5.6 ms. The default-thread configuration of this document varies between runs by more than its intervals.
+
+Deciding runs, render of a loaded document at 1000 pixels:
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated | Svg.Skia (replay) | Faster reference |
+|---|---|---|---|---|---|---|
+| Tiger | 1000 | 10.4 ± 0.785 | 22.8 ± 0.132 | 1.9 MB | 6.91 ± 0.223 | Svg.Skia faster ×1.5, one thread: Svg.Skia faster ×3.3 |
+| Paris30k | 1000 | 229 ± 16.7 | 365 ± 65.2 | 84.6 MB | 1985 ± 99.8 |  |
+| Icons | 1000 | 51.6 ± 4.62 | 150 ± 3.20 | 3.3 MB | 14.2 ± 2.02 | Svg.Skia faster ×3.6, one thread: Svg.Skia faster ×10.6 |
+| SoftIceCream | 1000 | 8.59 ± 0.369 | 22.7 ± 0.251 | 299 KB | 6.09 ± 0.284 | Svg.Skia faster ×1.4, one thread: Svg.Skia faster ×3.7 |
+| Moose | 1000 | 37.5 ± 1.41 | 103 ± 5.17 | 1.2 MB | 39.6 ± 1.53 | one thread: Svg.Skia faster ×2.6 |
+| StyledLandscape | 1000 | 5.99 ± 0.204 | 16.4 ± 0.371 | 306 KB | 3.55 ± 0.040 | Svg.Skia faster ×1.7, one thread: Svg.Skia faster ×4.6 |
+| Dashboard | 1000 | 55.2 ± 8.43 | 59.9 ± 1.99 | 4.5 MB | 9.92 ± 0.513 | Svg.Skia faster ×5.6, one thread: Svg.Skia faster ×6.0 |
+| PatternChart | 1000 | 14.9 ± 0.634 | 34.4 ± 1.25 | 2.0 MB | 25.0 ± 1.58 | one thread: Svg.Skia faster ×1.4 |
+| TextHeavy | 1000 | 14.8 ± 0.653 | 28.6 ± 1.19 | 8.1 MB | 1.01 ± 0.041 | Svg.Skia faster ×14.6, one thread: Svg.Skia faster ×28.3 |
+| TextDecorations | 1000 | 11.9 ± 0.715 | 26.0 ± 0.107 | 7.4 MB | 1.40 ± 0.025 | Svg.Skia faster ×8.5, one thread: Svg.Skia faster ×18.6 |
+| FilterShadows | 1000 | 53.1 ± 9.24 | 59.9 ± 0.461 | 5.3 MB | 1.92 ± 0.043 | not comparable (replay ≪ first draw) |
+| FilterBlur | 1000 | 31.9 ± 2.93 | 80.1 ± 1.29 | 3.2 MB | 9.51 ± 0.333 | not comparable (replay ≪ first draw) |
+| FilterChain | 1000 | 33.3 ± 1.07 | 69.2 ± 1.28 | 3.0 MB | 2.52 ± 0.203 | not comparable (replay ≪ first draw) |
+| Chart | 1000 | 7.12 ± 0.473 | 15.6 ± 0.354 | 2.4 MB | 3.59 ± 0.017 | Svg.Skia faster ×2.0, one thread: Svg.Skia faster ×4.3 |
+| StreetMap | 1000 | 46.0 ± 3.24 | 112 ± 0.877 | 16.7 MB | 63.9 ± 2.24 | one thread: Svg.Skia faster ×1.7 |
+| IconSheet | 1000 | 8.53 ± 0.392 | 19.7 ± 0.166 | 2.9 MB | 6.36 ± 0.046 | Svg.Skia faster ×1.3, one thread: Svg.Skia faster ×3.1 |
+
+Loading is faster than Svg.Skia for every document (2.3 to 37 times by the means); the CSS features document is the slowest load per byte (13.4 ms and 14.4 MB for 56 KB). For load and render, NetVips is not faster with separated intervals in any comparable cell (the closest is FilterShadows at 100 pixels: NetVips 9.72 ± 0.62 ms against 10.9 ± 1.2 ms with the default threads, overlapping, and 5.01 ± 0.14 ms with one thread); where Svg.Skia is faster, section 18.4 lists it. Rendering a loaded document is slower than the Svg.Skia replay almost everywhere, because every `DrawSvg` emits the commands and builds the scene again (section 18.4, rank 5).
+
+### 18.3 Peak Memory
+
+Net peak resident set in MB of one load and render in a fresh process (median of three processes minus the baseline of the same configuration; Paris one process). "Largest" is the configuration with the largest net peak.
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Svg.Skia | NetVips | NetVips, one thread | Largest |
+|---|---|---|---|---|---|---|---|
+| Paris30k | 1000 | 457 | 456 | 483 | 223 | 223 | Svg.Skia |
+| StreetMap | 1000 | 35 | 37 | 61 | 11 | 11 | Svg.Skia |
+| FilterBlur | 1000 | 22 | 20 | 32 | 18 | 18 | Svg.Skia |
+| FilterChain | 1000 | 22 | 17 | 34 | 19 | 19 | Svg.Skia |
+| FilterShadows | 1000 | 14 | 12 | 49 | 19 | 19 | Svg.Skia |
+| Dashboard | 1000 | 13 | 13 | 17 | 12 | 12 | Svg.Skia |
+| PatternChart | 1000 | 10 | 10 | 26 | 6 | 6 | Svg.Skia |
+| Moose | 1000 | 8 | 8 | 17 | 3 | 3 | Svg.Skia |
+| TextHeavy | 1000 | 19 | 19 | 45 | 3 | 3 | Svg.Skia |
+| Icons | 1000 | 10 | 9 | 19 | 25 | 2 | NetVips |
+| Tiger | 1000 | 11 | 11 | 17 | 2 | 2 | Svg.Skia |
+| CssFeatures | 1000 | 27 | 35 | 25 | 1 | 1 | ImageSharp.Drawing, one thread (not comparable) |
+| Paris30k | 4000 | 591 | 589 | 537 | 340 | 333 | ImageSharp.Drawing |
+| StreetMap | 4000 | 130 | 129 | 118 | 126 | 126 | ImageSharp.Drawing |
+| FilterBlur | 4000 | 238 | 240 | 253 | 348 | 347 | NetVips |
+| FilterChain | 4000 | 146 | 145 | 217 | 210 | 209 | Svg.Skia |
+| FilterShadows | 4000 | 98 | 100 | 198 | 126 | 126 | Svg.Skia |
+| Dashboard | 4000 | 84 | 76 | 63 | 213 | 213 | NetVips |
+| PatternChart | 4000 | 66 | 65 | 110 | 150 | 127 | NetVips |
+| Moose | 4000 | 79 | 79 | 63 | 117 | 117 | NetVips |
+| TextHeavy | 4000 | 70 | 75 | 92 | 95 | 95 | NetVips |
+| Icons | 4000 | 90 | 86 | 70 | 274 | 179 | NetVips |
+| Tiger | 4000 | 80 | 79 | 67 | 117 | 117 | NetVips |
+| CssFeatures | 4000 | 78 | 75 | 68 | 87 | 87 | NetVips (not comparable) |
+
+Baselines (MB): none default 42.0, imagesharp default 62.3, imagesharp single 62.4, svgskia default 59.8, netvips default 54.5, netvips single 53.9
+
+ImageSharp.Drawing has the largest peak only for Paris at 4000 pixels (591 MB against 537 MB for Svg.Skia and 340 MB for NetVips) and StreetMap at 4000 pixels (130 against 118 and 126 MB; a margin of 4 MB to NetVips). CssFeatures is not comparable (the others draw nothing). At 1000 pixels Svg.Skia has the largest peak for every comparable document but Icons. Paris loads 14 MB of path data into 264 MB of managed allocation, and a load and render allocates 429 to 509 MB (section 18.4, rank 6).
+
+### 18.4 Ranked Targets
+
+Threshold for managed allocation: an operation that allocates more than 10 MB, or a fresh render that allocates more than the bytes of its output image (4 bytes per pixel), or steady-state allocation that triggers full (generation 2) collections. No allocation grows with the number of draws of a loaded document: every render allocates the same amount.
+
+Gaps are from the deciding runs (15 iterations, 99.9% intervals, all separated unless stated). Rank follows the size of the gap and how common the content is.
+
+| Rank | Target | Where a reference is faster, or the cost | Content | Hot spot (perf, one thread) |
+|---|---|---|---|---|
+| 1 | Solid fills and strokes at large sizes | Icons load and render at 1000 px: Svg.Skia 19.4 ± 2.0 ms, ours 69.4 ± 6.4 (×3.6), one thread 73.6 ± 2.1 (×3.8); at 4000 px one thread ×1.4. One thread, 4000 px: Chart ×2.5, Tiger ×2.5, IconSheet ×1.5, StreetMap ×1.4; Tiger at 1000 px ×1.1 and one thread ×2.0 | Icons, logos, charts, maps, line art: the most common SVG | `PixelBlender.BlendWithCoverage` with a solid color: 43.6% self plus 16% for the conversions of the destination row to and from `Vector4` (Icons, 1000 px); 20% in Tiger, 13% in Chart and IconSheet, 21% in StreetMap with the scalar remainders |
+| 2 | Gradient fills | One thread: Moose ×2.4 (1000 px) and ×2.7 (4000 px), SoftIceCream ×2.3, StyledLandscape ×3.3 (default threads ×1.4) | Design-tool exports, emoji, illustrations | `GradientBrushRenderer.this[x, y]`: 56% (Moose) to 60% (SoftIceCream at 4000 px) self, per pixel a virtual position call, a stop search, a `Vector4.Lerp`, and an encode to `Rgba32` that the blender converts back |
+| 3 | Layers, masks, coverage clips | Dashboard at 1000 px: Svg.Skia 13.8 ± 0.4 ms, ours 87.8 ± 16.5 (×6.4), one thread 59.5 ± 1.9 (×4.3); at 4000 px ×1.6 and ×3.4; at 100 px the default threads are slower than Svg.Skia (6.55 ± 0.52 against 5.78 ± 0.20 ms) and than one thread (5.61 ± 0.23) | Masks and clips of design exports; less common, largest gap | Path clip coverage `ApplyPathClip` 59% inclusive (9.5% self), gradients 20%, mask effects 12% (`ExecuteApplyItem`: a new `Image` and a processor per mask band), layer composite 7%; with the default threads 7% kernel time and 6% semaphore waits from one `Parallel.For` per scene segment |
+| 4 | Filters | FilterShadows at 1000 px: Svg.Skia 38.7 to 41.3 ms, ours 48.5 to 85.3 (×1.3 to ×2.1), one thread 61.5 to 65.6 (×1.6); at 4000 px one thread ×1.6. FilterBlur at 1000 px ×1.2, one thread ×2.8; at 4000 px one thread ×1.9 | Drop shadows of design tools: common in exports | Drawing the filter result through `SvgTextureBrush` (bilinear sample and encode per pixel): 25% (shadows) and 31% (blur) of all samples; blur passes 15% to 17%; the copy of every result into a new array: 57% (shadows) to 94% (blur at 4000 px) of the allocated bytes |
+| 5 | Fresh render of a loaded document | Svg.Skia replays a picture: one thread TextHeavy ×28, TextDecorations ×19, Icons ×11, Dashboard ×6, Chart ×4.3, Tiger ×3.3 | A service that renders the same document many times; `DrawingBackendScene` already replays without this cost | Every render emits the commands and builds the scene again: the scene build is 11% (Icons) to 47% (IconSheet) of a load and render in the stage profiles, Tiger 40%, TextHeavy 34% (`FlushScene.Create`, one `LinearizerX16Y16` object, line blocks, and band arrays per path); the text documents allocate 6.5 to 13 MB per render (a retained scene about 5 KB, section 15.3) |
+| 6 | Managed allocation and collections | Paris load and render 429 MB (1000 px) and 509 MB (4000 px), with 784 ms of GC pause per 1709 ms iteration (46%), and the largest peak at 4000 px; nested SVG images 129 MB per load and draw with 36% GC pause; StreetMap render 8.8, 17, and 49 MB at 100, 1000, 4000 px (220, 4, and 0.8 times the output); filter documents 40 to 48 MB per render at 4000 px; CssFeatures load 14.4 MB | Large documents and maps; embedded SVG images | `PointF[]` of Bézier flattening (28% of Paris), done three times per path (bounds, vertex count, geometry); `ILineSegment` objects of path data; nested node arrays; see 18.5 |
+| 7 | Load of custom properties and `Identify` | CssFeatures load 13.4 ± 8.5 ms (still faster than Svg.Skia, 31 ms); `Identify` costs a full load (1.8 to 18.0 ms against 1.8 to 16.8 ms for `SvgDocument.Load`; a root-only read takes 0.02 to 0.04 ms) | Design systems with custom properties; image services that read sizes | See 18.6 |
+
+### 18.5 Profiles
+
+Stage shares are from `--profile svg`; CPU shares from `perf` with one thread unless stated; allocation shares from the allocation ticks. Shares are of all samples of the profile, which also loads the document and creates the output image.
+
+- **Icons, 1000 px, one thread** (load and render 84 ms per iteration of 40 icons): scene render 83%, scene build 11%, read 4%. Self: `PixelBlender<Rgba32, NormalSrcOver>.BlendWithCoverageFunction` 43.6%, `SimdUtils.ByteToNormalizedFloat` 6.7%, `ConvertFloatToByteRemainder` 4.4%, `FloatToByteSaturate` 3.0%, `ConvertByteToNormalizedFloatRemainder` 2.2% (60% in the solid-color blend path that `SolidBrushRenderer.Apply` calls; the frame-pointer call graph loses frames inside the blender, so the inclusive shares of its callers are too low and are not used), `ImageFrameCollection` constructor 5.3% (clearing the new output), coverage rasterization (`EmitRows`, `LineUp`/`LineDown`) about 6%. Allocation 4.0 MB per iteration: `LineArrayX32Y16Block` 30% (stroke linearizer), `PointF[]` 20% (curve flattening).
+- **Moose, 1000 px, one thread** (138 ms): scene render 92%. Self: `GradientBrushRenderer.this[x, y]` 56.2%, `BlendWithCoverageFunction` 14.2%, row conversions 6.5%, `FlushBufferedRun` 3.7%. SoftIceCream at 4000 px: `this[x, y]` 60.5%, blend 13.3%.
+- **Tiger, 1000 px, one thread** (37 ms): scene build 40%, scene render 52%. Self: blend 18.9%, scalar conversion remainders 6.7%, `CubicBezierLineSegment.SubdivideAndAppend` 3.9%, rasterizer line walking 9%, `Linearizer.ProcessContained` 2.4%, `Path.BuildLinearGeometry` 1.5%, stroke linearizer 2.6%. Allocation 7.0 MB per load and render: `PointF[]` 61% (`FlattenedPointBuilder.EnsureCapacity` 18%, `BuildLinearGeometry` 11%, `SubdivideAndAppend` 10%, `FlattenCurve` 9%), line blocks 21%.
+- **Dashboard, 1000 px** (83 ms with either thread count): scene render 68%, scene build 19 to 23%. One thread inclusive: `ApplyPathClip` 59.2% (self 9.5%), `ApplyClipDescriptors` 31%, `ApplyRectangleClip` 15.8%, gradients 20.0% self, `ExecuteApplyItem` 12%, `CompositeLayerBand` 7.4%, `ImageBrush` 5%. Default threads: the same work plus `[kernel]` 7.2% (scheduling), `LowLevelLifoSemaphore.Wait` 6.4%, `libcoreclr` 8.2%; the scene runs one `Parallel.For` per segment (`ExecuteSceneSegments`), each mask and layer barrier ends a segment, and the document has about 240 layers (14.2), so many small loops wake the workers. Load and render with the default threads is slower than with one thread (87.8 ± 16.5 against 59.5 ± 1.9 ms); the render of a loaded document alone overlaps (55.2 ± 8.4 against 59.9 ± 2.0 ms). Allocation 6.5 MB per iteration: `FlushScene.SceneOperationBlock` byte arrays 12%, line blocks 16%, `PointF[]` 19%.
+- **FilterShadows, 1000 px, one thread** (88 ms): emit (filter engine) 49%, scene render 52% (the two overlap: the engine renders the source of each element on a nested canvas). Self: `SvgTextureBrush.SampleBilinear` 10.5%, `UnassociatedGradientPixelEncoder.Encode` 7.7%, `SvgTextureBrush.Index` 3.8% and `ToVector` 3.5% (25.5% to draw the 96 results), blur 15.4% (`Passes.Apply` 7.6%, the horizontal pass 7.8%), `SvgFeComposite.PorterDuff` 3.6%, `SvgFeOffset.Mix` 3.2%, `SvgFilterColor.Convert` 2.5%. Allocation 7.6 MB per iteration, 57% of it `Rgba32[]` from `SvgFilterEngine.TryRender` (line 248: each result is copied into a new array for the texture).
+- **FilterBlur, 1000 px, one thread** (77 ms): `SvgTextureBrush.Apply` 31.2% self (the result is drawn at the scale of the device, so every sample is a bilinear lookup of a texel that a copy would give), gradients of the source 11.1%, blur passes 18%, blend 8.7%. At 4000 px 94.5% of the 48 MB per render is the result copy, and every iteration runs four generation 2 collections (20 in 5 iterations).
+- **FilterChain, 1000 px, one thread** (106 ms): `SvgTextureBrush.Apply` 24.2%, `SvgFeTurbulence.Render` 11.7%, `SvgFeColorMatrix` 3.5%, blur 5%, `SvgFeComponentTransfer` 2.6%, lighting 2.3%, `powf` 1.7%.
+- **TextHeavy, 1000 px, one thread** (40 ms): resolve 13% (text layout and shaping 12.5% of the CPU samples), emit 10%, scene build 34%, scene render 47%. Self: `Linearizer.ProcessContained` 11.5%, `ExecuteRasterizableItem` 8.5%, blend 7.3%. Inclusive: `FlushScene.ProcessPathCommand` 23.7%, `CreateRasterizableGeometry` 20.2%: thousands of small glyph paths, each with its own linearizer and band arrays. Allocation 13.3 MB per load and render: line blocks 22%, `SvgRenderNode[]` 8%, `SvgTextCluster[]` 7%, `DrawingCanvasState` 6% (one per `Save`), `LinearizerX16Y16` 5.5%; 17 generation 2 collections in 50 iterations.
+- **Paris, 1000 px, one thread** (1709 ms): read 41%, resolve 11%, scene build 33%, scene render 6%; GC pause 784 ms per iteration (46%), and `libcoreclr` holds 30% of the CPU samples. Inclusive: `SvgReader.ReadAttributes` 33%, `Path.TryAppendSvgPath` 12%, `FlushScene.ProcessPathCommand` 23%, `ComplexPolygon.ToLinearGeometry` 5.5%. Allocation: `PointF[]` 28% (`CubicBezierLineSegment.FlattenCurve` 12%: called from `LinearVertexCount`, `Path.CalculateBounds`, and `BuildLinearGeometry`), `string` 7.6%, `SvgSpecifiedStyle[]` 7.5% (one per element from `ReadAttributes`), `ILineSegment[]` 6.5%, `LinearLineSegment` 6.1%, line blocks 5.6%.
+- **StreetMap, 1000 px, one thread** (193 ms): read 21%, scene build 18%, scene render 55%. Self: blend 8.9%, `ConvertFloatToByteRemainder` 7.1% and `ConvertByteToNormalizedFloatRemainder` 4.6% (short stroke spans make the scalar tails of the row conversions expensive), `EmitRows` 7.0%, `RetainedStrokeRasterData.ExecuteBand` 4.9%. At 4000 px the render allocates 49 MB: `LineArrayX32Y16Block` 41% (`AppendLine` and `SplitAcrossBands`), `RasterizableBandInfo[]` 7%.
+- **Chart, 1000 px, one thread** (35 ms): scene render 43%, scene build 19%, resolve 22%. Self: blend 13.3%, `ApplyRectangleClip` 7.3% (23.7% inclusive). The rectangle is the root viewport clip of `SvgEmitter.Draw`, which applies because the destination is 666.67 pixels high on a canvas of 667: every row of every draw then walks `ApplyRectangleInterior`, which computes the axis coverage of each column. IconSheet (17% inclusive) has the same cost from the viewport clips of its 400 `use` instances of symbols.
+- **CssFeatures** and **nested SVG images**: section 18.6.
+
+### 18.6 Open Items of Phase 5
+
+**The render signal against 68408c9.** The phase 5 signal is not real. The tree of commit 68408c9 (`git archive`, built in Release on the same machine) and the current tree ran `RenderSvg.ImageSharp` and `ImageSharp_SingleThreaded` at 1000 pixels for the three filter documents, Tiger, and the icon set, in 10 alternating rounds (68408c9 first in each round) of 5 warmup and 20 measured iterations. The mean of the per-round ratios lies within its 95% interval of 1 for every case: Filter Blur one thread −1.9 ± 4.9% (phase 5: +10.4 ± 8.4%), default threads +0.1 ± 9.2%; Filter Shadows one thread −3.8 ± 4.5%; Filter Chain one thread −0.2 ± 6.9%; Tiger one thread +0.4 ± 3.2%, default +4.4 ± 10.8%; Icons one thread +1.2 ± 4.1%. The ratio pooled over the ten cases is −0.3% (95% interval −4.3% to +3.8%; after 6 rounds it was +0.9%, −4.9% to +7.0%). The five rounds of phase 5 (+5.2%, +2.6% to +7.8%) overlap this interval only above +2.6%, so any change is smaller than about 4%. Allocation is equal, or 10 KB lower for Filter Blur and Filter Chain. This agrees with the source: the layer limit pass (`SvgEmitter.GetLargestLayerPixels`) runs only for documents with scope nodes and is one pass over the render nodes without allocation for up to 64 nested scopes, against a render that takes 10 to 155 ms. No fix is needed.
+
+**The load cost of custom properties.** The CSS features document (56 KB, 48 cards) loads in 13.4 ± 8.5 ms with 14.4 MB (short job; `DecodeSvg.DocumentLoad` with default options, 15 iterations: 16.8 ± 2.7 ms, 14.7 MB). A stage profile at 10 pixels (600 iterations, one thread, so the render is negligible) splits it into read and cascade 6.8 ms (1.5 MB) and resolve 12.5 ms (13.2 MB); every fifth iteration runs a generation 2 collection, 5.2 ms of GC pause per iteration. CPU (`perf`): resolve 50% of the samples, of which `SvgComputedStyle.SubstituteVariables` 30% inclusive, the boxes of the `clip-path` basic shapes 19% (`GetClipShapeBox` → `TryGetChildrenStrokeBoundingBox`, which strokes each child with `PolygonStroker` and `StrokedShapeGenerator` to find its stroke box, 6.4%), and object bounding boxes 13% (`Path.CalculateBounds` through `CubicBezierLineSegment.get_Bounds`, which flattens the curve); read 24%, nearly all in `SvgPropertyParser.TryParse` (21%: `SvgCalc` parsing 10%, color functions 5%); the runtime (`libcoreclr`, the collector) 12%. Allocation: `SvgCalc.Parser.TryParseValue` 17.6% (a `double[]` per parsed value) plus `Term` and `SvgCalcOperation[]` 7%; curve flattening for bounds 13% (`FlattenCurve` from `get_Bounds`); `SubstituteVariables` 10% (`StringBuilder`, `char[]`, `string`). Two thirds of the substitution allocation comes from the bounding box walks (`TryGetChildrenBoundingBox` 3.8%, `TryGetChildrenStrokeBoundingBox` 3.7%, against 2.9% from `ResolveElement`): the computed style of an element, with its `var()` substitution, is computed again for every box query of an ancestor. So the first things to try, in this order: compute the style of an element once per resolve and reuse it in the box walks (up to two thirds of the 30% substitution share); a parsed `calc()` expression without a heap array per value (25% of the allocation); bounds of curves from their control-point hull or their extrema instead of a flattening (13% of the allocation); a stroke box that does not build the stroke outline, where that gives the same box (19% of the CPU), and the stroke box cached per element once computed. The cache of substituted values per declaration that the plan names comes after these; the profile does not show the substitution itself (`SvgVariableSubstitution.Substitute` 1.1% of the allocation) as the main cost.
+
+**The cost of `Image.Identify`.** `Image.Identify` through `SvgDecoder` loads the whole document with default load options. `DecodeSvg` (5 warmup, 15 measured iterations, default options): Tiger 1.80 ± 0.19 ms against `SvgDocument.Load` 1.77 ± 0.19 ms, Icons (40 documents) 0.77 ± 0.15 against 0.63 ± 0.10 ms, TextHeavy 8.19 ± 1.02 against 8.16 ± 0.98 ms (11.9 MB; with the system fonts the text load costs twice as much as with the benchmark font, 4.34 ms and 4.8 MB), FilterShadows 1.83 ± 0.33 against 1.94 ± 0.35 ms, CssFeatures 18.0 ± 1.6 against 16.8 ± 2.7 ms (14.7 MB); every pair of intervals overlaps and the allocation is equal within 3.5% (the Icons metadata). The floor of a cheaper path is a document that keeps only the prolog and the root start tag (plus one pixel of content, so that the profile can render): its read and resolve take 0.025 ms (Tiger), 0.029 ms (CssFeatures), 0.021 ms (FilterShadows), and 0.037 ms (TextHeavy), with 9 to 11 KB (stage profile, 2,000 iterations, one thread). An `Identify` that reads the root element and its style only would therefore cost 70 to 600 times less for these documents. It must give the same size as the full load: the root size can use font-relative units (`em`, `ex`, `ch`) whose font size can come from a `<style>` rule anywhere in the document, and percentages, so the cheap path needs the root style (17.7); a root whose `width`, `height`, and `viewBox` are absolute lengths could take the attributes alone.
+
+**Drawing an embedded SVG image many times.** The document of `SvgNestedImageTextTests.NestingWithTextAtEveryLevel_IsBounded` (each level a 100 × 100 image with one text line and ten instances of the next level; the image nesting limit stops at the fifth level, so 11,110 nested documents draw, 10,000 of them at the deepest level) was profiled with Open Sans named on the text. A load and draw at 100 pixels allocates 129 MB and takes 87 to 397 ms on one thread (median 150 to 171 ms in three runs of 50 iterations) and 59 to 367 ms with the default threads; 10 levels cost the same as 5 (median 187 ms), as the test expects. The stages: resolve 34 to 43 ms (50 MB), emit 43 to 65 ms (47 MB), scene build 53 to 82 ms (32 MB), scene render 5 ms. The variation comes from the garbage collector: the 50 iterations run 41 to 43 generation 2 collections, and the GC pause averages 56 to 69 ms per iteration, which is the difference between the fastest iteration (87 ms) and the median. Server GC narrows the spread to 130 to 208 ms with the same median, and a large-object threshold of 16 MB narrows it to 101 to 207 ms, so the full collections are triggered by large-object allocations. Where the bytes come from: `SvgResolver.AddNestedDocument` 31% (the `SvgRenderNode[]` of the growing node list 16% and the dictionary of transforms 8%, both large arrays that grow by doubling), `CreateRasterizableGeometry` 20% (a linearizer, band arrays, and line blocks per glyph path), `SvgEmitter.EmitState.DrawNode` 15% (a `DrawingCanvasState` and a `DrawingOptions` per instance), `PrepareCompositionCore` 7.5%, `DrawingCanvas.Clip` 4% (one clip descriptor per instance). CPU: scene build 43%, emit 27%, resolve 21%; `libcoreclr` (the collector) 25% of the samples and page faults 6%. A draw of a nested document is a scope with a clip for each instance, and every instance repeats the canvas state, the options, and the geometry of its glyph paths although the 10,000 deepest instances share one nested document.
+
+### 18.7 ImageSharp Patterns
+
+From the SixLabors.ImageSharp 4.1.2 source (`/home/user/sixlabors/imagesharp`, tag v4.1.2, the version that `ImageSharp.Drawing.csproj` references). "Public" means the helper is public API of the package; an internal helper needs an equivalent of our own.
+
+| Pattern | ImageSharp file | Where it applies here | Helper |
+|---|---|---|---|
+| Row operations as structs (`IRowOperation`, `IRowIntervalOperation<TBuffer>`) run by `ParallelRowIterator`, which uses a minimum of 4,096 pixels per task (`ParallelExecutionSettings.DefaultMinimumPixelsProcessedPerTask`) and runs inline when there is one step | `Advanced/ParallelRowIterator.cs`, `Advanced/ParallelExecutionSettings.cs`, used by `Processing/Processors/Transforms/Linear/AffineTransformProcessor{TPixel}.cs` | `DefaultDrawingBackend.ExecuteSceneRows` (a `Parallel.For` with `localInit` and body delegates for every segment, without a minimum of work: the Dashboard default-thread slowdown), `ExecuteApplyItemParallel`, `FlushScene.Create`, `SvgFilterEngine.ForEachBand` (an `Action<int, int>` with a closure per call, visible as `<Blur>b__0`) | Public |
+| One scratch buffer per task, sized by the operation (`IRowOperation<TBuffer>.GetRequiredBufferLength`) | `Advanced/IRowOperation{TBuffer}.cs`, `Advanced/ParallelRowIterator.Wrappers.cs` | Per-geometry objects of the scene build: one `LinearizerX16Y16` per path (5% of TextHeavy and 11% of the nested document allocation), line blocks, `RasterizableBandInfo[]` | Public |
+| Bulk pixel conversion with modifiers: `PixelOperations<TPixel>.ToVector4` and `FromVector4Destructive` with `PixelConversionModifiers.Scale \| Premultiply` per row | `PixelFormats/PixelOperations{TPixel}.cs`, used by `Processing/Processors/Convolution/ConvolutionProcessor{TPixel}.cs` | `SvgTextureBrush.Renderer.Apply` and `GradientBrushRenderer.Apply` encode each sample to `TPixel` one at a time, then the blender converts the row back to `Vector4`; `PixelBlender<TPixel>.BlendWithCoverage<TPixelSrc>` takes any source pixel type, so a row of `RgbaVector` (four floats) skips the byte round trip | Public (`RgbaVector`, `BlendWithCoverage<TPixelSrc>`); the SIMD converters (`SimdUtils`) are internal |
+| Row blending through `PixelBlender<TPixel>` with caller scratch | `PixelFormats/PixelBlender{TPixel}.cs` | Already used by every brush renderer; `DefaultDrawingBackend.ComposeLayer` still calls the overload that rents a buffer per row | Public |
+| Lookup tables for transfer functions (`CompandingUtilities` caches a table per function) | `ColorProfiles/Companding/CompandingUtilities.cs`, `ColorProfiles/Companding/SRgbCompanding.cs` | A color ramp per gradient brush instead of the stop search, the `Lerp`, and the encode per pixel (`GradientBrush.GradientBrushRenderer.this[x, y]`); `SvgFilterColor` already uses tables | Public, but the table is built for one function of one channel; the ramp needs its own table |
+| `Vector128`/`Vector256`/`Vector512` paths with a scalar fallback for premultiplication and clamping | `Common/Helpers/Numerics.cs` (`Premultiply(Span<Vector4>)`, `Clamp`) | `SvgTextureBrush` samples and premultiplies per pixel; `GradientBrush` positions per pixel | Internal (`Numerics`); the public route is `PixelOperations` with the `Premultiply` modifier |
+| Pooled memory from `MemoryAllocator`, `IMemoryOwner<T>`, and `Buffer2D<T>` instead of new arrays | `Memory/Allocators/MemoryAllocator.cs`, `Memory/Buffer2D{T}.cs` | `SvgFilterEngine.TryRender` copies each filter result into `new Rgba32[]` (94% of the FilterBlur allocation at 4000 px, large-object allocations that trigger full collections); `SvgTexture` of pattern tiles | Public |
+| Bounds checks removed with `Unsafe.Add(ref MemoryMarshal.GetReference(span), i)` in loops proven in range | `PixelFormats/PixelOperations{TPixel}.Generated.cs`, `Processing/Processors/Convolution/Convolution2DRowOperation{TPixel}.cs` | `GradientBrushRenderer.Apply` (its own comment: "TODO: Remove bounds checks"), `SvgTextureBrush.Renderer.Apply`, `ApplyRectangleInterior` | Language feature |
+| No delegate, closure, or interface call per pixel | `Processing/Processors/Convolution/Convolution2PassProcessor{TPixel}.cs` (the operations are structs passed by `in`) | `GradientBrushRenderer.this[x, y]` calls the virtual `PositionOnGradient` per pixel; the filter primitives run through `Action<int, int>` closures | — |
+| Pools trimmed on generation 2 collections only after a trim period or under memory pressure (`TrimSettings`: 60 s, half the buffers) | `Memory/Allocators/Internals/UniformUnmanagedMemoryPool.cs` | `DefaultDrawingBackend.WorkerState.Gen2TrimSentinel` trims the worker pool on every generation 2 collection; with the large-object allocations of rank 6 these come every iteration (four per FilterBlur render at 4000 px) | Internal (`Gen2GcCallback`); our own sentinel exists |
+
+Not found in the ImageSharp source as a reusable helper: a solid-color fill of a full-coverage span (the blender always converts to `Vector4`); an axis-aligned clip that narrows a span instead of multiplying coverage per pixel.
+
+### 18.8 Order of the Work
+
+From the ranks and the shares above (each gain is the measured share of the hot spot, an upper bound, not a promise):
+
+1. Core fill and stroke first (ranks 1, 2, and the path allocations of rank 6), because it serves every document and every canvas user:
+   - a full-coverage, opaque solid-color run written directly instead of blended (the solid blend path is 60% of Icons at 1000 px, 20% of Tiger, 13% of Chart; how much of it is full coverage is not measured);
+   - a color ramp per gradient brush and per-row evaluation without a virtual call per pixel (56% to 60% of the gradient documents);
+   - an axis-aligned rectangle clip that narrows the span once per row (7.3% self in Chart; also every `use` of a symbol);
+   - curves flattened once per path at a scale and reused for the bounds, the vertex count, and the geometry (12% of the Paris allocation, `SubdivideAndAppend` 3.9% of Tiger).
+2. Layers and compositing second (rank 3): the path clip coverage (59% of Dashboard), mask effects without a new image per band (12%), a minimum of work per parallel loop as in `ParallelRowIterator` (load and render of the Dashboard with the default threads is 28 ms slower than with one thread; kernel scheduling and semaphore waits are 14% of its samples).
+3. Filters third (rank 4): draw a result at the device scale with a row copy and blend instead of bilinear samples (25% of FilterShadows, 31% of FilterBlur), and keep the result in pooled memory until the canvas has drawn it (57% to 94% of their allocation).
+4. Emit, scene build, and text fourth (ranks 5 and 6): the per-path objects of the scene build, the canvas state and options per node, the nested document instances (129 MB per draw), and the text scene build.
 
 ## Sources
 

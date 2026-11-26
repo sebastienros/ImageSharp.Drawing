@@ -67,21 +67,22 @@ internal static class SvgImageSharpRenderer
     /// <summary>
     /// Prints a stopwatch breakdown of the ImageSharp.Drawing stages for one corpus entry: the XML read with the
     /// cascade, the resolve stage, the emit stage (recording the canvas commands), the scene build (command
-    /// preparation, stroking, flattening, and coverage), and the scene render (compositing into the target).
+    /// preparation, stroking, flattening, and coverage), and the scene render (compositing into the target). It also
+    /// prints the spread of the iteration times, the garbage collections of each generation, and the GC pause time.
     /// </summary>
     /// <remarks>
     /// The stages run in sequence on one canvas, which is how one fresh render of <see cref="RenderSvg"/> runs them,
     /// except that the scene build and the scene render are separate calls here. The first iterations warm up the
     /// JIT and the pools and are not reported.
     /// </remarks>
-    /// <param name="name">The corpus entry.</param>
+    /// <param name="name">The corpus entry, or the path of an SVG file.</param>
     /// <param name="longEdge">The output length of the longer side, in pixels.</param>
     /// <param name="iterations">The number of measured iterations.</param>
     /// <param name="singleThreaded">Whether the canvas uses one thread.</param>
     public static void Profile(string name, int longEdge, int iterations, bool singleThreaded)
     {
         WarmThreadPool();
-        byte[][] documents = SvgBenchmarkCorpus.ReadDocuments(name);
+        byte[][] documents = SvgBenchmarkCorpus.ReadEntryOrFile(name);
         Configuration configuration = singleThreaded ? CreateSingleThreadedConfiguration() : Configuration.Default;
         SvgLoadOptions loadOptions = SvgBenchmarkFonts.CreateLoadOptions();
         SvgLimits limits = loadOptions.Limits;
@@ -95,12 +96,31 @@ internal static class SvgImageSharpRenderer
         long startTimestamp = 0;
         long startAllocation = 0;
         int warmup = Math.Max(2, iterations / 5);
+
+        // The total time of each measured iteration, and the collections of each generation and the GC pause time over
+        // the measured iterations, so that the spread between iterations and the garbage collections behind it are
+        // visible.
+        double[] totals = new double[iterations];
+        int[] collections = new int[3];
+        TimeSpan pauseStart = TimeSpan.Zero;
         for (int iteration = 0; iteration < warmup + iterations; iteration++)
         {
             if (iteration == warmup)
             {
                 Array.Clear(milliseconds);
                 Array.Clear(allocated);
+                for (int generation = 0; generation < collections.Length; generation++)
+                {
+                    collections[generation] = GC.CollectionCount(generation);
+                }
+
+                pauseStart = GC.GetTotalPauseDuration();
+            }
+
+            double before = 0;
+            for (int i = 0; i < milliseconds.Length; i++)
+            {
+                before += milliseconds[i];
             }
 
             foreach (byte[] bytes in documents)
@@ -143,7 +163,25 @@ internal static class SvgImageSharpRenderer
                 End(4);
                 scene.Dispose();
             }
+
+            if (iteration >= warmup)
+            {
+                double after = 0;
+                for (int i = 0; i < milliseconds.Length; i++)
+                {
+                    after += milliseconds[i];
+                }
+
+                totals[iteration - warmup] = after - before;
+            }
         }
+
+        for (int generation = 0; generation < collections.Length; generation++)
+        {
+            collections[generation] = GC.CollectionCount(generation) - collections[generation];
+        }
+
+        double pauseMilliseconds = (GC.GetTotalPauseDuration() - pauseStart).TotalMilliseconds;
 
         double sum = 0;
         long allocatedSum = 0;
@@ -162,6 +200,14 @@ internal static class SvgImageSharpRenderer
         }
 
         Console.WriteLine($"  {"total",-16} {sum / iterations,10:0.000} ms        {allocatedSum / iterations / 1024.0,10:0.0} KB");
+
+        Array.Sort(totals);
+        Console.WriteLine(
+            $"  iteration totals: min {totals[0]:0.000} ms, median {totals[totals.Length / 2]:0.000} ms, " +
+            $"90th percentile {totals[Math.Min(totals.Length - 1, totals.Length * 9 / 10)]:0.000} ms, max {totals[^1]:0.000} ms");
+        Console.WriteLine(
+            $"  collections over the measured iterations: gen0 {collections[0]}, gen1 {collections[1]}, gen2 {collections[2]}, " +
+            $"pause {pauseMilliseconds / iterations:0.000} ms per iteration");
 
         // Records the start of a stage.
         void Begin()

@@ -66,6 +66,17 @@ public class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "--peak")
+        {
+            // Usage: --peak <renderer> <corpus entry, file, empty, or none> <longEdge> [single]
+            string renderer = args.Length > 1 ? args[1].ToLowerInvariant() : "none";
+            string entry = args.Length > 2 ? args[2] : "none";
+            int longEdge = args.Length > 3 && int.TryParse(args[3], out int parsedLongEdge) ? parsedLongEdge : 1000;
+            bool singleThreaded = args.Length > 4 && args[4] == "single";
+            Svg.SvgPeakMemory.Run(renderer, entry, longEdge, singleThreaded);
+            return;
+        }
+
         if (args.Length > 0 && args[0] == "--profile")
         {
             string target = args.Length > 1 ? args[1] : string.Empty;
