@@ -202,6 +202,14 @@ internal sealed class SvgTextStyle
     public float GlyphOrientationHorizontal { get; set; }
 
     /// <summary>
+    /// Gets or sets the <c>text-decoration-line</c> values that ancestors set. CSS propagates a decoration to the
+    /// descendants of the element that sets it, so text draws the lines of this value and of its own
+    /// <see cref="TextDecorationLine"/>. It is not a property: <see cref="GetChildStyle"/> adds the line of the parent,
+    /// and <see cref="Clone"/> keeps it.
+    /// </summary>
+    public SvgTextDecorationLine AncestorDecorationLine { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether a property that does not inherit has a value other than its initial value.
     /// </summary>
     public bool HasNonInheritedValues
@@ -247,6 +255,7 @@ internal sealed class SvgTextStyle
         {
             SvgTextStyle child = this.Clone();
             child.CopyProperties(NonInheritedProperties, Initial);
+            child.AncestorDecorationLine = this.AncestorDecorationLine | this.TextDecorationLine;
             this.childStyle = child;
         }
 

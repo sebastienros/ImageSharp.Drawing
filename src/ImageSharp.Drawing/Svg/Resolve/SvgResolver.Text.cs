@@ -375,6 +375,14 @@ internal sealed partial class SvgResolver
     partial void EmitTextDecorations(SvgTextLayout layout, int start, int end, SvgTextSpan span, in SvgResolveContext context, int firstNode);
 
     /// <summary>
+    /// Hook of package T3 for <c>text-decoration</c> in a <c>clipPath</c>: adds the decoration lines of the visible clusters
+    /// to the clip geometry, as Chromium paints them into the clip. Without an implementation only glyphs clip.
+    /// </summary>
+    /// <param name="layout">The layout.</param>
+    /// <param name="paths">The clip geometry in the user space of the text.</param>
+    static partial void AddTextDecorationClipPaths(SvgTextLayout layout, List<IPath> paths);
+
+    /// <summary>
     /// Returns the object bounding box of a <c>text</c> element, or of a <c>tspan</c>, <c>a</c>, or <c>textPath</c> of
     /// the text whose nodes resolve.
     /// </summary>
@@ -477,6 +485,7 @@ internal sealed partial class SvgResolver
             }
         }
 
+        AddTextDecorationClipPaths(layout, paths);
         IPath? path = paths.Count == 0 ? null : new ComplexPolygon([.. paths]);
         clipPaths.Add(layout, path);
         return path;

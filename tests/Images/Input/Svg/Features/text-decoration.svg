@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"
+     font-family="Inter" font-weight="300" font-size="20">
+    <text x="10" y="26" text-decoration="underline">Under</text>
+    <text x="105" y="26" text-decoration="line-through" fill="blue">Strike</text>
+    <text x="10" y="56" text-decoration="underline overline line-through" fill="lime" stroke="green">All three</text>
+    <text x="10" y="88" fill="black">
+        <tspan text-decoration="underline" fill="red">Pa<tspan fill="blue">int</tspan></tspan> from
+        <tspan text-decoration="underline" fill="orange" stroke="purple">set</tspan>
+    </text>
+    <g text-decoration="underline" fill="red">
+        <text x="10" y="118" fill="teal">From g</text>
+    </g>
+    <text x="110" y="118" text-decoration="underline" letter-spacing="3">ls</text>
+    <text x="10 30 50 70" y="150 146 154 150" text-decoration="underline" fill="navy">Move</text>
+    <text x="110" y="150" rotate="0 15 30" text-decoration="underline">Rot</text>
+    <clipPath id="clip">
+        <text x="10" y="186" text-decoration="underline line-through" font-size="26">Clip</text>
+    </clipPath>
+    <rect x="0" y="160" width="100" height="40" fill="green" clip-path="url(#clip)"/>
+    <text x="190" y="186" text-anchor="end" text-decoration="underline">a<tspan visibility="hidden">b</tspan>c</text>
+</svg>

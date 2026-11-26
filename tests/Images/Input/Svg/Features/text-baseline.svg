@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"
+     font-family="Open Sans" font-size="16">
+    <path d="M 0 30 H 200 M 0 70 H 200 M 0 110 H 200 M 0 150 H 200 M 0 185 H 200" stroke="silver" stroke-width="1"/>
+    <text x="4" y="30">x<tspan dominant-baseline="hanging">hang</tspan><tspan dominant-baseline="middle">mid</tspan><tspan dominant-baseline="central">cen</tspan><tspan dominant-baseline="text-before-edge">top</tspan></text>
+    <text x="4" y="70">x<tspan dominant-baseline="text-after-edge">bot</tspan><tspan dominant-baseline="ideographic">ide</tspan><tspan dominant-baseline="mathematical">mat</tspan><tspan dominant-baseline="alphabetic">alp</tspan></text>
+    <text x="4" y="110" dominant-baseline="hanging" fill="blue">Hang<tspan font-size="10">small</tspan><tspan alignment-baseline="alphabetic">alpha</tspan><tspan alignment-baseline="middle" fill="red">mid</tspan></text>
+    <text x="4" y="150">x<tspan baseline-shift="super">sup<tspan baseline-shift="super" font-size="10">sup</tspan></tspan><tspan baseline-shift="sub" fill="green">sub</tspan><tspan baseline-shift="-6">len</tspan><tspan baseline-shift="50%" font-size="10">pct</tspan><tspan baseline-shift="baseline">x</tspan></text>
+    <text x="4" y="185">text<tspan font-size="24" baseline-shift="10%" rotate="20">rot</tspan><tspan alignment-baseline="hanging" text-decoration="underline">und</tspan></text>
+</svg>
