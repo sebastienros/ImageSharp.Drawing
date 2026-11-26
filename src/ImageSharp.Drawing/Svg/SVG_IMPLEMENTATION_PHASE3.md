@@ -170,7 +170,7 @@ T2 adapted two files from the SVG text layout code of the Blink engine of Chromi
 
 The new code must not derive from the old code or from any renderer source.
 
-- The main session removes both files, the Chromium entry of `THIRD-PARTY-NOTICES`, and the Blink sources that T2 had downloaded, in a commit of its own before the package starts. The package starts from a tree without them.
+- The first action of the package is `git rm` of both files, without opening them, so that no search or read can show their content afterward. The main session has already deleted the Blink sources that T2 had downloaded. The Chromium entry of `THIRD-PARTY-NOTICES` goes when the new code is in place.
 - Do not read the removed files in the Git history, in other work trees, or in the session transcript. Do not read or download source code of Chromium, Blink, WebKit, Gecko, Skia, resvg, librsvg, or any other SVG renderer.
 - Allowed sources: the SVG 2 specification (the text chapter with its layout algorithm, `textPath`, `textLength`, and `lengthAdjust`), SVG 1.1, the CSS specifications it refers to, the tests and reference images of this repository, the resvg suite images, and the Chromium oracle as a black box (rendered output only).
 - State in the hand-back report which sources were used, and confirm that none of the excluded ones was.
