@@ -12,7 +12,7 @@ From the results sections of `SVG_DESIGN.md` (short BenchmarkDotNet jobs on a sh
 
 - Loading is faster than Svg.Skia by a wide margin for every measured document (3 to 50 times). The earlier results sections also compare managed allocation between renderers; that comparison is not valid (section 2), and package Z6 rewords those sentences. Loading is not a target unless package Z1 finds a document where a reference renderer loads faster.
 - Phase 5 did not make loading slower beyond noise: the phase 5 integration measured `LoadSvg` against commit 68408c9 over 14 alternating rounds and found a pooled change of +0.4% (95% interval −2.6% to +3.6%). `SVG_DESIGN.md` section 17.3 has the numbers. Loading of documents without the new features is not a target.
-- Phase 5 left one render signal unexplained: five alternating rounds at 1000 pixels against 68408c9 (the three filter documents, Tiger, and the icon set) gave a pooled +5.2% (+2.6% to +7.8%), with Filter Blur on one thread at +10.4 ± 8.4%, and a stage profile of Filter Blur did not repeat it. The only change of phase 5 on the render path is the layer limit pass before a draw (`SvgEmitter.Layers.cs`). Package Z1 settles it: measure the render of these documents against 68408c9 with a longer job, and if the difference is real, find the cause and make the layer limit pass cost nothing for documents it cannot affect.
+- The render signal that phase 5 left open is not real: the baseline ran ten alternating rounds against 68408c9 and found a pooled −0.3% (95% interval −4.3% to +3.8%). No fix is needed.
 - Custom properties are slow to load: the CSS features document (56 KB, 48 cards) takes about 14 ms and 14.4 MB to load, about eight times the Tiger, because every element substitutes its `var()` declarations and parses the result again. It is a target of package Z4 (profile first: a cache of substituted values per declaration and set of custom property values is the first thing to try).
 - `Image.Identify` through the SVG decoder costs a full load of the document (section 17.7 of `SVG_DESIGN.md`). It is a target of package Z4 if the profile of Z1 shows a cheaper path that keeps the result equal.
 - Drawing an embedded SVG image many times is slow and varies much between runs: a document that draws ten thousand instances of a small nested document with one text line takes 90 to 360 ms on this machine. Package Z1 profiles it with the other targets.
@@ -46,6 +46,10 @@ The packages run one after the other, because each needs the machine alone for i
 | Z6 | Memory close-out and final numbers: the allocation audit, peak memory, the final matrix, `SVG_DESIGN.md`. |
 
 The order of Z2 to Z5 follows the ranked list of Z1: if Z1 shows that another area costs more, the main session reorders them.
+
+After Z1 the order is Z2, Z3, Z5, Z4, Z6. `SVG_DESIGN.md` section 18 is the baseline: 18.4 ranks the targets, 18.5 and 18.6 hold the profiles, 18.7 the ImageSharp patterns, and 18.8 what each package tries first. Each package starts from those profiles and measures against the numbers of section 18.2. The load of custom properties and `Image.Identify` (18.6) belong to Z4.
+
+The profiles of Z1 used `perf` (`/usr/lib/linux-tools/6.8.0-151-generic/perf`, with `DOTNET_PerfMapEnabled=1` and `DOTNET_EnableWriteXorExecute=0`), because the thread-time sampler of `dotnet-trace` put 30% to 80% of the render samples at a GC poll where `perf` shows under 2%. The tool was installed with apt in the container and is gone after a restart; install it again when it is missing.
 
 ## 4. Package Z1: Baseline and Targets
 
