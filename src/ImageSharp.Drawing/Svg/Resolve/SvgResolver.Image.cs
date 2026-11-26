@@ -24,7 +24,7 @@ internal sealed partial class SvgResolver
     /// The largest size of a decompressed <c>svgz</c> resource, so that a small compressed resource cannot expand into
     /// an unbounded amount of memory.
     /// </summary>
-    private const int MaxDecompressedSvgBytes = 64 * 1024 * 1024;
+    internal const int MaxDecompressedSvgBytes = 64 * 1024 * 1024;
 
     /// <summary>
     /// The font collection of nested SVG documents: a collection without fonts, so their text draws nothing.
@@ -411,7 +411,7 @@ internal sealed partial class SvgResolver
     /// <param name="stream">The compressed resource.</param>
     /// <returns>The decompressed resource, positioned at its start.</returns>
     /// <exception cref="InvalidDataException">The data is not valid gzip, or it decompresses past the limit.</exception>
-    private static MemoryStream Decompress(Stream stream)
+    internal static MemoryStream Decompress(Stream stream)
     {
         using GZipStream gzip = new(stream, CompressionMode.Decompress, true);
         MemoryStream result = new();

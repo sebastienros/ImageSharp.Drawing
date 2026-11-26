@@ -86,8 +86,10 @@ public sealed class SvgLimits
 
     /// <summary>
     /// Gets or sets the largest total number of decoded pixels of all <c>image</c> elements of one document. An image
-    /// that would exceed the limit does not draw; the rest of the document still loads. The default is 67,108,864
-    /// (64 × 1024 × 1024).
+    /// that would exceed the limit does not draw; the rest of the document still loads. The same limit bounds the image
+    /// that <see cref="SvgDocument.Render{TPixel}(Configuration, Color)"/> creates at the intrinsic size of the document
+    /// and the image that <see cref="SvgDecoder"/> creates: a larger one throws <see cref="InvalidImageContentException"/>
+    /// before its pixels are allocated. The default is 67,108,864 (64 × 1024 × 1024).
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
     public long MaxImagePixels
