@@ -46,7 +46,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// </summary>
     /// <param name="input">The input index.</param>
     /// <param name="deviation">The standard deviation along x and y in user units; neither is negative and one is positive.</param>
-    private SvgFeGaussianBlur(int input, Vector2 deviation)
+    internal SvgFeGaussianBlur(int input, Vector2 deviation)
         : base([input])
         => this.deviation = deviation;
 

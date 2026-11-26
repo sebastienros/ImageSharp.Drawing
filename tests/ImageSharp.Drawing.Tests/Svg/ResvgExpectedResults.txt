@@ -86,26 +86,26 @@ filters/feColorMatrix/type=saturate.svg pass
 filters/feColorMatrix/without-a-type.svg pass
 filters/feColorMatrix/without-attributes.svg pass
 filters/feComponentTransfer/invalid-type.svg pass
-filters/feComponentTransfer/mixed-types.svg fail filters: X2 (feComponentTransfer)
+filters/feComponentTransfer/mixed-types.svg pass
 filters/feComponentTransfer/no-children.svg pass
-filters/feComponentTransfer/type=discrete-on-blue.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=gamma-on-blue.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=gamma-with-an-invalid-offset.svg fail filters: X2 (feComponentTransfer)
+filters/feComponentTransfer/type=discrete-on-blue.svg pass
+filters/feComponentTransfer/type=gamma-on-blue.svg pass
+filters/feComponentTransfer/type=gamma-with-an-invalid-offset.svg pass
 filters/feComponentTransfer/type=gamma-with-invalid-values.svg pass
 filters/feComponentTransfer/type=identity-on-all.svg pass
 filters/feComponentTransfer/type=linear-on-blue.svg pass
 filters/feComponentTransfer/type=linear-with-invalid-values.svg pass
-filters/feComponentTransfer/type=linear-with-large-values.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-and-tableValues=1-0-1.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-and-tableValues=1.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-and-tableValues=100--100.svg fail filters: X2 (feComponentTransfer)
+filters/feComponentTransfer/type=linear-with-large-values.svg pass
+filters/feComponentTransfer/type=table-and-tableValues=1-0-1.svg pass
+filters/feComponentTransfer/type=table-and-tableValues=1.svg pass
+filters/feComponentTransfer/type=table-and-tableValues=100--100.svg pass
 filters/feComponentTransfer/type=table-and-tableValues=1px.svg pass
-filters/feComponentTransfer/type=table-on-alpha.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-on-blue-twice.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-on-blue-with-sRGB-interpolation.svg fail filters: X2 (feComponentTransfer)
-filters/feComponentTransfer/type=table-on-blue.svg fail filters: X2 (feComponentTransfer)
+filters/feComponentTransfer/type=table-on-alpha.svg pass
+filters/feComponentTransfer/type=table-on-blue-twice.svg pass
+filters/feComponentTransfer/type=table-on-blue-with-sRGB-interpolation.svg pass
+filters/feComponentTransfer/type=table-on-blue.svg pass
 filters/feComponentTransfer/type=table-with-an-empty-tableValues.svg pass
-filters/feComponentTransfer/type=table-with-large-values.svg fail filters: X2 (feComponentTransfer)
+filters/feComponentTransfer/type=table-with-large-values.svg pass
 filters/feComponentTransfer/type=table-without-tableValues.svg pass
 filters/feComposite/default-operator.svg pass
 filters/feComposite/empty.svg pass
@@ -177,14 +177,14 @@ filters/feDistantLight/default-attributes.svg pass
 filters/feDistantLight/negative-azimuth-and-elevation.svg pass
 filters/feDistantLight/only-azimuth.svg pass
 filters/feDistantLight/only-elevation.svg pass
-filters/feDropShadow/hsla-color.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/only-stdDeviation.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/stdDeviation=0.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/with-flood-color.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/with-flood-opacity.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/with-offset-clipped.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/with-offset.svg fail filters: X2 (feDropShadow)
-filters/feDropShadow/with-percent-offset.svg fail filters: X2 (feDropShadow)
+filters/feDropShadow/hsla-color.svg pass
+filters/feDropShadow/only-stdDeviation.svg pass
+filters/feDropShadow/stdDeviation=0.svg pass
+filters/feDropShadow/with-flood-color.svg pass
+filters/feDropShadow/with-flood-opacity.svg pass
+filters/feDropShadow/with-offset-clipped.svg pass
+filters/feDropShadow/with-offset.svg pass
+filters/feDropShadow/with-percent-offset.svg pass
 filters/feFlood/complex-transform.svg pass
 filters/feFlood/default-values.svg pass
 filters/feFlood/partial-subregion.svg pass
@@ -206,33 +206,33 @@ filters/feGaussianBlur/stdDeviation-with-two-values.svg pass
 filters/feGaussianBlur/stdDeviation=0-5.svg pass
 filters/feGaussianBlur/stdDeviation=5-0.svg pass
 filters/feGaussianBlur/tiny-stdDeviation.svg pass
-filters/feImage/chained-feImage.svg fail filters: X2 (feImage)
-filters/feImage/embedded-png.svg fail filters: X2 (feImage)
-filters/feImage/empty.svg fail filters: X2 (feImage)
-filters/feImage/link-on-an-element-with-complex-transform.svg fail filters: X2 (feImage)
-filters/feImage/link-on-an-element-with-transform.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-element-outside-defs-1.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-element-outside-defs-2.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-element-with-opacity.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-element-with-transform.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-element.svg fail filters: X2 (feImage)
-filters/feImage/link-to-an-invalid-element.svg fail filters: X2 (feImage)
-filters/feImage/link-to-g.svg fail filters: X2 (feImage)
-filters/feImage/link-to-use.svg fail filters: X2 (feImage)
-filters/feImage/preserveAspectRatio=none.svg fail filters: X2 (feImage)
-filters/feImage/recursive-links-1.svg fail filters: X2 (feImage)
-filters/feImage/recursive-links-2.svg fail filters: X2 (feImage)
-filters/feImage/self-recursive.svg fail filters: X2 (feImage)
-filters/feImage/simple-case.svg fail filters: X2 (feImage)
-filters/feImage/svg.svg fail filters: X2 (feImage)
-filters/feImage/with-subregion-1.svg fail filters: X2 (feImage)
-filters/feImage/with-subregion-2.svg fail filters: X2 (feImage)
-filters/feImage/with-subregion-3.svg fail filters: X2 (feImage)
-filters/feImage/with-subregion-4.svg fail filters: X2 (feImage)
-filters/feImage/with-subregion-5.svg fail filters: X2 (feImage)
-filters/feImage/with-x-y-and-protruding-subregion-1.svg fail filters: X2 (feImage)
-filters/feImage/with-x-y-and-protruding-subregion-2.svg fail filters: X2 (feImage)
-filters/feImage/with-x-y.svg fail filters: X2 (feImage)
+filters/feImage/chained-feImage.svg pass
+filters/feImage/embedded-png.svg pass
+filters/feImage/empty.svg pass
+filters/feImage/link-on-an-element-with-complex-transform.svg pass
+filters/feImage/link-on-an-element-with-transform.svg pass
+filters/feImage/link-to-an-element-outside-defs-1.svg pass
+filters/feImage/link-to-an-element-outside-defs-2.svg pass
+filters/feImage/link-to-an-element-with-opacity.svg pass
+filters/feImage/link-to-an-element-with-transform.svg pass
+filters/feImage/link-to-an-element.svg pass
+filters/feImage/link-to-an-invalid-element.svg pass
+filters/feImage/link-to-g.svg pass
+filters/feImage/link-to-use.svg pass
+filters/feImage/preserveAspectRatio=none.svg pass
+filters/feImage/recursive-links-1.svg pass
+filters/feImage/recursive-links-2.svg pass
+filters/feImage/self-recursive.svg pass
+filters/feImage/simple-case.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+filters/feImage/svg.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
+filters/feImage/with-subregion-1.svg pass
+filters/feImage/with-subregion-2.svg pass
+filters/feImage/with-subregion-3.svg pass
+filters/feImage/with-subregion-4.svg pass
+filters/feImage/with-subregion-5.svg pass
+filters/feImage/with-x-y-and-protruding-subregion-1.svg pass
+filters/feImage/with-x-y-and-protruding-subregion-2.svg pass
+filters/feImage/with-x-y.svg pass
 filters/feMerge/color-interpolation-filters=linearRGB.svg pass
 filters/feMerge/color-interpolation-filters=sRGB.svg pass
 filters/feMerge/complex-transform.svg pass
@@ -284,12 +284,12 @@ filters/feSpotLight/specularExponent=0.5.svg pass
 filters/feSpotLight/specularExponent=10.svg pass
 filters/feSpotLight/with-all-pointsAt.svg pass
 filters/feTile/complex-transform.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-filters/feTile/empty-region.svg fail filters: X2 (feTile)
-filters/feTile/simple-case.svg fail filters: X2 (feTile)
-filters/feTile/with-region.svg fail filters: X2 (feTile)
-filters/feTile/with-subregion-1.svg fail filters: X2 (feTile)
-filters/feTile/with-subregion-2.svg fail filters: X2 (feTile)
-filters/feTile/with-subregion-3.svg fail filters: X2 (feTile)
+filters/feTile/empty-region.svg pass
+filters/feTile/simple-case.svg pass
+filters/feTile/with-region.svg pass
+filters/feTile/with-subregion-1.svg pass
+filters/feTile/with-subregion-2.svg pass
+filters/feTile/with-subregion-3.svg pass
 filters/feTurbulence/baseFrequency=-0.05.svg fail filters: X3 (feTurbulence)
 filters/feTurbulence/baseFrequency=0.01.svg fail filters: X3 (feTurbulence)
 filters/feTurbulence/baseFrequency=0.05--0.01.svg fail filters: X3 (feTurbulence)
@@ -309,49 +309,49 @@ filters/feTurbulence/seed=20.svg fail filters: X3 (feTurbulence)
 filters/feTurbulence/stitchTiles=stitch.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feTurbulence/type=fractalNoise.svg fail filters: X3 (feTurbulence)
 filters/feTurbulence/type=invalid.svg fail filters: X3 (feTurbulence)
-filters/filter-functions/blur-function-mm-value.svg fail filters: X2 (filter functions)
+filters/filter-functions/blur-function-mm-value.svg pass
 filters/filter-functions/blur-function-negative-value.svg pass
 filters/filter-functions/blur-function-no-values.svg pass
 filters/filter-functions/blur-function-percent-value.svg pass
 filters/filter-functions/blur-function-two-values.svg pass
-filters/filter-functions/blur-function.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-0percent.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-100percent.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-2.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-200percent.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-50percent.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-default-value.svg fail filters: X2 (filter functions)
-filters/filter-functions/color-adjust-functions-negative.svg fail filters: X2 (filter functions)
-filters/filter-functions/drop-shadow-function-color-as-attribute.svg fail filters: X2 (filter functions)
-filters/filter-functions/drop-shadow-function-color-last.svg fail filters: X2 (filter functions)
+filters/filter-functions/blur-function.svg fail specification: blur(4) has a length without a unit, which CSS refuses, so the filter is ignored; Chromium refuses it too; the reference accepts it
+filters/filter-functions/color-adjust-functions-0percent.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-100percent.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-2.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-200percent.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-50percent.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-default-value.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/color-adjust-functions-negative.svg fail text: rasterization: the 8 px labels differ from the reference by 46 pixels; the filtered squares match (Chromium differs by 188)
+filters/filter-functions/drop-shadow-function-color-as-attribute.svg pass
+filters/filter-functions/drop-shadow-function-color-last.svg pass
 filters/filter-functions/drop-shadow-function-comma-spearated.svg pass
-filters/filter-functions/drop-shadow-function-currentColor.svg fail filters: X2 (filter functions)
-filters/filter-functions/drop-shadow-function-em-values.svg fail filters: X2 (filter functions)
+filters/filter-functions/drop-shadow-function-currentColor.svg pass
+filters/filter-functions/drop-shadow-function-em-values.svg pass
 filters/filter-functions/drop-shadow-function-extra-value.svg pass
-filters/filter-functions/drop-shadow-function-filter-region.svg fail filters: X2 (filter functions)
-filters/filter-functions/drop-shadow-function-mm-values.svg fail filters: X2 (filter functions)
-filters/filter-functions/drop-shadow-function-no-color.svg fail filters: X2 (filter functions)
+filters/filter-functions/drop-shadow-function-filter-region.svg pass
+filters/filter-functions/drop-shadow-function-mm-values.svg pass
+filters/filter-functions/drop-shadow-function-no-color.svg pass
 filters/filter-functions/drop-shadow-function-no-values.svg pass
 filters/filter-functions/drop-shadow-function-only-X-offset.svg pass
-filters/filter-functions/drop-shadow-function-only-offset.svg fail filters: X2 (filter functions)
+filters/filter-functions/drop-shadow-function-only-offset.svg pass
 filters/filter-functions/drop-shadow-function-percent-values.svg pass
-filters/filter-functions/drop-shadow-function.svg fail filters: X2 (filter functions)
-filters/filter-functions/grayscale-and-opacity.svg fail filters: X2 (filter functions)
-filters/filter-functions/hue-rotate-function-0.25turn.svg fail filters: X2 (filter functions)
+filters/filter-functions/drop-shadow-function.svg pass
+filters/filter-functions/grayscale-and-opacity.svg pass
+filters/filter-functions/hue-rotate-function-0.25turn.svg pass
 filters/filter-functions/hue-rotate-function-45.svg pass
-filters/filter-functions/hue-rotate-function-45deg.svg fail filters: X2 (filter functions)
-filters/filter-functions/hue-rotate-function-45grad.svg fail filters: X2 (filter functions)
-filters/filter-functions/hue-rotate-function-45rad.svg fail filters: X2 (filter functions)
-filters/filter-functions/hue-rotate-function-999deg.svg fail filters: X2 (filter functions)
+filters/filter-functions/hue-rotate-function-45deg.svg pass
+filters/filter-functions/hue-rotate-function-45grad.svg pass
+filters/filter-functions/hue-rotate-function-45rad.svg pass
+filters/filter-functions/hue-rotate-function-999deg.svg pass
 filters/filter-functions/hue-rotate-function-default-value.svg pass
 filters/filter-functions/hue-rotate-function-zero.svg pass
 filters/filter-functions/nested-filters.svg pass
 filters/filter-functions/one-invalid-function-in-list.svg pass
-filters/filter-functions/one-invalid-url-in-list.svg fail filters: X2 (filter functions)
+filters/filter-functions/one-invalid-url-in-list.svg fail specification: a reference to a missing filter makes the whole filter list ignored (Filter Effects), so the element draws without a filter; Chromium and the reference skip only that entry
 filters/filter-functions/two-drop-shadow-function.svg pass
 filters/filter-functions/two-exact-urls.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-filters/filter-functions/two-urls.svg fail filters: X2 (filter lists of more than one entry)
-filters/filter-functions/url-and-grayscale.svg fail filters: X2 (filter functions)
+filters/filter-functions/two-urls.svg pass
+filters/filter-functions/url-and-grayscale.svg pass
 filters/filter/color-interpolation-filters=sRGB.svg pass
 filters/filter/complex-order-and-xlink-href.svg fail specification: href on filter is not followed; Filter Effects removed it and Chromium renders the same
 filters/filter/content-outside-the-canvas-2.svg pass
@@ -392,7 +392,7 @@ filters/filter/on-a-thin-rect.svg pass
 filters/filter/on-a-vertical-line.svg pass
 filters/filter/on-an-empty-group-1.svg pass
 filters/filter/on-an-empty-group-2.svg pass
-filters/filter/on-group-with-child-outside-of-canvas.svg fail filters: X2 (feImage)
+filters/filter/on-group-with-child-outside-of-canvas.svg pass
 filters/filter/on-the-root-svg.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/filter/on-zero-sized-shape.svg pass
 filters/filter/path-bbox.svg pass
@@ -423,7 +423,7 @@ filters/filter/with-region.svg pass
 filters/filter/with-subregion-1.svg fail reference: the reference clips the input of a primitive to its subregion; Filter Effects clips only the result, and Chromium renders the same
 filters/filter/with-subregion-2.svg fail reference: the reference clips the input of a primitive to its subregion; Filter Effects clips only the result, and Chromium renders the same
 filters/filter/with-subregion-3.svg pass
-filters/filter/with-transform-outside-of-canvas.svg fail filters: X2 (feImage)
+filters/filter/with-transform-outside-of-canvas.svg pass
 filters/filter/without-region-and-filterUnits=userSpaceOnUse.svg pass
 filters/filter/zero-sized-subregion.svg pass
 filters/flood-color/hsla-color.svg pass
@@ -775,7 +775,7 @@ painting/fill/rgba-0percent-50percent-0percent-0.5.svg pass
 painting/fill/transparent.svg pass
 painting/fill/uppercase-rgb-color.svg pass
 painting/fill/valid-FuncIRI-with-a-fallback-ICC-color.svg fail icc-color: ICC colors in paint fallbacks are not supported; Chromium fails the same way
-painting/image-rendering/on-feImage.svg fail filters: X2 (feImage); image-rendering here applies to an feImage filter primitive
+painting/image-rendering/on-feImage.svg fail image: nearest-neighbour texel edges fall on pixel centers at this scale and round to the other side than in the reference, as for optimizeSpeed.svg; the feImage applies image-rendering
 painting/image-rendering/optimizeSpeed-on-SVG.svg fail image: an SVG image renders as vector content, so image-rendering does not pixelate it, as in Chromium; the reference rasterizes it first
 painting/image-rendering/optimizeSpeed.svg fail image: nearest-neighbour texel edges fall on pixel centers at this scale and round to the other side than in the reference, which shifts single rows and columns
 painting/isolation/as-property.svg pass

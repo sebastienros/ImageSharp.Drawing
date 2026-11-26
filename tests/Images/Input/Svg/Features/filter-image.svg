@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <filter id="meet" filterUnits="userSpaceOnUse" x="5" y="5" width="60" height="40">
+      <feImage xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAK0lEQVR4nE2KsQEAIAyDOLEn9ZR8isZJRgBBFxUJwvq7K8CZMYnlxX4tLB7VaSJVndFWTgAAAABJRU5ErkJggg=="/>
+    </filter>
+    <filter id="slice" filterUnits="userSpaceOnUse" x="70" y="5" width="60" height="40">
+      <feImage preserveAspectRatio="xMinYMin slice" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAK0lEQVR4nE2KsQEAIAyDOLEn9ZR8isZJRgBBFxUJwvq7K8CZMYnlxX4tLB7VaSJVndFWTgAAAABJRU5ErkJggg=="/>
+    </filter>
+    <filter id="svg" filterUnits="userSpaceOnUse" x="135" y="5" width="60" height="40">
+      <feImage preserveAspectRatio="xMaxYMid meet" xlink:href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='9' fill='%23ff1493'/%3E%3Crect x='5' y='5' width='10' height='10' fill='%23ffd700'/%3E%3C/svg%3E"/>
+    </filter>
+    <g id="mark">
+      <rect width="20" height="10" fill="#1e90ff"/>
+      <circle cx="10" cy="15" r="5" fill="#ff8c00" opacity="0.5"/>
+    </g>
+    <filter id="element" filterUnits="userSpaceOnUse" x="5" y="55" width="90" height="60">
+      <feImage xlink:href="#mark" x="20" y="65"/>
+      <feGaussianBlur stdDeviation="1.5"/>
+    </filter>
+    <filter id="element-default" x="0" y="0" width="1" height="1">
+      <feImage xlink:href="#mark"/>
+    </filter>
+    <filter id="element-bbox" primitiveUnits="objectBoundingBox" x="0" y="0" width="1" height="1">
+      <feImage xlink:href="#mark" x="0.5" y="0.25"/>
+    </filter>
+    <filter id="merged" x="-0.2" y="-0.2" width="1.4" height="1.4">
+      <feImage xlink:href="#mark" x="40" y="130" result="image"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="image"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="60" height="40" fill="none" stroke="#000000" stroke-width="0.5"/>
+  <rect x="70" y="5" width="60" height="40" fill="none" stroke="#000000" stroke-width="0.5"/>
+  <rect x="135" y="5" width="60" height="40" fill="none" stroke="#000000" stroke-width="0.5"/>
+  <g filter="url(#meet)"/>
+  <g filter="url(#slice)"/>
+  <g filter="url(#svg)"/>
+  <g filter="url(#element)"/>
+  <rect x="110" y="60" width="40" height="40" fill="#cccccc" filter="url(#element-default)"/>
+  <rect x="155" y="60" width="40" height="40" fill="#cccccc" filter="url(#element-bbox)"/>
+  <rect x="20" y="125" width="70" height="50" fill="#98fb98" filter="url(#merged)"/>
+</svg>
