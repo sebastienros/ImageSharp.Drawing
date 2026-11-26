@@ -8,7 +8,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
 /// Tests of the visual order of bidirectional SVG text, which the Unicode bidirectional algorithm (UAX #9) gives through
-/// the local copy of the SixLabors.Fonts implementation (package T6).
+/// the local copy of the SixLabors.Fonts implementation, in <c>Svg/Text/Bidi</c>.
 /// </summary>
 /// <remarks>
 /// The documents write right-to-left letters as ASCII capitals, as UAX #9 does in its examples: before the document loads,
@@ -109,7 +109,7 @@ public class SvgTextBidiTests
 
     /// <summary>
     /// Characters at an odd level draw their mirrored glyph once (rule L4): the shaper mirrors in a right-to-left run,
-    /// and the pipeline does not mirror again. The lone bracket is the case that the workaround of package T4 missed.
+    /// and the pipeline does not mirror again. The lone bracket is the case that an earlier workaround missed.
     /// </summary>
     /// <param name="text">The content of the <c>text</c> element.</param>
     /// <param name="index">The index of the bracket in the characters.</param>

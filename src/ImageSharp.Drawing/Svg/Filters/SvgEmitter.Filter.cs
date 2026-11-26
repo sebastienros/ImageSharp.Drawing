@@ -25,6 +25,12 @@ internal static partial class SvgEmitter
         /// translated, so the texels land on device pixels unchanged. The node opacity multiplies the brush: the result is
         /// one image, so this equals a group opacity. Inside a layer the result composites source-over; outside every
         /// layer it uses the caller's graphics options, as a draw node does.
+        /// <para>
+        /// A projective caller transform cannot be split into a scale along the user axes, so the filter then runs in the
+        /// space before the caller transform, scaled uniformly by the largest scale of the linear part of the caller
+        /// transform, and the result draws through the caller transform like any other content. Where the perspective
+        /// enlarges the result more than that scale, it is resampled.
+        /// </para>
         /// </remarks>
         /// <param name="node">The filter node.</param>
         /// <param name="filter">The filter data of the node.</param>
@@ -32,20 +38,49 @@ internal static partial class SvgEmitter
         public void DrawFilter(in SvgRenderNode node, SvgFilterNode filter, RectangleF destination)
         {
             Matrix4x4 caller = this.CallerTransform;
-            Matrix3x2 callerAffine = new(caller.M11, caller.M12, caller.M21, caller.M22, caller.M41, caller.M42);
-            Matrix3x2 userToDevice = this.transforms[node.TransformIndex] * this.viewport * callerAffine;
+            bool projective = caller.M14 != 0F || caller.M24 != 0F || caller.M44 != 1F;
+            Matrix3x2 callerAffine;
+            RectangleF visible;
+            if (projective)
+            {
+                float scale = GetMaxScale(caller);
+                scale = scale > 0F && float.IsFinite(scale) ? scale : 1F;
+                callerAffine = Matrix3x2.CreateScale(scale);
 
-            // Only the part of the result inside the canvas and inside the clip of the document can show.
-            RectangleF visible = RectangleF.Intersect(this.canvas.Bounds, TransformRectangle(destination, callerAffine));
+                // The canvas bounds do not map back through a projective transform as a rectangle in general, so only the
+                // clip of the document bounds what can show.
+                visible = TransformRectangle(destination, callerAffine);
+            }
+            else
+            {
+                callerAffine = new Matrix3x2(caller.M11, caller.M12, caller.M21, caller.M22, caller.M41, caller.M42);
+
+                // Only the part of the result inside the canvas and inside the clip of the document can show.
+                visible = RectangleF.Intersect(this.canvas.Bounds, TransformRectangle(destination, callerAffine));
+            }
+
+            Matrix3x2 userToDevice = this.transforms[node.TransformIndex] * this.viewport * callerAffine;
             if (!(visible.Width > 0F) || !(visible.Height > 0F)
-                || !SvgFilterEngine.TryRender(filter, userToDevice, visible, filter.MaxPixels, out SvgTexture? texture, out Matrix3x2 textureToDevice))
+                || !SvgFilterEngine.TryRender(
+                    filter,
+                    userToDevice,
+                    visible,
+                    filter.MaxPixels,
+                    this.canvas.GetConfiguration(),
+                    out SvgTexture? texture,
+                    out Matrix3x2 textureToDevice))
             {
                 return;
             }
 
+            // For a projective caller transform, textureToDevice ends in the scaled space before the caller transform.
+            Matrix4x4 textureTransform = projective
+                ? new Matrix4x4(textureToDevice * Matrix3x2.CreateScale(1F / callerAffine.M11)) * caller
+                : new Matrix4x4(textureToDevice);
+
             GraphicsOptions graphics = this.LayerDepth > 0 ? this.innerGraphics : this.outerGraphics;
             this.canvas.RestoreTo(this.ScopeBase);
-            _ = this.canvas.Save(new DrawingOptions(graphics, IntersectionRule.NonZero, new Matrix4x4(textureToDevice), this.textContrast));
+            _ = this.canvas.Save(new DrawingOptions(graphics, IntersectionRule.NonZero, textureTransform, this.textContrast));
             this.CurrentKey = -1;
 
             SvgTextureBrush brush = new(texture!, Matrix3x2.Identity, WrapMode.Clamp, false, node.Opacity);

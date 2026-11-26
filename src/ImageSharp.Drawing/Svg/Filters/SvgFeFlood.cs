@@ -27,7 +27,7 @@ internal sealed class SvgFeFlood : SvgFilterPrimitive
         => this.color = color;
 
     /// <inheritdoc/>
-    public override bool IsColorFilter => true;
+    public override bool HandlesColorSpaces => true;
 
     /// <summary>
     /// Creates the primitive of an <c>feFlood</c> element.

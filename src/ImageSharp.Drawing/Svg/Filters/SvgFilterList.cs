@@ -21,9 +21,4 @@ internal sealed class SvgFilterList
     /// Gets the entries in the order in which they apply.
     /// </summary>
     public ReadOnlySpan<SvgFilterFunction> Functions => this.functions;
-
-    /// <summary>
-    /// Gets a value indicating whether the value is exactly one <c>url()</c> reference.
-    /// </summary>
-    public bool IsSingleUrl => this.functions.Length == 1 && this.functions[0].Kind == SvgFilterFunctionKind.Url;
 }

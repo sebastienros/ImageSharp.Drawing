@@ -8,7 +8,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
 /// Tests of vertical text, right-to-left and bidirectional text, cursive scripts, and <c>tref</c> in the SVG text layout
-/// pipeline (package T4).
+/// pipeline.
 /// </summary>
 public class SvgTextDirectionTests
 {

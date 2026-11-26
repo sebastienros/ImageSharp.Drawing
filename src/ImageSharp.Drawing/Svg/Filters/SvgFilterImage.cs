@@ -21,12 +21,14 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <para>
 /// Ownership: the pixels come from the memory allocator of the configuration and return to it on
 /// <see cref="Dispose"/>. The engine owns every image of a run and disposes each after its last consumer. A primitive
-/// writes only to its output image and does not keep references to any image after it returns.
+/// writes only to its output image and does not keep references to any image after it returns. A band view
+/// (<see cref="GetBand"/>) shares the pixels of its image and owns nothing.
 /// </para>
 /// </remarks>
 internal sealed class SvgFilterImage : IDisposable
 {
     private IMemoryOwner<Rgba32>? buffer;
+    private Memory<Rgba32> memory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgFilterImage"/> class with transparent pixels.
@@ -40,8 +42,24 @@ internal sealed class SvgFilterImage : IDisposable
         this.ColorSpace = colorSpace;
         if (!this.Area.IsEmpty)
         {
-            this.buffer = allocator.Allocate<Rgba32>(this.Area.Width * this.Area.Height, AllocationOptions.Clean);
+            int length = this.Area.Width * this.Area.Height;
+            this.buffer = allocator.Allocate<Rgba32>(length, AllocationOptions.Clean);
+            this.memory = this.buffer.Memory[..length];
         }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SvgFilterImage"/> class that views pixels of another image. The view
+    /// does not own them: disposing it releases nothing.
+    /// </summary>
+    /// <param name="memory">The pixels, row by row, <paramref name="area"/>.Width pixels each.</param>
+    /// <param name="area">The rectangle of filter space that the pixels hold; not empty.</param>
+    /// <param name="colorSpace">The color space of the color channels.</param>
+    private SvgFilterImage(Memory<Rgba32> memory, Rectangle area, SvgColorInterpolation colorSpace)
+    {
+        this.Area = area;
+        this.ColorSpace = colorSpace;
+        this.memory = memory;
     }
 
     /// <summary>
@@ -68,14 +86,28 @@ internal sealed class SvgFilterImage : IDisposable
     /// <summary>
     /// Gets the memory of all pixels, row by row, for code that wraps it in an image. Empty for an empty image.
     /// </summary>
-    public Memory<Rgba32> Memory => this.buffer is null ? default : this.buffer.Memory[..(this.Area.Width * this.Area.Height)];
+    public Memory<Rgba32> Memory => this.memory;
 
     /// <summary>
     /// Returns one row of the image.
     /// </summary>
     /// <param name="y">The row in filter space, inside <see cref="Area"/>.</param>
     /// <returns>The <see cref="Area"/>.Width pixels of the row, from <see cref="Area"/>.Left.</returns>
-    public Span<Rgba32> GetRow(int y) => this.buffer!.Memory.Span.Slice((y - this.Area.Top) * this.Area.Width, this.Area.Width);
+    public Span<Rgba32> GetRow(int y) => this.memory.Span.Slice((y - this.Area.Top) * this.Area.Width, this.Area.Width);
+
+    /// <summary>
+    /// Returns a view of a band of rows of the image, which a primitive can fill on its own thread. See
+    /// <see cref="SvgFilterPrimitive.CanRenderInBands"/>.
+    /// </summary>
+    /// <param name="top">The first row of the band in filter space, inside <see cref="Area"/>.</param>
+    /// <param name="bottom">The row after the last row of the band, greater than <paramref name="top"/> and at most <see cref="Area"/>.Bottom.</param>
+    /// <returns>The view, which does not own its pixels.</returns>
+    public SvgFilterImage GetBand(int top, int bottom)
+    {
+        Rectangle area = this.Area;
+        Memory<Rgba32> rows = this.memory.Slice((top - area.Top) * area.Width, (bottom - top) * area.Width);
+        return new SvgFilterImage(rows, Rectangle.FromLTRB(area.Left, top, area.Right, bottom), this.ColorSpace);
+    }
 
     /// <summary>
     /// Returns a pixel, or transparent black outside <see cref="Area"/>.
@@ -91,7 +123,7 @@ internal sealed class SvgFilterImage : IDisposable
             return default;
         }
 
-        return this.buffer!.Memory.Span[((y - area.Y) * area.Width) + (x - area.X)];
+        return this.memory.Span[((y - area.Y) * area.Width) + (x - area.X)];
     }
 
     /// <summary>
@@ -122,5 +154,6 @@ internal sealed class SvgFilterImage : IDisposable
     {
         this.buffer?.Dispose();
         this.buffer = null;
+        this.memory = default;
     }
 }

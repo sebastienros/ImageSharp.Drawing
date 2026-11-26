@@ -63,7 +63,7 @@ internal sealed class SvgFeComponentTransfer : SvgFilterPrimitive
         => this.tables = tables;
 
     /// <inheritdoc/>
-    public override bool IsColorFilter => true;
+    public override bool HandlesColorSpaces => true;
 
     /// <summary>
     /// Creates the primitive of an <c>feComponentTransfer</c> element.

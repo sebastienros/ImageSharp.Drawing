@@ -64,7 +64,7 @@ public class SvgTextDirectionRenderTests
     /// <summary>
     /// The feature file <c>tests/Images/Input/Svg/Features/text-bidi.svg</c>: mixed Latin, Hebrew, and Arabic runs with
     /// paired brackets, a lone bracket, numbers in right-to-left text, an isolate next to a plain <c>tspan</c>, brackets in
-    /// an embedding, and an override, as the Unicode bidirectional algorithm orders and mirrors them (package T6).
+    /// an embedding, and an override, as the Unicode bidirectional algorithm orders and mirrors them.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
     /// <param name="provider">The image provider.</param>

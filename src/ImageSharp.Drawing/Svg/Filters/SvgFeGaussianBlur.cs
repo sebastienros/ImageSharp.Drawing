@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using SixLabors.ImageSharp.Memory;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -39,6 +40,12 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// </summary>
     internal const float MaxDeviation = SvgFilterEngine.MaxSide / 2F;
 
+    /// <summary>
+    /// The number of columns that the vertical pass blurs together: 16 pixels of 4 bytes are one 64-byte cache line of
+    /// a row.
+    /// </summary>
+    private const int StripWidth = 16;
+
     private readonly Vector2 deviation;
 
     /// <summary>
@@ -49,6 +56,10 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     internal SvgFeGaussianBlur(int input, Vector2 deviation)
         : base([input])
         => this.deviation = deviation;
+
+    /// <inheritdoc/>
+    /// <remarks>The blur splits its own passes over threads.</remarks>
+    public override bool CanRenderInBands => false;
 
     /// <summary>
     /// Creates the primitive of an <c>feGaussianBlur</c> element.
@@ -86,7 +97,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
 
     /// <inheritdoc/>
     public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
-        => Blur(inputs[0], output, this.deviation * context.Scale, context.Allocator);
+        => Blur(inputs[0], output, this.deviation * context.Scale, context.Configuration);
 
     /// <summary>
     /// Returns how far a blur reaches: the distance in pixels from an output pixel to the farthest input pixel it reads.
@@ -99,11 +110,16 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// <summary>
     /// Blurs an image into the area of another. The output must be transparent; the input can have any area.
     /// </summary>
+    /// <remarks>
+    /// The rows of the horizontal pass and the column strips of the vertical pass are independent, so each pass runs
+    /// in bands on up to the configured number of threads (<see cref="SvgFilterEngine.ForEachBand"/>); every band
+    /// has its own scratch lines. The result does not depend on the number of threads.
+    /// </remarks>
     /// <param name="input">The input image.</param>
     /// <param name="output">The output image, transparent, not empty.</param>
     /// <param name="deviation">The standard deviation along x and y in filter pixels; neither is negative.</param>
-    /// <param name="allocator">The allocator for scratch memory.</param>
-    internal static void Blur(SvgFilterImage input, SvgFilterImage output, Vector2 deviation, MemoryAllocator allocator)
+    /// <param name="configuration">The configuration that provides the scratch memory and the degree of parallelism.</param>
+    internal static void Blur(SvgFilterImage input, SvgFilterImage output, Vector2 deviation, Configuration configuration)
     {
         if (input.IsEmpty)
         {
@@ -128,43 +144,109 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
 
         // The horizontal line spans the output columns widened by the reach, limited to where data can be: the input
         // columns widened by the reach, because each pass spreads data by at most its own reach. It always holds the
-        // output columns, which can lie beyond the data.
+        // output columns, which can lie beyond the data. The vertical line spans the rows in the same way.
         int lineLeft = Math.Min(area.Left, Math.Max(area.Left - reachX, source.Left - reachX));
         int lineRight = Math.Max(area.Right, Math.Min(area.Right + reachX, source.Right + reachX));
         int columnTop = Math.Min(area.Top, Math.Max(area.Top - reachY, top - reachY));
         int columnBottom = Math.Max(area.Bottom, Math.Min(area.Bottom + reachY, bottom + reachY));
-        int lineLength = Math.Max(Math.Max(lineRight - lineLeft, columnBottom - columnTop), 1);
-
+        int lineLength = lineRight - lineLeft;
+        int columnLength = columnBottom - columnTop;
+        MemoryAllocator allocator = configuration.MemoryAllocator;
         using SvgFilterImage intermediate = new(allocator, Rectangle.FromLTRB(area.Left, top, area.Right, bottom), output.ColorSpace);
-        using IMemoryOwner<Rgba32> lines = allocator.Allocate<Rgba32>(lineLength * 2);
-        Span<Rgba32> line = lines.Memory.Span[..lineLength];
-        Span<Rgba32> scratch = lines.Memory.Span.Slice(lineLength, lineLength);
 
-        // Horizontal pass: input rows into the intermediate image.
-        for (int y = top; y < bottom; y++)
+        // Horizontal pass: input rows into the intermediate image. A band holds one line and its scratch line.
+        SvgFilterEngine.ForEachBand(configuration, bottom - top, lineLength, (first, last) =>
         {
-            Span<Rgba32> current = line[..(lineRight - lineLeft)];
-            input.CopyRow(y, lineLeft, current);
-            Span<Rgba32> blurred = horizontal.Apply(current, scratch[..current.Length]);
+            using IMemoryOwner<Rgba32> lines = allocator.Allocate<Rgba32>(lineLength * 2);
+            Span<Rgba32> line = lines.Memory.Span[..lineLength];
+            Span<Rgba32> scratch = lines.Memory.Span.Slice(lineLength, lineLength);
             int offset = area.Left - lineLeft;
-            blurred.Slice(offset, area.Width).CopyTo(intermediate.GetRow(y));
-        }
-
-        // Vertical pass: intermediate columns into the output image.
-        int length = columnBottom - columnTop;
-        for (int x = area.Left; x < area.Right; x++)
-        {
-            Span<Rgba32> current = line[..length];
-            int column = x - area.Left;
-            for (int y = columnTop; y < columnBottom; y++)
+            for (int y = top + first; y < top + last; y++)
             {
-                current[y - columnTop] = y >= top && y < bottom ? intermediate.GetRow(y)[column] : default;
+                input.CopyRow(y, lineLeft, line);
+                Span<Rgba32> blurred = horizontal.Apply(line, scratch);
+                blurred.Slice(offset, area.Width).CopyTo(intermediate.GetRow(y));
+            }
+        });
+
+        // Vertical pass: intermediate columns into the output image. Reading one column at a time would touch one pixel
+        // per row, a cache line each. A strip of 16 columns reads 64 contiguous bytes per row instead: the strip is
+        // copied into one line per column (a blocked transpose), each line is blurred as a row is, and the results are
+        // copied back a row of the strip at a time. The rows above and below the intermediate image are transparent.
+        int strips = (area.Width + StripWidth - 1) / StripWidth;
+        SvgFilterEngine.ForEachBand(configuration, strips, (long)columnLength * StripWidth, (first, last) =>
+        {
+            using IMemoryOwner<Rgba32> lines = allocator.Allocate<Rgba32>(columnLength * 2 * StripWidth);
+            VerticalStrips(intermediate, output, vertical, lines.Memory.Span, columnTop, columnLength, first, last);
+        });
+    }
+
+    /// <summary>
+    /// Runs the vertical pass of a blur over a range of column strips.
+    /// </summary>
+    /// <param name="intermediate">The result of the horizontal pass, with the columns of the output.</param>
+    /// <param name="output">The output image.</param>
+    /// <param name="vertical">The vertical passes.</param>
+    /// <param name="buffer">Scratch memory of <c>2 * StripWidth</c> lines of <paramref name="length"/> pixels: each column of a strip uses a line and its scratch line.</param>
+    /// <param name="columnTop">The first row of the lines in filter space.</param>
+    /// <param name="length">The length of the lines.</param>
+    /// <param name="first">The first strip.</param>
+    /// <param name="last">The strip after the last one.</param>
+    private static void VerticalStrips(
+        SvgFilterImage intermediate,
+        SvgFilterImage output,
+        in Passes vertical,
+        Span<Rgba32> buffer,
+        int columnTop,
+        int length,
+        int first,
+        int last)
+    {
+        Rectangle area = output.Area;
+        int top = intermediate.Area.Top;
+        int bottom = intermediate.Area.Bottom;
+        int width = area.Width;
+        ReadOnlySpan<Rgba32> rows = intermediate.Pixels;
+        Span<Rgba32> target = output.Pixels;
+        Span<int> results = stackalloc int[StripWidth];
+        for (int strip = first; strip < last; strip++)
+        {
+            int x0 = strip * StripWidth;
+            int count = Math.Min(StripWidth, width - x0);
+            for (int k = 0; k < count; k++)
+            {
+                Span<Rgba32> column = buffer.Slice(2 * k * length, length);
+                column[..(top - columnTop)].Clear();
+                column[(bottom - columnTop)..].Clear();
             }
 
-            Span<Rgba32> blurred = vertical.Apply(current, scratch[..length]);
+            for (int y = top; y < bottom; y++)
+            {
+                ReadOnlySpan<Rgba32> row = rows.Slice(((y - top) * width) + x0, count);
+                int index = y - columnTop;
+                for (int k = 0; k < count; k++)
+                {
+                    buffer[(2 * k * length) + index] = row[k];
+                }
+            }
+
+            // Apply returns the line or its scratch line; keep the offset of the result of each column.
+            for (int k = 0; k < count; k++)
+            {
+                int offset = 2 * k * length;
+                Span<Rgba32> column = buffer.Slice(offset, length);
+                Span<Rgba32> blurred = vertical.Apply(column, buffer.Slice(offset + length, length));
+                results[k] = blurred == column ? offset : offset + length;
+            }
+
             for (int y = area.Top; y < area.Bottom; y++)
             {
-                output.GetRow(y)[column] = blurred[y - columnTop];
+                Span<Rgba32> row = target.Slice(((y - area.Top) * width) + x0, count);
+                int index = y - columnTop;
+                for (int k = 0; k < count; k++)
+                {
+                    row[k] = buffer[results[k] + index];
+                }
             }
         }
     }
@@ -219,6 +301,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     {
         int size = left + right + 1;
         int half = size / 2;
+        ulong multiplier = GetDivisionMultiplier(size);
         int n = source.Length;
         int r = 0;
         int g = 0;
@@ -237,7 +320,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
 
         for (int i = 0; i < n; i++)
         {
-            destination[i] = new Rgba32((byte)((r + half) / size), (byte)((g + half) / size), (byte)((b + half) / size), (byte)((a + half) / size));
+            destination[i] = new Rgba32(Divide(r + half, multiplier), Divide(g + half, multiplier), Divide(b + half, multiplier), Divide(a + half, multiplier));
 
             // Slide the window one pixel: add the pixel entering on the right, remove the one leaving on the left.
             int enter = i + right + 1;
@@ -261,6 +344,30 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
             }
         }
     }
+
+    /// <summary>
+    /// Returns the multiplier that <see cref="Divide"/> uses to divide by a box size: <c>ceil(2^40 / size)</c>.
+    /// </summary>
+    /// <remarks>
+    /// With <c>m = ceil(2^40 / d)</c> and <c>e = m * d - 2^40</c>, which is below <c>d</c>,
+    /// <c>x * m / 2^40 = x / d + x * e / (d * 2^40)</c>. The second term is below <c>1 / d</c> when <c>x * e &lt; 2^40</c>,
+    /// and then the floor equals <c>floor(x / d)</c> exactly, because the fraction of <c>x / d</c> is at most
+    /// <c>(d - 1) / d</c>. A box sum with its rounding term is below <c>256 * d</c>, so the condition holds for every
+    /// <c>d</c> up to 65536; the largest box of <see cref="MaxDeviation"/> has about 15400 pixels. One 64-bit multiply
+    /// and shift replaces an integer division, which costs several times more in the inner loop.
+    /// </remarks>
+    /// <param name="size">The box size, from 1 to 65536.</param>
+    /// <returns>The multiplier.</returns>
+    private static ulong GetDivisionMultiplier(int size) => ((1UL << 40) + (ulong)size - 1) / (ulong)size;
+
+    /// <summary>
+    /// Divides a box sum by the box size with the multiplier of <see cref="GetDivisionMultiplier"/>.
+    /// </summary>
+    /// <param name="sum">The sum with its rounding term, not negative and below 256 times the box size.</param>
+    /// <param name="multiplier">The multiplier of the box size.</param>
+    /// <returns><c>floor(sum / size)</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static byte Divide(int sum, ulong multiplier) => (byte)(((ulong)(uint)sum * multiplier) >> 40);
 
     /// <summary>
     /// One convolution pass over a line with a symmetric kernel, where pixels outside the line are transparent black.

@@ -79,9 +79,9 @@ internal readonly struct SvgFilterRenderContext
     public SvgColorInterpolation ColorSpace { get; }
 
     /// <summary>
-    /// Gets the color space of the output image. It is <see cref="ColorSpace"/>, except for a color filter primitive
-    /// (<see cref="SvgFilterPrimitive.IsColorFilter"/>), which the engine can ask for another space, and for a primitive
-    /// that preserves the color space of its inputs.
+    /// Gets the color space of the output image. It is <see cref="ColorSpace"/>, except for a primitive that handles
+    /// color spaces itself (<see cref="SvgFilterPrimitive.HandlesColorSpaces"/>), which the engine can ask for another
+    /// space, and for a primitive that preserves the color space of its inputs.
     /// </summary>
     public SvgColorInterpolation OutputColorSpace { get; }
 
@@ -89,6 +89,12 @@ internal readonly struct SvgFilterRenderContext
     /// Gets the allocator for scratch memory. A primitive returns what it allocates before it returns.
     /// </summary>
     public MemoryAllocator Allocator => this.engine.Allocator;
+
+    /// <summary>
+    /// Gets the configuration of the canvas that draws the result. A primitive that splits its work over threads
+    /// follows its degree of parallelism, through <see cref="SvgFilterEngine.ForEachBand"/>.
+    /// </summary>
+    public Configuration Configuration => this.engine.Configuration;
 
     /// <summary>
     /// Maps a rectangle from user space to filter space, without rounding.

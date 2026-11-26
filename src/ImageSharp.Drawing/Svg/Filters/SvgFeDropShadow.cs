@@ -57,6 +57,10 @@ internal sealed class SvgFeDropShadow : SvgFilterPrimitive
         this.color = color;
     }
 
+    /// <inheritdoc/>
+    /// <remarks>The blur inside splits its own passes over threads.</remarks>
+    public override bool CanRenderInBands => false;
+
     /// <summary>
     /// Creates the primitive of an <c>feDropShadow</c> element.
     /// </summary>
@@ -128,7 +132,7 @@ internal sealed class SvgFeDropShadow : SvgFilterPrimitive
             if (deviation.X > 0F || deviation.Y > 0F)
             {
                 blurred = new SvgFilterImage(allocator, blurredArea, space);
-                SvgFeGaussianBlur.Blur(alpha, blurred, deviation, allocator);
+                SvgFeGaussianBlur.Blur(alpha, blurred, deviation, context.Configuration);
             }
 
             SvgFeOffset.Offset(blurred ?? alpha, output, offset, allocator);

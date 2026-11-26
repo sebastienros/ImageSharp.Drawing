@@ -23,9 +23,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Color spaces: the map is read unpremultiplied in the color space of the primitive (<c>color-interpolation-filters</c>
-/// applies to <c>in2</c> only), and <c>in</c> keeps its own color space. The engine has no rule for a primitive whose
-/// inputs need different treatment, so the primitive declares itself a color filter
-/// (<see cref="SvgFilterPrimitive.IsColorFilter"/>), as <c>feFlood</c> does: the engine then converts nothing, the
+/// applies to <c>in2</c> only), and <c>in</c> keeps its own color space. The inputs need different treatment, so the
+/// primitive handles color spaces itself (<see cref="SvgFilterPrimitive.HandlesColorSpaces"/>): the engine converts nothing, the
 /// primitive converts each map value to its color space in floating point, and it copies the pixels of <c>in</c>
 /// unchanged when the output space is the space of <c>in</c>, which is the case when the result goes to the screen
 /// (the output space is then sRGB) and <c>in</c> is <c>SourceGraphic</c>. Otherwise the copied pixels convert to the
@@ -61,7 +60,7 @@ internal sealed class SvgFeDisplacementMap : SvgFilterPrimitive
     }
 
     /// <inheritdoc/>
-    public override bool IsColorFilter => true;
+    public override bool HandlesColorSpaces => true;
 
     /// <summary>
     /// Creates the primitive of an <c>feDisplacementMap</c> element.

@@ -2024,6 +2024,9 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
     /// <inheritdoc />
     internal override DrawingOptions GetActiveOptions() => this.ResolveState().Options;
 
+    /// <inheritdoc />
+    internal override Configuration GetConfiguration() => this.configuration;
+
     /// <summary>
     /// Resolves the currently active drawing state.
     /// </summary>
