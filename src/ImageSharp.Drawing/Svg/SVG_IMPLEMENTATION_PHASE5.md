@@ -123,7 +123,7 @@ These came up in earlier phases and need a decision of the user or a different k
 
 - Changes to the core stroker for the five conformance tests it fails (zero-length dashes with caps, zero-length subpaths with butt caps, joins at curve ends with near-coincident control points). They change core output for every canvas user and may change existing reference images.
 - The WebGPU backend skipping the internal texture brush (patterns, images, and filter results do not draw there). It cannot be verified without a GPU.
-- Render performance of the core rasterizer (gradient brush, stroker, layer compositing).
+- Render performance and memory: planned as phase 6 (`SVG_IMPLEMENTATION_PHASE6.md`), which runs after this phase.
 - Drawing text inside embedded SVG images (a decision of the user is pending).
 
 ## 10. Hand-back Report
