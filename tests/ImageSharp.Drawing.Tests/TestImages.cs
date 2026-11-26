@@ -435,6 +435,12 @@ public static class TestImages
         public const string PatternChart = "Svg/Compositing/pattern-chart-synthetic.svg";
 
         /// <summary>
+        /// A synthetic page of text for the phase 3 load cost: 41 text elements with about 4,000 characters, tspans that
+        /// change paint and size, anchors, spacing, and rotate lists. It names the generic family <c>sans-serif</c>.
+        /// </summary>
+        public const string TextHeavy = "Svg/Text/text-heavy-synthetic.svg";
+
+        /// <summary>
         /// Stroked Feather icons. MIT license.
         /// </summary>
         public static readonly string[] FeatherIcons =

@@ -231,5 +231,55 @@ internal enum SvgAttributeId : byte
     /// <summary>
     /// <c>requiredFeatures</c>, on any element.
     /// </summary>
-    RequiredFeatures
+    RequiredFeatures,
+
+    /// <summary>
+    /// <c>dx</c>, a list of lengths, on <c>text</c> and <c>tspan</c>.
+    /// </summary>
+    Dx,
+
+    /// <summary>
+    /// <c>dy</c>, a list of lengths, on <c>text</c> and <c>tspan</c>.
+    /// </summary>
+    Dy,
+
+    /// <summary>
+    /// <c>rotate</c>, a list of numbers, on <c>text</c> and <c>tspan</c>.
+    /// </summary>
+    Rotate,
+
+    /// <summary>
+    /// <c>textLength</c>, on <c>text</c>, <c>tspan</c>, and <c>textPath</c>.
+    /// </summary>
+    TextLength,
+
+    /// <summary>
+    /// <c>lengthAdjust</c>, on <c>text</c>, <c>tspan</c>, and <c>textPath</c>.
+    /// </summary>
+    LengthAdjust,
+
+    /// <summary>
+    /// <c>startOffset</c>, on <c>textPath</c>.
+    /// </summary>
+    StartOffset,
+
+    /// <summary>
+    /// <c>method</c>, on <c>textPath</c>.
+    /// </summary>
+    Method,
+
+    /// <summary>
+    /// <c>spacing</c>, on <c>textPath</c>.
+    /// </summary>
+    Spacing,
+
+    /// <summary>
+    /// <c>side</c>, on <c>textPath</c> (SVG 2).
+    /// </summary>
+    Side,
+
+    /// <summary>
+    /// <c>path</c>, path data, on <c>textPath</c> (SVG 2).
+    /// </summary>
+    PathData
 }

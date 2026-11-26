@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200"
+     viewBox="0 0 200 200" font-family="Open Sans" font-size="40">
+    <defs>
+        <clipPath id="clip">
+            <text x="10" y="50">Clip</text>
+        </clipPath>
+        <mask id="mask">
+            <rect width="200" height="200" fill="black"/>
+            <text x="110" y="50" fill="white">Ma</text>
+        </mask>
+        <pattern id="tile" width="50" height="25" patternUnits="userSpaceOnUse">
+            <text x="2" y="18" font-size="16" fill="teal">ab</text>
+        </pattern>
+        <text id="word" fill="crimson" font-size="24">Used</text>
+    </defs>
+    <rect x="0" y="0" width="100" height="70" fill="green" clip-path="url(#clip)"/>
+    <rect x="100" y="0" width="100" height="70" fill="purple" mask="url(#mask)"/>
+    <rect x="0" y="80" width="200" height="50" fill="url(#tile)"/>
+    <use xlink:href="#word" x="10" y="170"/>
+    <use xlink:href="#word" x="110" y="170" fill="blue"/>
+    <g transform="translate(150 190) rotate(-20)">
+        <text font-size="14" text-anchor="middle">rotated</text>
+    </g>
+</svg>

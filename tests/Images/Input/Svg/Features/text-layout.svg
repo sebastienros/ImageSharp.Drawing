@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"
+     font-family="Open Sans" font-size="20">
+    <text x="10" y="28">Plain text</text>
+    <text x="190" y="56" text-anchor="end" fill="blue">End anchor</text>
+    <text x="100" y="84" text-anchor="middle">Mid<tspan fill="red" font-size="26">dle</tspan> anchor</text>
+    <text x="10 32 54 76" y="114" fill="green">ABCD<tspan dy="-6 12">ef</tspan></text>
+    <text x="120" y="114" rotate="0 20 40 60">Turn</text>
+    <text x="10" y="144" letter-spacing="4">Spaced</text>
+    <text x="115" y="144" word-spacing="12">a b c</text>
+    <text x="10" y="180" xml:space="preserve" fill="purple">  two   spaces
+</text>
+    <text x="190" y="180" text-anchor="end">
+        collapsed
+        <tspan fill="orange">  lines  </tspan>
+    </text>
+</svg>

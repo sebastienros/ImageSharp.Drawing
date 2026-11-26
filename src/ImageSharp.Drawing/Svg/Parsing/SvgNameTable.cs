@@ -52,7 +52,14 @@ internal sealed class SvgNameTable : XmlNameTable
     /// <returns>The set, compared by ordinal value.</returns>
     private static FrozenSet<string> CreateKnownNames()
     {
-        HashSet<string> names = new(StringComparer.Ordinal) { SvgNames.SvgNamespace, SvgNames.XLinkNamespace };
+        HashSet<string> names = new(StringComparer.Ordinal)
+        {
+            SvgNames.SvgNamespace,
+            SvgNames.XLinkNamespace,
+            SvgNames.XmlNamespace,
+            SvgNames.Space,
+            SvgNames.TextDecoration
+        };
         foreach (object name in SvgNames.ElementKinds.Keys)
         {
             _ = names.Add((string)name);

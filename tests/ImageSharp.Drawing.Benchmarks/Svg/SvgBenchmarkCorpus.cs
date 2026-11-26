@@ -38,7 +38,8 @@ internal static class SvgBenchmarkCorpus
         "Moose",
         "StyledLandscape",
         "Dashboard",
-        "PatternChart"
+        "PatternChart",
+        "TextHeavy"
     ];
 
     /// <summary>
@@ -56,6 +57,7 @@ internal static class SvgBenchmarkCorpus
         "StyledLandscape" => [TestImages.Svg.StyledLandscape],
         "Dashboard" => [TestImages.Svg.CompositingDashboard],
         "PatternChart" => [TestImages.Svg.PatternChart],
+        "TextHeavy" => [TestImages.Svg.TextHeavy],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 

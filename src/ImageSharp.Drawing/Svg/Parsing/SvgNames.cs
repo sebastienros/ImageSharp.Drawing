@@ -134,6 +134,15 @@ internal static class SvgNames
     /// <summary>The <c>stop-opacity</c> property name.</summary>
     public const string StopOpacity = "stop-opacity";
 
+    /// <summary>The <c>text-decoration</c> shorthand name, which is also a presentation attribute.</summary>
+    public const string TextDecoration = "text-decoration";
+
+    /// <summary>The XML namespace, which the <c>xml:space</c> attribute is in.</summary>
+    public const string XmlNamespace = "http://www.w3.org/XML/1998/namespace";
+
+    /// <summary>The local name of the <c>xml:space</c> attribute.</summary>
+    public const string Space = "space";
+
     /// <summary>
     /// Gets the map from atomized SVG element name to element kind.
     /// </summary>
@@ -170,6 +179,7 @@ internal static class SvgNames
         ["title"] = SvgElementKind.Title,
         ["desc"] = SvgElementKind.Desc,
         ["metadata"] = SvgElementKind.Metadata,
+        ["tref"] = SvgElementKind.Tref,
     };
 
     /// <summary>
@@ -222,6 +232,16 @@ internal static class SvgNames
         ["systemLanguage"] = SvgAttributeId.SystemLanguage,
         ["requiredExtensions"] = SvgAttributeId.RequiredExtensions,
         ["requiredFeatures"] = SvgAttributeId.RequiredFeatures,
+        ["dx"] = SvgAttributeId.Dx,
+        ["dy"] = SvgAttributeId.Dy,
+        ["rotate"] = SvgAttributeId.Rotate,
+        ["textLength"] = SvgAttributeId.TextLength,
+        ["lengthAdjust"] = SvgAttributeId.LengthAdjust,
+        ["startOffset"] = SvgAttributeId.StartOffset,
+        ["method"] = SvgAttributeId.Method,
+        ["spacing"] = SvgAttributeId.Spacing,
+        ["side"] = SvgAttributeId.Side,
+        [Path] = SvgAttributeId.PathData,
     };
 
     /// <summary>
@@ -242,8 +262,16 @@ internal static class SvgNames
             // The transform attribute is read into the transform table of the element, so only the CSS property goes
             // through the property parser. mix-blend-mode and isolation are CSS properties without a presentation
             // attribute (Compositing and Blending Level 1), so only style sheets and the style attribute set them.
+            // font-kerning and the text-decoration longhands are CSS properties that the SVG 2 list of presentation
+            // attributes leaves out; the text-decoration shorthand is a presentation attribute and the reader handles it.
             _ = SvgPropertyParser.TryGetProperty(name, out SvgPropertyId property);
-            if (property is not SvgPropertyId.Transform and not SvgPropertyId.MixBlendMode and not SvgPropertyId.Isolation)
+            if (property is not SvgPropertyId.Transform
+                and not SvgPropertyId.MixBlendMode
+                and not SvgPropertyId.Isolation
+                and not SvgPropertyId.FontKerning
+                and not SvgPropertyId.TextDecorationLine
+                and not SvgPropertyId.TextDecorationStyle
+                and not SvgPropertyId.TextDecorationColor)
             {
                 map[name] = property;
             }

@@ -57,6 +57,7 @@ internal sealed class SvgElementTree
     private readonly List<SvgPatternAttributes> patterns;
     private readonly List<SvgMarkerAttributes> markers;
     private readonly List<SvgImageAttributes> images;
+    private readonly SvgTextTables? text;
     private readonly Dictionary<int, SvgConditionalAttributes>? conditions;
     private readonly Dictionary<string, int> ids;
     private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> idLookup;
@@ -88,6 +89,7 @@ internal sealed class SvgElementTree
         this.patterns = tables.Patterns;
         this.markers = tables.Markers;
         this.images = tables.Images;
+        this.text = tables.Text;
         this.conditions = tables.Conditions;
         this.ids = tables.Ids;
         this.idLookup = this.ids.GetAlternateLookup<ReadOnlySpan<char>>();
@@ -305,6 +307,61 @@ internal sealed class SvgElementTree
     /// <param name="index">The element index.</param>
     /// <returns>The attributes.</returns>
     public ref readonly SvgImageAttributes GetImage(int index) => ref CollectionsMarshal.AsSpan(this.images)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes of a <c>text</c> or <c>tspan</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgTextAttributes GetText(int index) => ref CollectionsMarshal.AsSpan(this.text!.TextAttributes)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the attributes of a <c>textPath</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgTextPathAttributes GetTextPath(int index) => ref CollectionsMarshal.AsSpan(this.text!.TextPaths)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the id that a <c>tref</c> element references.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The id, or <see langword="null"/> for a missing or external reference.</returns>
+    public string? GetTrefReference(int index) => this.text!.TrefReferences[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the lengths of an <c>x</c>, <c>y</c>, <c>dx</c>, or <c>dy</c> list of a text element.
+    /// </summary>
+    /// <param name="range">The range from <see cref="SvgTextAttributes"/>.</param>
+    /// <returns>The lengths.</returns>
+    public ReadOnlySpan<SvgLength> GetTextLengths(SvgListRange range)
+        => range.Count == 0 ? default : CollectionsMarshal.AsSpan(this.text!.Lengths).Slice(range.Start, range.Count);
+
+    /// <summary>
+    /// Gets the angles of a <c>rotate</c> list of a text element, in degrees.
+    /// </summary>
+    /// <param name="range">The range from <see cref="SvgTextAttributes"/>.</param>
+    /// <returns>The angles.</returns>
+    public ReadOnlySpan<float> GetRotations(SvgListRange range)
+        => range.Count == 0 ? default : CollectionsMarshal.AsSpan(this.text!.Rotations).Slice(range.Start, range.Count);
+
+    /// <summary>
+    /// Gets the character data nodes of a <c>text</c> element, in document order: the nodes of its whole subtree.
+    /// </summary>
+    /// <param name="index">The index of a <c>text</c> element.</param>
+    /// <returns>The nodes.</returns>
+    public ReadOnlySpan<SvgTextNode> GetTextNodes(int index)
+    {
+        ref readonly SvgTextAttributes attributes = ref this.GetText(index);
+        return CollectionsMarshal.AsSpan(this.text!.Nodes).Slice(attributes.FirstTextNode, attributes.TextNodeCount);
+    }
+
+    /// <summary>
+    /// Gets the characters of a character data node, as the XML reader delivered them.
+    /// </summary>
+    /// <param name="node">The node.</param>
+    /// <returns>The characters.</returns>
+    public ReadOnlySpan<char> GetCharacters(in SvgTextNode node) => this.text!.Characters.AsSpan(node.Start, node.Length);
 
     /// <summary>
     /// Gets the conditional processing attributes of an element: <c>systemLanguage</c>, <c>requiredExtensions</c>, and

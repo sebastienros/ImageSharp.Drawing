@@ -6,7 +6,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <summary>
 /// The style properties that the parser reads. The value of each member is its bit index in the masks of
 /// <see cref="SvgSpecifiedStyle"/>, so the list can grow to 64 properties without a change of representation. Later
-/// phases add members such as <c>filter</c> and font properties at the end.
+/// phases add members such as <c>filter</c> at the end.
 /// </summary>
 internal enum SvgPropertyId : byte
 {
@@ -190,5 +190,129 @@ internal enum SvgPropertyId : byte
     /// <see cref="SvgElementTree.TryGetTransform(int, out System.Numerics.Matrix3x2)"/>). The computed style does not
     /// carry it.
     /// </summary>
-    Transform
+    Transform,
+
+    /// <summary>
+    /// <c>font-family</c>. Inherited. Initial: the default family of the load options. The first text property: the
+    /// values of every member from here on live in <see cref="SvgTextStyle"/>, which <see cref="SvgExtendedStyle.Text"/>
+    /// and <see cref="SvgComputedStyle.Text"/> hold.
+    /// </summary>
+    FontFamily,
+
+    /// <summary>
+    /// <c>font-style</c>. Inherited. Initial <c>normal</c>.
+    /// </summary>
+    FontStyle,
+
+    /// <summary>
+    /// <c>font-weight</c>. Inherited. Initial <c>normal</c> (400).
+    /// </summary>
+    FontWeight,
+
+    /// <summary>
+    /// <c>font-stretch</c>. Inherited. Initial <c>normal</c> (100%).
+    /// </summary>
+    FontStretch,
+
+    /// <summary>
+    /// <c>font-variant</c>. Inherited. Initial <c>normal</c>.
+    /// </summary>
+    FontVariant,
+
+    /// <summary>
+    /// <c>font-size-adjust</c>. Inherited. Initial <c>none</c>.
+    /// </summary>
+    FontSizeAdjust,
+
+    /// <summary>
+    /// <c>font-kerning</c>. Inherited. Initial <c>auto</c>.
+    /// </summary>
+    FontKerning,
+
+    /// <summary>
+    /// <c>text-anchor</c>. Inherited. Initial <c>start</c>.
+    /// </summary>
+    TextAnchor,
+
+    /// <summary>
+    /// <c>text-decoration-line</c>. Not inherited. Initial <c>none</c>. The shorthand <c>text-decoration</c> sets it.
+    /// </summary>
+    TextDecorationLine,
+
+    /// <summary>
+    /// <c>text-decoration-style</c>. Not inherited. Initial <c>solid</c>. The shorthand <c>text-decoration</c> sets it.
+    /// </summary>
+    TextDecorationStyle,
+
+    /// <summary>
+    /// <c>text-decoration-color</c>. Not inherited. Initial <c>currentColor</c>. The shorthand <c>text-decoration</c>
+    /// sets it.
+    /// </summary>
+    TextDecorationColor,
+
+    /// <summary>
+    /// <c>letter-spacing</c>. Inherited. Initial <c>normal</c>.
+    /// </summary>
+    LetterSpacing,
+
+    /// <summary>
+    /// <c>word-spacing</c>. Inherited. Initial <c>normal</c>.
+    /// </summary>
+    WordSpacing,
+
+    /// <summary>
+    /// <c>dominant-baseline</c>. Inherited (SVG 2). Initial <c>auto</c>.
+    /// </summary>
+    DominantBaseline,
+
+    /// <summary>
+    /// <c>alignment-baseline</c>. Not inherited. Initial <c>auto</c>.
+    /// </summary>
+    AlignmentBaseline,
+
+    /// <summary>
+    /// <c>baseline-shift</c>. Not inherited. Initial <c>baseline</c>.
+    /// </summary>
+    BaselineShift,
+
+    /// <summary>
+    /// <c>writing-mode</c>. Inherited. Initial <c>horizontal-tb</c>.
+    /// </summary>
+    WritingMode,
+
+    /// <summary>
+    /// <c>direction</c>. Inherited. Initial <c>ltr</c>.
+    /// </summary>
+    Direction,
+
+    /// <summary>
+    /// <c>unicode-bidi</c>. Not inherited. Initial <c>normal</c>.
+    /// </summary>
+    UnicodeBidi,
+
+    /// <summary>
+    /// <c>white-space</c>. Inherited. Initial <c>normal</c>. The <c>xml:space</c> attribute of text content elements sets
+    /// it at the precedence of a presentation attribute.
+    /// </summary>
+    WhiteSpace,
+
+    /// <summary>
+    /// <c>text-rendering</c>. Inherited. Initial <c>auto</c>.
+    /// </summary>
+    TextRendering,
+
+    /// <summary>
+    /// <c>kerning</c> (SVG 1.1). Inherited. Initial <c>auto</c>.
+    /// </summary>
+    Kerning,
+
+    /// <summary>
+    /// <c>glyph-orientation-vertical</c> (SVG 1.1). Inherited. Initial <c>auto</c>.
+    /// </summary>
+    GlyphOrientationVertical,
+
+    /// <summary>
+    /// <c>glyph-orientation-horizontal</c> (SVG 1.1). Inherited. Initial <c>0deg</c>. The last text property.
+    /// </summary>
+    GlyphOrientationHorizontal
 }

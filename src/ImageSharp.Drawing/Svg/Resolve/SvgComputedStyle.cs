@@ -24,7 +24,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Every property of <see cref="SvgPropertyId"/> has a member here except <see cref="SvgPropertyId.Transform"/>, which
-/// the reader folds into the transform table of the element.
+/// the reader folds into the transform table of the element, and the text properties, whose values live together in
+/// <see cref="Text"/>.
 /// </para>
 /// </remarks>
 internal struct SvgComputedStyle
@@ -212,6 +213,13 @@ internal struct SvgComputedStyle
     public SvgLength TransformOriginY { readonly get; set; }
 
     /// <summary>
+    /// Gets or sets the computed values of the text properties. Never <see langword="null"/> in a computed style. The
+    /// instance is shared: elements that specify no text property and inherit no value of a property that does not
+    /// inherit share the instance of their parent, so equal references mean equal text values.
+    /// </summary>
+    public SvgTextStyle Text { readonly get; set; }
+
+    /// <summary>
     /// Creates the style that holds the initial value of every property. It is the parent style of the root element.
     /// </summary>
     /// <param name="currentColor">The initial value of <c>color</c>.</param>
@@ -257,6 +265,7 @@ internal struct SvgComputedStyle
             // is 0 0, as if the user agent style sheet set it.
             TransformOriginX = new SvgLength(0F, SvgLengthUnit.Px),
             TransformOriginY = new SvgLength(0F, SvgLengthUnit.Px),
+            Text = SvgTextStyle.Initial,
         };
 
     /// <summary>
@@ -290,6 +299,7 @@ internal struct SvgComputedStyle
         style.VectorEffect = initial.VectorEffect;
         style.TransformOriginX = initial.TransformOriginX;
         style.TransformOriginY = initial.TransformOriginY;
+        style.Text = parent.Text.GetChildStyle();
 
         // SVG 2 user agent style sheet: svg:not(:root), symbol, image, marker, pattern { overflow: hidden }. It has the
         // lowest precedence, so any specified value, including inherit and initial, replaces it below.
@@ -308,9 +318,16 @@ internal struct SvgComputedStyle
             style.FontSize = ComputeFontSize(in specified, in parent, in initial, units);
         }
 
+        // The text properties share one object, which changes as a whole.
+        ulong textBits = specified.Specified & SvgTextStyle.Properties;
+        if (textBits != 0)
+        {
+            style.Text = ComputeText(in specified, textBits, style.Text, parent.Text, initial.Text, style.FontSize, units);
+        }
+
         // Visit only the specified properties. The inherit keyword takes the parent value for any property, and the
         // initial keyword takes the initial value.
-        ulong bits = specified.Specified;
+        ulong bits = specified.Specified & ~SvgTextStyle.Properties;
         SvgExtendedStyle? extended = specified.Extended;
         while (bits != 0)
         {
@@ -527,6 +544,108 @@ internal struct SvgComputedStyle
                 break;
         }
     }
+
+    /// <summary>
+    /// Computes the text properties that an element specifies, on a copy of the text style it starts from.
+    /// </summary>
+    /// <remarks>
+    /// <c>bolder</c> and <c>lighter</c> follow the relative weight table of CSS Fonts Level 4 from the parent weight.
+    /// Lengths with font-relative or absolute units become pixels at this element, so descendants inherit the absolute
+    /// value, as CSS computes <c>letter-spacing</c>, <c>word-spacing</c>, and <c>baseline-shift</c>. Percentages stay
+    /// percentages: they refer to the font size of the element that uses them.
+    /// </remarks>
+    /// <param name="specified">The cascaded specified style of the element.</param>
+    /// <param name="bits">The mask of the specified text properties.</param>
+    /// <param name="start">The text style the element starts from: the parent style with the properties that do not inherit reset.</param>
+    /// <param name="parent">The computed text style of the parent.</param>
+    /// <param name="initial">The initial text style.</param>
+    /// <param name="fontSize">The computed font size of the element.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    /// <returns>The new computed text style.</returns>
+    private static SvgTextStyle ComputeText(
+        in SvgSpecifiedStyle specified,
+        ulong bits,
+        SvgTextStyle start,
+        SvgTextStyle parent,
+        SvgTextStyle initial,
+        float fontSize,
+        SvgUnitBasis units)
+    {
+        SvgTextStyle text = start.Clone();
+        SvgTextStyle? values = specified.Extended?.Text;
+        while (bits != 0)
+        {
+            SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
+            bits &= bits - 1;
+
+            if (specified.IsInherit(property))
+            {
+                text.CopyProperty(property, parent);
+                continue;
+            }
+
+            if (specified.IsInitial(property))
+            {
+                text.CopyProperty(property, initial);
+                continue;
+            }
+
+            // A value bit means the parser stored the value in the text values of the extension.
+            text.CopyProperty(property, values!);
+            switch (property)
+            {
+                case SvgPropertyId.FontWeight:
+                    text.FontWeight = ComputeFontWeight(values!.FontWeight, parent.FontWeight);
+                    break;
+                case SvgPropertyId.LetterSpacing:
+                    text.LetterSpacing = ToComputedOptionalLength(values!.LetterSpacing, fontSize, units);
+                    break;
+                case SvgPropertyId.WordSpacing:
+                    text.WordSpacing = ToComputedOptionalLength(values!.WordSpacing, fontSize, units);
+                    break;
+                case SvgPropertyId.Kerning:
+                    text.Kerning = ToComputedOptionalLength(values!.Kerning, fontSize, units);
+                    break;
+                case SvgPropertyId.BaselineShift when values!.BaselineShiftKind == SvgBaselineShiftKind.Length:
+                    text.BaselineShift = ToComputedLength(values.BaselineShift, fontSize, units);
+                    break;
+            }
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// Computes a specified <c>font-weight</c>. A number keeps its value; <c>bolder</c> and <c>lighter</c> use the table of
+    /// CSS Fonts Level 4, section 2.2.1.
+    /// </summary>
+    /// <param name="specified">The specified weight, or <see cref="SvgTextStyle.Bolder"/> or <see cref="SvgTextStyle.Lighter"/>.</param>
+    /// <param name="parent">The computed weight of the parent.</param>
+    /// <returns>The computed weight.</returns>
+    internal static float ComputeFontWeight(float specified, float parent)
+    {
+        if (specified == SvgTextStyle.Bolder)
+        {
+            return parent < 350F ? 400F : parent < 550F ? 700F : parent < 900F ? 900F : parent;
+        }
+
+        if (specified == SvgTextStyle.Lighter)
+        {
+            return parent < 100F ? parent : parent < 550F ? 100F : parent < 750F ? 400F : 700F;
+        }
+
+        return specified;
+    }
+
+    /// <summary>
+    /// Converts a specified length that may be unspecified, for a keyword such as <c>normal</c>, to its computed form.
+    /// </summary>
+    /// <param name="value">The specified length.</param>
+    /// <param name="fontSize">The computed font size of the element.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    /// <returns>The computed length; unspecified stays unspecified.</returns>
+    private static SvgLength ToComputedOptionalLength(SvgLength value, float fontSize, SvgUnitBasis units)
+        => value.IsSpecified ? ToComputedLength(value, fontSize, units) : value;
 
     /// <summary>
     /// Computes <c>font-size</c>. A percentage, <c>em</c>, <c>ex</c>, and <c>ch</c> refer to the font size of the parent.

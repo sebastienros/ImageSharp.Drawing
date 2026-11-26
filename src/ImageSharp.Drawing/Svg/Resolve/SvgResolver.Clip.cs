@@ -315,7 +315,7 @@ internal sealed partial class SvgResolver
     {
         result = default;
         SvgElementKind kind = this.tree[child].Kind;
-        if (!IsShape(kind) && kind != SvgElementKind.Use)
+        if (!IsShape(kind) && kind is not SvgElementKind.Use and not SvgElementKind.Text)
         {
             return false;
         }
@@ -348,7 +348,8 @@ internal sealed partial class SvgResolver
             }
 
             shapeKind = this.tree[shape].Kind;
-            if (!IsShape(shapeKind) || (this.tree[shape].HasConditionalAttributes && !this.PassesConditions(shape)))
+            if ((!IsShape(shapeKind) && shapeKind != SvgElementKind.Text)
+                || (this.tree[shape].HasConditionalAttributes && !this.PassesConditions(shape)))
             {
                 return false;
             }
@@ -368,14 +369,18 @@ internal sealed partial class SvgResolver
             }
         }
 
-        // A line has no fill region, and a hidden shape adds nothing.
-        if (shapeKind == SvgElementKind.Line || shapeStyle.Visibility != SvgVisibility.Visible)
+        // A line has no fill region, and a hidden shape adds nothing. The glyphs of text add their outlines; visibility
+        // applies per span there, because a visible tspan of hidden text still renders.
+        bool isText = shapeKind == SvgElementKind.Text;
+        if (shapeKind == SvgElementKind.Line || (!isText && shapeStyle.Visibility != SvgVisibility.Visible))
         {
             return false;
         }
 
         SvgResolveContext shapeContext = new(in shapeStyle, Matrix3x2.Identity, viewport, target.Depth + 1);
-        IPath? path = this.GetShape(shape, shapeKind, in shapeContext);
+        IPath? path = isText
+            ? this.GetTextClipPath(shape, in shapeStyle, viewport)
+            : this.GetShape(shape, shapeKind, in shapeContext);
         if (path is null)
         {
             return false;
@@ -384,7 +389,9 @@ internal sealed partial class SvgResolver
         // The clip region is the fill region, which closes every open subpath. A canvas clip does not close an open path
         // itself, so the geometry clip takes the closed form; the coverage fill closes it too.
         path = path.AsClosedPath();
-        bool evenOdd = shapeStyle.ClipRule == SvgFillRule.EvenOdd;
+
+        // clip-rule does not apply to text, as fill-rule does not: overlapping glyphs add up, as in Chromium.
+        bool evenOdd = shapeStyle.ClipRule == SvgFillRule.EvenOdd && !isText;
         result = new ClipChild
         {
             Path = path,

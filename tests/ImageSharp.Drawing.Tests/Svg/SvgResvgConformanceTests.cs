@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using SixLabors.Fonts;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Svg;
 using SixLabors.ImageSharp.PixelFormats;
@@ -54,6 +55,12 @@ public class SvgResvgConformanceTests
     /// The time limit for loading and drawing one test.
     /// </summary>
     private static readonly TimeSpan TestTimeLimit = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The fonts of the suite, from its <c>fonts</c> directory, loaded once in ordinal order of the file names, as the
+    /// resvg test harness loads them.
+    /// </summary>
+    private static readonly Lazy<FontCollection> SuiteFonts = new(LoadSuiteFonts);
 
     private readonly ITestOutputHelper output;
 
@@ -248,6 +255,54 @@ public class SvgResvgConformanceTests
     }
 
     /// <summary>
+    /// Loads the fonts of the suite. Font files are the <c>.ttf</c> and <c>.otf</c> files of the <c>fonts</c> directory.
+    /// </summary>
+    /// <returns>The collection; empty when the suite is missing.</returns>
+    private static FontCollection LoadSuiteFonts()
+    {
+        FontCollection collection = new();
+        string directory = IOPath.Combine(TestEnvironment.GetFullPath(SuiteRelativePath), "fonts");
+        if (!Directory.Exists(directory))
+        {
+            return collection;
+        }
+
+        List<string> files = [];
+        foreach (string file in Directory.EnumerateFiles(directory))
+        {
+            string extension = IOPath.GetExtension(file);
+            if (extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) || extension.Equals(".otf", StringComparison.OrdinalIgnoreCase))
+            {
+                files.Add(file);
+            }
+        }
+
+        files.Sort(StringComparer.Ordinal);
+        foreach (string file in files)
+        {
+            _ = collection.Add(file);
+        }
+
+        return collection;
+    }
+
+    /// <summary>
+    /// Creates the generic family map of the resvg test harness (<c>crates/resvg/tests/integration/main.rs</c> in the
+    /// resvg repository): serif is Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display, and
+    /// monospace Noto Mono.
+    /// </summary>
+    /// <returns>The map.</returns>
+    private static SvgGenericFontFamilies CreateSuiteGenericFamilies()
+        => new()
+        {
+            Serif = ["Noto Serif"],
+            SansSerif = ["Noto Sans"],
+            Cursive = ["Yellowtail"],
+            Fantasy = ["Sedgwick Ave Display"],
+            Monospace = ["Noto Mono"],
+        };
+
+    /// <summary>
     /// Loads a test SVG and draws it into the whole image.
     /// </summary>
     /// <param name="svgPath">The full path of the test SVG.</param>
@@ -259,7 +314,14 @@ public class SvgResvgConformanceTests
         {
             // Image files load from the directory of the test, as a caller that trusts that directory would set it.
             // References that leave it, such as ../../../resources, are refused by the security rules of the option.
-            SvgLoadOptions options = new() { ResourceBaseDirectory = IOPath.GetDirectoryName(svgPath) };
+            // Text uses the fonts of the suite with the generic families of the resvg test harness.
+            SvgLoadOptions options = new()
+            {
+                ResourceBaseDirectory = IOPath.GetDirectoryName(svgPath),
+                FontCollection = SuiteFonts.Value,
+                GenericFontFamilies = CreateSuiteGenericFamilies(),
+            };
+
             SvgDocument document = SvgDocument.Load(svgPath, options);
             image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, image.Width, image.Height))));
             return null;

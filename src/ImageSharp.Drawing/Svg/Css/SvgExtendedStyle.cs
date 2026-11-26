@@ -118,6 +118,19 @@ internal sealed class SvgExtendedStyle
     public Matrix3x2 Transform { get; set; }
 
     /// <summary>
+    /// Gets or sets the specified values of the text properties, or <see langword="null"/> when the style specifies none of
+    /// them with a value. The ownership rules of this type apply to it as well.
+    /// </summary>
+    public SvgTextStyle? Text { get; set; }
+
+    /// <summary>
+    /// Returns the text values, creating them when the extension has none. Only the property parser calls this, while it
+    /// fills a style that is not yet stored in a table.
+    /// </summary>
+    /// <returns>The text values, which the caller may change.</returns>
+    public SvgTextStyle GetOrCreateText() => this.Text ??= new SvgTextStyle();
+
+    /// <summary>
     /// Returns a new extension that holds the values of <paramref name="target"/> with the values of the properties in
     /// <paramref name="properties"/> taken from <paramref name="source"/>. Neither input changes.
     /// </summary>
@@ -128,7 +141,15 @@ internal sealed class SvgExtendedStyle
     public static SvgExtendedStyle Merge(SvgExtendedStyle? target, SvgExtendedStyle source, ulong properties)
     {
         SvgExtendedStyle result = target is null ? new SvgExtendedStyle() : (SvgExtendedStyle)target.MemberwiseClone();
-        ulong bits = properties;
+
+        // The text values are one shared object, so a merge that changes any of them builds a new one.
+        ulong text = properties & SvgTextStyle.Properties;
+        if (text != 0 && source.Text is not null)
+        {
+            result.Text = SvgTextStyle.Merge(result.Text, source.Text, text);
+        }
+
+        ulong bits = properties & ~SvgTextStyle.Properties;
         while (bits != 0)
         {
             SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);

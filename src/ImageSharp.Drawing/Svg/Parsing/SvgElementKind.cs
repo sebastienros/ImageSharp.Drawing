@@ -175,5 +175,11 @@ internal enum SvgElementKind : byte
     /// <summary>
     /// <c>metadata</c>. Never rendered.
     /// </summary>
-    Metadata
+    Metadata,
+
+    /// <summary>
+    /// <c>tref</c> (SVG 1.1, removed in SVG 2). A text content child that references the character data of another
+    /// element.
+    /// </summary>
+    Tref
 }

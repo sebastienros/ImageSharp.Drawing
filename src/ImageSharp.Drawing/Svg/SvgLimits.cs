@@ -15,6 +15,7 @@ public sealed class SvgLimits
     private long maxCharactersFromEntities = 1 << 20;
     private long maxImagePixels = 64L * 1024 * 1024;
     private int maxPatternTilePixels = 4096 * 4096;
+    private int maxTextCharacters = 1_000_000;
 
     /// <summary>
     /// Gets or sets the largest number of elements the document can contain. The default is 1,000,000.
@@ -104,6 +105,22 @@ public sealed class SvgLimits
         {
             Guard.MustBeGreaterThan(value, 0, nameof(this.MaxPatternTilePixels));
             this.maxPatternTilePixels = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the largest number of characters of text that one document lays out, counted after every <c>use</c>
+    /// reference is expanded, so text that several <c>use</c> elements show counts once per instance. The same limit
+    /// bounds the character data inside <c>text</c> elements that the document contains. The default is 1,000,000.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
+    public int MaxTextCharacters
+    {
+        get => this.maxTextCharacters;
+        set
+        {
+            Guard.MustBeGreaterThan(value, 0, nameof(this.MaxTextCharacters));
+            this.maxTextCharacters = value;
         }
     }
 }

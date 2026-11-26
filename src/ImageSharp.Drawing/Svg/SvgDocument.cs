@@ -187,6 +187,11 @@ public sealed class SvgDocument
     private static SvgReaderOptions CreateReaderOptions(SvgLoadOptions options)
     {
         SvgLimits limits = options.Limits;
-        return new SvgReaderOptions(limits.MaxElements, limits.MaxNestingDepth, limits.MaxCharactersFromEntities, options.UserStyleSheet);
+        return new SvgReaderOptions(
+            limits.MaxElements,
+            limits.MaxNestingDepth,
+            limits.MaxCharactersFromEntities,
+            options.UserStyleSheet,
+            limits.MaxTextCharacters);
     }
 }

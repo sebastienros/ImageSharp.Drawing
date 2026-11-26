@@ -28,6 +28,14 @@ node tests/SvgTools/render-svg.js [size options] --out-dir <dir> <input.svg>...
 
 Without size options the output has the intrinsic size of the document.
 
+| Font option | Effect |
+|---|---|
+| `--font-dir <dir>` | Chromium sees only the fonts of this directory. Repeat the option for more directories. |
+| `--generic-family <generic>=<family>` | Maps a CSS generic family (`serif`, `sans-serif`, `monospace`, `cursive`, `fantasy`) to a family of the font directories. |
+| `--resvg-fonts <dir>` | `--font-dir <dir>` with the generic families of the resvg test harness: serif Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display, monospace Noto Mono. |
+
+Without font options Chromium uses the fonts of the machine. A text render compares only when Chromium and the renderer use the same font files, so every oracle render of text uses the font options.
+
 Examples:
 
 ```
@@ -41,6 +49,8 @@ How it renders:
 - Intrinsic size: absolute `width` and `height`; a missing or percentage side follows the viewBox aspect ratio; without a viewBox the fallback is 300 x 150. `em` is 16px and `ex` is 8px. These are the rules of `SVG_IMPLEMENTATION.md` section 5.2. Only the size of the rectangle comes from these rules. Chromium does all of the drawing.
 - Chromium renders the file as an image, as an HTML `<img>` element does: scripts do not run and external files do not load. This matches the default security model of the renderer. Tests that need external images, such as `structure/image` in the resvg suite, do not render them.
 - Device scale factor 1, transparent background, sRGB color profile. The PNG has straight alpha.
+- With font options the script writes a temporary fontconfig configuration and starts Chromium with `FONTCONFIG_FILE` pointing to it. The configuration lists only the font directories, maps the generic families, and maps Times New Roman (the default font of Chromium) and every family that no font has to the serif family. The configuration and its font cache are removed when the script ends. This works on Linux, where Chromium finds fonts through fontconfig.
+- Text references: the repository tests (`SvgTextRenderTests`) use Open Sans from `tests/ImageSharp.Drawing.Tests/TestFonts`. Render them with `--font-dir <dir with OpenSans-Regular.ttf> --generic-family "serif=Open Sans"`. The resvg conformance tests use `--resvg-fonts tests/Images/External/resvg-test-suite/fonts`.
 - `paris-30k.svg` has no size and no viewBox. To render the whole map, pass `--view-box "0 0 1096 1060" --width 1096`, or render the copy that `--verify svg` writes (see below), which has a viewport.
 
 Before you accept a new reference image for a render test, render the same SVG with this tool at the same size and compare the two files. A difference means a defect in the renderer or a documented gap. It is not a reason to raise the tolerance.
@@ -111,6 +121,8 @@ Tests per category in `resvg-test-suite`:
 Per category in the resvg repository: filters 416, masking 100, paint-servers 163, painting 314, shapes 133, structure 267, text 387.
 
 The conformance runner is `SvgResvgConformanceTests` in the test project. It runs every test of `resvg-test-suite` and checks the outcome against `tests/ImageSharp.Drawing.Tests/Svg/ResvgExpectedResults.txt`, which also describes the pass criterion and its calibration. Without the suite the test returns early. It writes `results.tsv` (outcome and mismatched pixels per test), `summary.txt` (counts per category), and the render of every failing test to `tests/Images/ActualOutput/Svg/Resvg`.
+
+Text in the runner uses only the fonts of the suite: the `.ttf` and `.otf` files of `fonts/`, loaded in ordinal order of the file names into one font collection, with the generic families of the resvg test harness (`crates/resvg/tests/integration/main.rs` in the resvg repository: serif Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display, monospace Noto Mono). The fonts stay in the suite directory; they are not copied into the repository. A few reference images of the suite draw generic families with fonts that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); those tests fail with a reason that says so.
 
 Licenses:
 

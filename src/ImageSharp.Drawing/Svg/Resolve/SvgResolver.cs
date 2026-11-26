@@ -282,6 +282,7 @@ internal sealed partial class SvgResolver
             case SvgElementKind.Polyline:
             case SvgElementKind.Polygon:
             case SvgElementKind.Image:
+            case SvgElementKind.Text:
                 break;
             case SvgElementKind.Symbol when viaUse:
                 break;
@@ -355,6 +356,10 @@ internal sealed partial class SvgResolver
 
             case SvgElementKind.Image:
                 this.ResolveImage(index, in context);
+                break;
+
+            case SvgElementKind.Text:
+                this.ResolveText(index, in context);
                 break;
 
             default:
@@ -701,6 +706,13 @@ internal sealed partial class SvgResolver
                 bounds = path.Bounds;
                 return float.IsFinite(bounds.Width) && float.IsFinite(bounds.Height);
             }
+
+            case SvgElementKind.A when this.IsActiveTextSpan(element):
+            case SvgElementKind.Text:
+            case SvgElementKind.TSpan:
+            case SvgElementKind.TextPath:
+                // A tspan, an a inside text, and a textPath have a box only while the text that holds them resolves.
+                return this.TryGetTextBoundingBox(element, in context, out bounds);
 
             case SvgElementKind.G:
             case SvgElementKind.A:

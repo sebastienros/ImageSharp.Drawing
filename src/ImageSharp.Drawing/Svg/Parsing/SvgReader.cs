@@ -47,6 +47,9 @@ internal sealed class SvgReader
     private readonly List<SvgStyleSources> styleSources = [];
     private readonly List<int> openElements = [];
     private int styleElement = -1;
+
+    // The number of open text elements. Character data is kept while it is above zero.
+    private int textDepth;
     private string? styleText;
     private string? styleMedia;
     private StringBuilder? styleBuilder;
@@ -268,7 +271,10 @@ internal sealed class SvgReader
             MaxCharactersFromEntities = options.MaxCharactersFromEntities,
             IgnoreComments = true,
             IgnoreProcessingInstructions = true,
-            IgnoreWhitespace = true,
+
+            // White space between elements is read so that text elements keep the spaces between their children. The
+            // reader skips such nodes outside text elements without reading their value.
+            IgnoreWhitespace = false,
             CloseInput = false,
             NameTable = nameTable,
         };
@@ -296,10 +302,23 @@ internal sealed class SvgReader
                     case XmlNodeType.Text:
                     case XmlNodeType.CDATA:
                     case XmlNodeType.SignificantWhitespace:
-                        // Only the text directly inside a style element is read.
-                        if (this.styleElement >= 0 && this.openElements[^1] == this.styleElement)
+                        // Character data is kept inside text elements; elsewhere only the text directly inside a style
+                        // element is read.
+                        if (this.textDepth > 0)
+                        {
+                            this.AddTextNode(xml.Value);
+                        }
+                        else if (this.styleElement >= 0 && this.openElements[^1] == this.styleElement)
                         {
                             this.AppendStyleText(xml.Value);
+                        }
+
+                        break;
+                    case XmlNodeType.Whitespace:
+                        // White space between elements matters only inside text elements, where it can separate words.
+                        if (this.textDepth > 0)
+                        {
+                            this.AddTextNode(xml.Value);
                         }
 
                         break;
@@ -481,6 +500,14 @@ internal sealed class SvgReader
             this.styleElement = index;
         }
 
+        // A text element records where the character data of its subtree starts in the node table.
+        bool isText = kind == SvgElementKind.Text;
+        if (isText)
+        {
+            SvgTextTables text = this.tables.Text!;
+            CollectionsMarshal.AsSpan(text.TextAttributes)[elements[index].DataIndex].FirstTextNode = text.Nodes.Count;
+        }
+
         if (xml.IsEmptyElement)
         {
             this.EndElement(index);
@@ -488,6 +515,10 @@ internal sealed class SvgReader
         else
         {
             this.openElements.Add(index);
+            if (isText)
+            {
+                this.textDepth++;
+            }
         }
     }
 
@@ -498,7 +529,49 @@ internal sealed class SvgReader
     {
         int index = this.openElements[^1];
         this.openElements.RemoveAt(this.openElements.Count - 1);
+        if (this.tables.Elements[index].Kind == SvgElementKind.Text)
+        {
+            this.textDepth--;
+        }
+
         this.EndElement(index);
+    }
+
+    /// <summary>
+    /// Adds a run of character data inside a text element to the node table of the innermost open element. A run that
+    /// directly follows another run of the same element, such as text after a CDATA section, extends that run.
+    /// </summary>
+    /// <param name="value">The characters, with entities expanded.</param>
+    /// <exception cref="InvalidImageContentException">The character data exceeds <see cref="SvgReaderOptions.MaxTextCharacters"/>.</exception>
+    private void AddTextNode(string value)
+    {
+        if (value.Length == 0)
+        {
+            return;
+        }
+
+        // Character data is kept only inside a text element, which created the text tables.
+        SvgTextTables tables = this.tables.Text!;
+        if ((long)tables.Length + value.Length > this.options.MaxTextCharacters)
+        {
+            throw new InvalidImageContentException($"The SVG document exceeds the text character limit of {this.options.MaxTextCharacters}.");
+        }
+
+        int start = tables.AppendText(value);
+        int parent = this.openElements[^1];
+        int position = this.tables.Elements.Count;
+        List<SvgTextNode> nodes = tables.Nodes;
+        if (nodes.Count > 0)
+        {
+            SvgTextNode last = nodes[^1];
+            if (last.Parent == parent && last.Position == position && last.Start + last.Length == start)
+            {
+                nodes[^1] = new SvgTextNode(parent, position, last.Start, last.Length + value.Length);
+                return;
+            }
+        }
+
+        nodes.Add(new SvgTextNode(parent, position, start, value.Length));
     }
 
     /// <summary>
@@ -508,7 +581,15 @@ internal sealed class SvgReader
     private void EndElement(int index)
     {
         List<SvgElement> elements = this.tables.Elements;
-        CollectionsMarshal.AsSpan(elements)[index].SubtreeEnd = elements.Count;
+        ref SvgElement element = ref CollectionsMarshal.AsSpan(elements)[index];
+        element.SubtreeEnd = elements.Count;
+        if (element.Kind == SvgElementKind.Text)
+        {
+            SvgTextTables tables = this.tables.Text!;
+            ref SvgTextAttributes text = ref CollectionsMarshal.AsSpan(tables.TextAttributes)[element.DataIndex];
+            text.TextNodeCount = tables.Nodes.Count - text.FirstTextNode;
+        }
+
         if (index == this.styleElement)
         {
             if (this.styleBuilder?.Length > 0)
@@ -712,6 +793,7 @@ internal sealed class SvgReader
         SvgSpecifiedStyle inlineImportant = default;
         string? href = null;
         string? xlinkHref = null;
+        string? xmlSpace = null;
         bool isCss = true;
         string? media = null;
         ref SvgElement element = ref CollectionsMarshal.AsSpan(this.tables.Elements)[index];
@@ -784,6 +866,11 @@ internal sealed class SvgReader
                     {
                         _ = this.properties.TryParse(property, xml.Value, ref presentation);
                     }
+                    else if (ReferenceEquals(name, SvgNames.TextDecoration))
+                    {
+                        // The only shorthand that is also a presentation attribute.
+                        _ = this.properties.TryParseShorthand(SvgShorthand.TextDecoration, xml.Value, ref presentation);
+                    }
                     else if (kind == SvgElementKind.Style && name == "media")
                     {
                         // The media query list of the style sheet. Only style elements read it, so the name needs no
@@ -795,10 +882,24 @@ internal sealed class SvgReader
                 {
                     xlinkHref = xml.Value;
                 }
+                else if (ReferenceEquals(ns, SvgNames.XmlNamespace)
+                    && ReferenceEquals(name, SvgNames.Space)
+                    && kind is SvgElementKind.Text or SvgElementKind.TSpan or SvgElementKind.TextPath or SvgElementKind.Tref)
+                {
+                    xmlSpace = xml.Value;
+                }
             }
             while (xml.MoveToNextAttribute());
 
             _ = xml.MoveToElement();
+        }
+
+        // Chromium maps xml:space on text content elements to white-space at presentation attribute precedence: preserve
+        // to pre and any other value to nowrap. A white-space attribute on the same element wins. The value inherits
+        // through white-space, so a nested element can switch the mode back.
+        if (xmlSpace is not null && !presentation.IsSpecified(SvgPropertyId.WhiteSpace))
+        {
+            _ = this.properties.TryParse(SvgPropertyId.WhiteSpace, xmlSpace == "preserve" ? "pre" : "nowrap", ref presentation);
         }
 
         // href wins over xlink:href when both are present.
@@ -1022,6 +1123,11 @@ internal sealed class SvgReader
         public List<SvgImageAttributes> Images { get; } = [];
 
         /// <summary>
+        /// Gets the tables of text content elements, or <see langword="null"/> while the document has none.
+        /// </summary>
+        public SvgTextTables? Text { get; private set; }
+
+        /// <summary>
         /// Gets the conditional processing attributes by element index, or <see langword="null"/> when no element has
         /// one. Few documents use them, so the map is created on first use.
         /// </summary>
@@ -1031,6 +1137,12 @@ internal sealed class SvgReader
         /// Gets the map from id to the first element with that id.
         /// </summary>
         public Dictionary<string, int> Ids { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Returns the tables of text content elements, creating them on first use.
+        /// </summary>
+        /// <returns>The tables.</returns>
+        public SvgTextTables GetOrCreateText() => this.Text ??= new SvgTextTables();
 
         /// <summary>
         /// Adds the default attribute record for a new element of the given kind.
@@ -1074,6 +1186,13 @@ internal sealed class SvgReader
                     return AddDefault(this.Markers);
                 case SvgElementKind.Image:
                     return AddDefault(this.Images);
+                case SvgElementKind.Text:
+                case SvgElementKind.TSpan:
+                    return AddDefault(this.GetOrCreateText().TextAttributes);
+                case SvgElementKind.TextPath:
+                    return AddDefault(this.GetOrCreateText().TextPaths);
+                case SvgElementKind.Tref:
+                    return AddDefault(this.GetOrCreateText().TrefReferences);
                 default:
                     return -1;
             }
@@ -1108,6 +1227,12 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.Pattern:
                     CollectionsMarshal.AsSpan(this.Patterns)[dataIndex].Href = id;
+                    break;
+                case SvgElementKind.TextPath:
+                    CollectionsMarshal.AsSpan(this.Text!.TextPaths)[dataIndex].Href = id;
+                    break;
+                case SvgElementKind.Tref:
+                    this.Text!.TrefReferences[dataIndex] = id;
                     break;
             }
         }
@@ -1218,6 +1343,92 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.Image:
                     SetImage(ref CollectionsMarshal.AsSpan(this.Images)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.Text:
+                case SvgElementKind.TSpan:
+                    SetText(this.Text!, ref CollectionsMarshal.AsSpan(this.Text!.TextAttributes)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.TextPath:
+                    SetTextPath(ref CollectionsMarshal.AsSpan(this.Text!.TextPaths)[dataIndex], attribute, value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Parses a <c>text</c> or <c>tspan</c> attribute. The position lists go to the list tables.
+        /// </summary>
+        /// <param name="tables">The text tables.</param>
+        /// <param name="text">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetText(SvgTextTables tables, ref SvgTextAttributes text, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.X:
+                    text.X = tables.ParseLengthList(value);
+                    break;
+                case SvgAttributeId.Y:
+                    text.Y = tables.ParseLengthList(value);
+                    break;
+                case SvgAttributeId.Dx:
+                    text.Dx = tables.ParseLengthList(value);
+                    break;
+                case SvgAttributeId.Dy:
+                    text.Dy = tables.ParseLengthList(value);
+                    break;
+                case SvgAttributeId.Rotate:
+                    text.Rotate = tables.ParseRotateList(value);
+                    break;
+                case SvgAttributeId.TextLength:
+                    text.TextLength = NonNegativeLength(value);
+                    break;
+                case SvgAttributeId.LengthAdjust:
+                    text.LengthAdjust = LengthAdjust(value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Parses a <c>lengthAdjust</c> value. Keywords are case-sensitive, as in the SVG grammar.
+        /// </summary>
+        /// <param name="value">The attribute value.</param>
+        /// <returns>The value; <see cref="SvgLengthAdjust.Spacing"/> for an invalid value.</returns>
+        private static SvgLengthAdjust LengthAdjust(string value)
+            => SvgNumberParser.Trim(value) is "spacingAndGlyphs" ? SvgLengthAdjust.SpacingAndGlyphs : SvgLengthAdjust.Spacing;
+
+        /// <summary>
+        /// Parses a <c>textPath</c> attribute.
+        /// </summary>
+        /// <param name="textPath">The record.</param>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="value">The value.</param>
+        private static void SetTextPath(ref SvgTextPathAttributes textPath, SvgAttributeId attribute, string value)
+        {
+            switch (attribute)
+            {
+                case SvgAttributeId.StartOffset:
+                    textPath.StartOffset = Length(value);
+                    break;
+                case SvgAttributeId.Method:
+                    textPath.Method = SvgNumberParser.Trim(value) is "stretch" ? SvgTextPathMethod.Stretch : SvgTextPathMethod.Align;
+                    break;
+                case SvgAttributeId.Spacing:
+                    textPath.Spacing = SvgNumberParser.Trim(value) is "auto" ? SvgTextPathSpacing.Auto : SvgTextPathSpacing.Exact;
+                    break;
+                case SvgAttributeId.Side:
+                    textPath.Side = SvgNumberParser.Trim(value) is "right" ? SvgTextPathSide.Right : SvgTextPathSide.Left;
+                    break;
+                case SvgAttributeId.PathData:
+                    // As for the d attribute, the valid prefix of the path data is kept.
+                    _ = Path.TryParseSvgPathPrefix(value, out IPath path);
+                    textPath.Path = path;
+                    break;
+                case SvgAttributeId.TextLength:
+                    textPath.TextLength = NonNegativeLength(value);
+                    break;
+                case SvgAttributeId.LengthAdjust:
+                    textPath.LengthAdjust = LengthAdjust(value);
                     break;
             }
         }

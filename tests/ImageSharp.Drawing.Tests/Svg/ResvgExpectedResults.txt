@@ -23,6 +23,13 @@
 # - A nearest-neighbour criterion (distance 64, 60 pixels) passes about the same share of Chrome-passed tests (90.3%) but
 #   37.1% of Chrome-failed tests, and misses color changes up to 64. The range criterion was chosen for that reason.
 #
+# Text (phase 3, package T1). The runner loads the fonts of the suite (fonts/) and maps the generic families as the resvg
+# test harness does (serif Noto Serif, sans-serif Noto Sans, cursive Yellowtail, fantasy Sedgwick Ave Display,
+# monospace Noto Mono). Chromium with the same fonts (render-svg.js --resvg-fonts) passes 59 of the 340 text tests that
+# are not undefined behavior. 253 text tests draw a 0.5 wide crosshair line; Skia and tiny-skia place its horizontal
+# line 1/8 pixel lower than this renderer, which alone gives about 240 mismatched pixels, so those tests fail with
+# reason "text: rasterization" whenever the rest of the image matches. The criterion is unchanged.
+#
 filters/enable-background/accumulate-with-new.svg fail filters: phase 4
 filters/enable-background/accumulate.svg pass
 filters/enable-background/filter-on-shape.svg fail filters: phase 4
@@ -430,15 +437,15 @@ masking/clipPath/clip-path-on-child.svg pass
 masking/clipPath/clip-path-on-children.svg pass
 masking/clipPath/clip-path-on-self-2.svg pass
 masking/clipPath/clip-path-on-self.svg pass
-masking/clipPath/clip-path-with-transform-on-text.svg fail text: phase 3
+masking/clipPath/clip-path-with-transform-on-text.svg fail text: bounding box: glyph cells (advance by ascent and descent), as in Chromium; the reference uses a tighter box
 masking/clipPath/clip-path-with-transform.svg pass
 masking/clipPath/clip-rule-from-parent-node.svg pass
 masking/clipPath/clip-rule=evenodd.svg pass
 masking/clipPath/clipPathUnits=objectBoundingBox.svg pass
-masking/clipPath/clipping-with-complex-text-1.svg fail text: phase 3
-masking/clipPath/clipping-with-complex-text-2.svg fail text: phase 3
-masking/clipPath/clipping-with-complex-text-and-clip-rule.svg fail text: phase 3
-masking/clipPath/clipping-with-text.svg fail text: phase 3
+masking/clipPath/clipping-with-complex-text-1.svg pass
+masking/clipPath/clipping-with-complex-text-2.svg pass
+masking/clipPath/clipping-with-complex-text-and-clip-rule.svg pass
+masking/clipPath/clipping-with-text.svg pass
 masking/clipPath/fill-has-no-effect.svg pass
 masking/clipPath/filter-has-no-effect.svg pass
 masking/clipPath/g-is-not-a-valid-child.svg pass
@@ -575,7 +582,7 @@ paint-servers/pattern/recursive-on-child.svg pass
 paint-servers/pattern/self-recursive-on-child.svg pass
 paint-servers/pattern/self-recursive.svg pass
 paint-servers/pattern/simple-case.svg pass
-paint-servers/pattern/text-child.svg fail text: phase 3
+paint-servers/pattern/text-child.svg pass
 paint-servers/pattern/tiny-pattern-upscaled.svg pass
 paint-servers/pattern/transform-and-patternTransform.svg pass
 paint-servers/pattern/viewBox-via-xlink-href.svg pass
@@ -679,7 +686,7 @@ painting/context/with-pattern-and-transform-in-use.svg pass
 painting/context/with-pattern-in-use.svg pass
 painting/context/with-pattern-objectBoundingBox-in-use.svg fail marker: context-fill pattern tiles match Chromium; the reference places the tiles from another bounding box (results.csv: Chrome fails)
 painting/context/with-pattern-on-marker.svg pass
-painting/context/with-text.svg fail text: phase 3
+painting/context/with-text.svg fail text: T3 (text-decoration)
 painting/context/without-context-element.svg pass
 painting/display/bBox-impact.svg pass
 painting/display/none-on-clipPath.svg pass
@@ -687,14 +694,14 @@ painting/display/none-on-defs.svg pass
 painting/display/none-on-linearGradient.svg pass
 painting/display/none-on-rect.svg pass
 painting/display/none-on-svg.svg pass
-painting/display/none-on-tref.svg fail text: phase 3
-painting/display/none-on-tspan-1.svg fail text: phase 3
-painting/display/none-on-tspan-2.svg fail text: phase 3
+painting/display/none-on-tref.svg fail text: T4 (tref)
+painting/display/none-on-tspan-1.svg pass
+painting/display/none-on-tspan-2.svg pass
 painting/fill-opacity/50percent.svg pass
 painting/fill-opacity/half-opacity.svg pass
 painting/fill-opacity/nested.svg pass
 painting/fill-opacity/on-parent.svg pass
-painting/fill-opacity/on-text.svg fail text: phase 3
+painting/fill-opacity/on-text.svg pass
 painting/fill-opacity/with-linearGradient.svg pass
 painting/fill-opacity/with-opacity.svg pass
 painting/fill-opacity/with-pattern.svg pass
@@ -728,7 +735,7 @@ painting/fill/invalid-#RRGGBB-3.svg pass
 painting/fill/invalid-FuncIRI-with-a-currentColor-fallback.svg fail specification: a gradient without stops paints none (SVG 1.1 and 2); the reference uses the fallback; Chromium fails the same way
 painting/fill/invalid-FuncIRI-with-a-fallback-color.svg fail specification: a gradient without stops paints none (SVG 1.1 and 2); the reference uses the fallback; Chromium fails the same way
 painting/fill/linear-gradient-on-shape.svg pass
-painting/fill/linear-gradient-on-text.svg fail text: phase 3
+painting/fill/linear-gradient-on-text.svg pass
 painting/fill/missing-FuncIRI-with-a-currentColor-fallback.svg pass
 painting/fill/named-color-in-mixedcase.svg pass
 painting/fill/named-color-in-uppercase.svg pass
@@ -736,9 +743,9 @@ painting/fill/named-color.svg pass
 painting/fill/none.svg pass
 painting/fill/not-trimmed-attribute-value.svg pass
 painting/fill/pattern-on-shape.svg pass
-painting/fill/pattern-on-text.svg fail text: phase 3
+painting/fill/pattern-on-text.svg pass
 painting/fill/radial-gradient-on-shape.svg pass
-painting/fill/radial-gradient-on-text.svg fail text: phase 3
+painting/fill/radial-gradient-on-text.svg pass
 painting/fill/random-value.svg pass
 painting/fill/rgb-0-127-0-0.5.svg pass
 painting/fill/rgb-color-with-a-big-fraction-part.svg pass
@@ -776,7 +783,7 @@ painting/marker/marker-on-polygon.svg pass
 painting/marker/marker-on-polyline.svg pass
 painting/marker/marker-on-rect.svg fail marker: SVG 2 markers on every basic shape; markers apply to path, line, polyline, and polygon only, as in Chromium (results.csv: Chrome fails)
 painting/marker/marker-on-rounded-rect.svg fail marker: SVG 2 markers on every basic shape; markers apply to path, line, polyline, and polygon only, as in Chromium (results.csv: Chrome fails)
-painting/marker/marker-on-text.svg fail text: phase 3
+painting/marker/marker-on-text.svg pass
 painting/marker/marker-with-a-negative-size.svg pass
 painting/marker/nested.svg pass
 painting/marker/no-stroke-on-target.svg pass
@@ -818,7 +825,7 @@ painting/marker/target-with-subpaths-2.svg skip undefined behavior: results.csv 
 painting/marker/the-marker-property-in-CSS.svg pass
 painting/marker/the-marker-property.svg pass
 painting/marker/with-a-large-stroke.svg pass
-painting/marker/with-a-text-child.svg fail text: phase 3
+painting/marker/with-a-text-child.svg pass
 painting/marker/with-an-image-child.svg fail image: the file reference ../../../resources/... leaves ResourceBaseDirectory, which the runner sets to the test directory, so the security rule refuses it
 painting/marker/with-invalid-markerUnits.svg pass
 painting/marker/with-markerUnits=userSpaceOnUse.svg pass
@@ -869,8 +876,8 @@ painting/paint-order/invalid.svg pass
 painting/paint-order/markers-stroke.svg pass
 painting/paint-order/markers.svg pass
 painting/paint-order/normal.svg pass
-painting/paint-order/on-text.svg fail text: phase 3
-painting/paint-order/on-tspan.svg fail text: phase 3
+painting/paint-order/on-text.svg pass
+painting/paint-order/on-tspan.svg fail text: shaping: Chromium and this renderer shape each tspan apart; the reference shapes across the tspan boundary
 painting/paint-order/stroke-invalid.svg pass
 painting/paint-order/stroke-markers-fill.svg pass
 painting/paint-order/stroke-markers.svg pass
@@ -882,7 +889,7 @@ painting/shape-rendering/geometricPrecision-on-circle.svg pass
 painting/shape-rendering/inheritance.svg pass
 painting/shape-rendering/on-horizontal-line.svg pass
 painting/shape-rendering/optimizeSpeed-on-circle.svg pass
-painting/shape-rendering/optimizeSpeed-on-text.svg fail text: phase 3
+painting/shape-rendering/optimizeSpeed-on-text.svg pass
 painting/shape-rendering/path-with-marker.svg pass
 painting/stroke-dasharray/0-n-with-butt-caps.svg pass
 painting/stroke-dasharray/0-n-with-round-caps.svg fail core stroker: the dash expansion drops zero-length dashes, so round caps draw no dots
@@ -930,7 +937,7 @@ painting/stroke-opacity/50percent.svg pass
 painting/stroke-opacity/half-opacity.svg pass
 painting/stroke-opacity/nested.svg pass
 painting/stroke-opacity/on-parent.svg pass
-painting/stroke-opacity/on-text.svg fail text: phase 3
+painting/stroke-opacity/on-text.svg pass
 painting/stroke-opacity/with-linearGradient.svg pass
 painting/stroke-opacity/with-opacity.svg pass
 painting/stroke-opacity/with-pattern.svg pass
@@ -949,23 +956,23 @@ painting/stroke/gradient-with-objectBoundingBox-on-path-without-a-bbox-2.svg pas
 painting/stroke/gradient-with-objectBoundingBox-on-shape-without-a-bbox.svg pass
 painting/stroke/line-as-curve-1.svg pass
 painting/stroke/line-as-curve-2.svg fail core stroker: the cap of a curve with near-coincident control points follows the first flattened segment (52 mismatched pixels)
-painting/stroke/linear-gradient-on-text.svg fail text: phase 3
+painting/stroke/linear-gradient-on-text.svg pass
 painting/stroke/linear-gradient.svg pass
 painting/stroke/named-color.svg pass
 painting/stroke/none.svg pass
-painting/stroke/pattern-on-text.svg fail text: phase 3
+painting/stroke/pattern-on-text.svg pass
 painting/stroke/pattern-with-objectBoundingBox-fallback-on-zero-bbox-shape.svg pass
 painting/stroke/pattern-with-objectBoundingBox-on-zero-bbox-shape.svg pass
 painting/stroke/pattern.svg pass
-painting/stroke/radial-gradient-on-text.svg fail text: phase 3
+painting/stroke/radial-gradient-on-text.svg fail text: bounding box: glyph cells (advance by ascent and descent), as in Chromium; the reference uses a tighter box
 painting/stroke/radial-gradient.svg pass
 painting/visibility/bbox-impact-1.svg pass
 painting/visibility/bbox-impact-2.svg pass
-painting/visibility/bbox-impact-3.svg fail text: phase 3
-painting/visibility/collapse-on-tspan.svg fail text: phase 3
+painting/visibility/bbox-impact-3.svg fail text: bounding box: glyph cells (advance by ascent and descent), as in Chromium; the reference uses a tighter box
+painting/visibility/collapse-on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 266 mismatched pixels, 0 off the crosshair
 painting/visibility/hidden-on-group.svg pass
 painting/visibility/hidden-on-shape.svg pass
-painting/visibility/hidden-on-tspan.svg fail text: phase 3
+painting/visibility/hidden-on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 266 mismatched pixels, 0 off the crosshair
 shapes/circle/missing-cx-and-cy-attributes.svg pass
 shapes/circle/missing-cx-attribute.svg pass
 shapes/circle/missing-cy-attribute.svg pass
@@ -1099,17 +1106,17 @@ shapes/rect/zero-height-attribute-processing.svg pass
 shapes/rect/zero-rx-attribute-resolving.svg pass
 shapes/rect/zero-ry-attribute-resolving.svg pass
 shapes/rect/zero-width-attribute-processing.svg pass
-structure/a/inside-text.svg fail text: phase 3
-structure/a/inside-tspan.svg fail text: phase 3
+structure/a/inside-text.svg pass
+structure/a/inside-tspan.svg pass
 structure/a/on-shape.svg pass
-structure/a/on-text.svg fail text: phase 3
-structure/a/on-tspan.svg fail text: phase 3
+structure/a/on-text.svg pass
+structure/a/on-tspan.svg pass
 structure/defs/ignore-shapes-inside-defs.svg pass
 structure/defs/multiple-defs.svg pass
 structure/defs/nested-defs.svg pass
 structure/defs/out-of-order.svg pass
 structure/defs/simple-case.svg pass
-structure/defs/style-inheritance-on-text.svg fail text: phase 3
+structure/defs/style-inheritance-on-text.svg pass
 structure/defs/style-inheritance.svg pass
 structure/g/deeply-nested-groups.svg pass
 structure/g/recursive-inheritance.svg pass
@@ -1193,7 +1200,7 @@ structure/svg/funcIRI-with-invalid-characters.svg fail undefined behavior: the r
 structure/svg/funcIRI-with-quotes.svg pass
 structure/svg/invalid-id-attribute-1.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 structure/svg/invalid-id-attribute-2.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-structure/svg/mixed-namespaces.svg fail text: phase 3
+structure/svg/mixed-namespaces.svg pass
 structure/svg/negative-size.svg fail sizing: the test checks the intrinsic size; this runner draws every document into the reference rectangle, and the Chromium oracle differs the same way
 structure/svg/nested-svg-one-with-rect-and-one-with-viewBox.svg pass
 structure/svg/nested-svg-with-overflow-auto.svg pass
@@ -1210,7 +1217,7 @@ structure/svg/nested-svg-with-viewBox.svg pass
 structure/svg/nested-svg.svg pass
 structure/svg/no-children.svg pass
 structure/svg/no-size.svg fail sizing: the test checks the intrinsic size; this runner draws every document into the reference rectangle, and the Chromium oracle differs the same way
-structure/svg/not-UTF-8-encoding.svg fail text: the Windows-1251 document loads; its content is text (phase 3)
+structure/svg/not-UTF-8-encoding.svg fail text: fonts: the Windows-1251 document loads and its Cyrillic text renders in Noto Sans; the reference draws it with another font
 structure/svg/preserveAspectRatio-with-viewBox-not-at-zero-pos.svg pass
 structure/svg/preserveAspectRatio=none.svg pass
 structure/svg/preserveAspectRatio=xMaxYMax-slice.svg pass
@@ -1260,7 +1267,7 @@ structure/systemLanguage/on-clipPath.svg pass
 structure/systemLanguage/on-defs.svg pass
 structure/systemLanguage/on-linearGradient.svg pass
 structure/systemLanguage/on-svg.svg pass
-structure/systemLanguage/on-tspan.svg fail text: phase 3
+structure/systemLanguage/on-tspan.svg pass
 structure/systemLanguage/ru-Ru.svg pass
 structure/systemLanguage/ru-en.svg pass
 structure/transform-origin/bottom.svg pass
@@ -1279,8 +1286,8 @@ structure/transform-origin/on-image.svg pass
 structure/transform-origin/on-pattern-object-bounding-box.svg pass
 structure/transform-origin/on-pattern-user-space-on-use.svg pass
 structure/transform-origin/on-shape.svg pass
-structure/transform-origin/on-text-path.svg fail text: phase 3
-structure/transform-origin/on-text.svg fail text: phase 3
+structure/transform-origin/on-text-path.svg fail text: T2 (textPath)
+structure/transform-origin/on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 663 mismatched pixels, 0 off the crosshair
 structure/transform-origin/right-bottom.svg pass
 structure/transform-origin/right.svg pass
 structure/transform-origin/top-left.svg pass
@@ -1347,358 +1354,358 @@ structure/use/xlink-to-svg-element-with-width-height-on-use.svg pass
 structure/use/xlink-to-svg-element-with-x-y-on-use.svg pass
 structure/use/xlink-to-svg-element.svg pass
 text/alignment-baseline/after-edge.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/alignment-baseline/alphabetic.svg fail text: phase 3
-text/alignment-baseline/auto.svg fail text: phase 3
+text/alignment-baseline/alphabetic.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
+text/alignment-baseline/auto.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
 text/alignment-baseline/baseline.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/alignment-baseline/before-edge.svg fail text: phase 3
-text/alignment-baseline/central.svg fail text: phase 3
-text/alignment-baseline/hanging-and-baseline-shift-eq-20-on-tspan.svg fail text: phase 3
-text/alignment-baseline/hanging-on-tspan.svg fail text: phase 3
-text/alignment-baseline/hanging-on-vertical.svg fail text: phase 3
-text/alignment-baseline/hanging-with-underline.svg fail text: phase 3
-text/alignment-baseline/hanging.svg fail text: phase 3
+text/alignment-baseline/before-edge.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/central.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/hanging-and-baseline-shift-eq-20-on-tspan.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/hanging-on-tspan.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/hanging-on-vertical.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/hanging-with-underline.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/hanging.svg fail text: T3 (alignment-baseline)
 text/alignment-baseline/ideographic.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/alignment-baseline/inherit.svg fail text: phase 3
-text/alignment-baseline/mathematical.svg fail text: phase 3
-text/alignment-baseline/middle-on-textPath.svg fail text: phase 3
-text/alignment-baseline/middle.svg fail text: phase 3
+text/alignment-baseline/inherit.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/mathematical.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/middle-on-textPath.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/middle.svg fail text: T3 (alignment-baseline)
 text/alignment-baseline/text-after-edge.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/alignment-baseline/text-before-edge.svg fail text: phase 3
-text/alignment-baseline/two-textPath-with-middle-on-first.svg fail text: phase 3
-text/baseline-shift/-10.svg fail text: phase 3
-text/baseline-shift/-50percent.svg fail text: phase 3
-text/baseline-shift/0.svg fail text: phase 3
-text/baseline-shift/10.svg fail text: phase 3
-text/baseline-shift/2mm.svg fail text: phase 3
-text/baseline-shift/50percent.svg fail text: phase 3
-text/baseline-shift/baseline.svg fail text: phase 3
-text/baseline-shift/deeply-nested-super.svg fail text: phase 3
-text/baseline-shift/inheritance-1.svg fail text: phase 3
-text/baseline-shift/inheritance-2.svg fail text: phase 3
-text/baseline-shift/inheritance-3.svg fail text: phase 3
-text/baseline-shift/inheritance-4.svg fail text: phase 3
-text/baseline-shift/inheritance-5.svg fail text: phase 3
-text/baseline-shift/invalid-value.svg fail text: phase 3
-text/baseline-shift/mixed-nested.svg fail text: phase 3
-text/baseline-shift/nested-length.svg fail text: phase 3
-text/baseline-shift/nested-super.svg fail text: phase 3
-text/baseline-shift/nested-with-baseline-1.svg fail text: phase 3
-text/baseline-shift/nested-with-baseline-2.svg fail text: phase 3
-text/baseline-shift/sub.svg fail text: phase 3
-text/baseline-shift/super.svg fail text: phase 3
-text/baseline-shift/with-rotate.svg fail text: phase 3
+text/alignment-baseline/text-before-edge.svg fail text: T3 (alignment-baseline)
+text/alignment-baseline/two-textPath-with-middle-on-first.svg fail text: T3 (alignment-baseline)
+text/baseline-shift/-10.svg fail text: T3 (baseline-shift)
+text/baseline-shift/-50percent.svg fail text: T3 (baseline-shift)
+text/baseline-shift/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 218 mismatched pixels, 0 off the crosshair
+text/baseline-shift/10.svg fail text: T3 (baseline-shift)
+text/baseline-shift/2mm.svg fail text: T3 (baseline-shift)
+text/baseline-shift/50percent.svg fail text: T3 (baseline-shift)
+text/baseline-shift/baseline.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 218 mismatched pixels, 0 off the crosshair
+text/baseline-shift/deeply-nested-super.svg fail text: T3 (baseline-shift)
+text/baseline-shift/inheritance-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/baseline-shift/inheritance-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 34 off the crosshair
+text/baseline-shift/inheritance-3.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 34 off the crosshair
+text/baseline-shift/inheritance-4.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 34 off the crosshair
+text/baseline-shift/inheritance-5.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 34 off the crosshair
+text/baseline-shift/invalid-value.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 218 mismatched pixels, 0 off the crosshair
+text/baseline-shift/mixed-nested.svg fail text: T3 (baseline-shift)
+text/baseline-shift/nested-length.svg fail text: T3 (baseline-shift)
+text/baseline-shift/nested-super.svg fail text: T3 (baseline-shift)
+text/baseline-shift/nested-with-baseline-1.svg fail text: T3 (baseline-shift)
+text/baseline-shift/nested-with-baseline-2.svg fail text: T3 (baseline-shift)
+text/baseline-shift/sub.svg fail text: T3 (baseline-shift)
+text/baseline-shift/super.svg fail text: T3 (baseline-shift)
+text/baseline-shift/with-rotate.svg fail text: T3 (baseline-shift)
 text/direction/rtl-with-vertical-writing-mode.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/direction/rtl.svg fail text: phase 3
-text/dominant-baseline/alignment-baseline-and-baseline-shift-on-tspans.svg fail text: phase 3
-text/dominant-baseline/alignment-baseline=baseline-on-tspan.svg fail text: phase 3
-text/dominant-baseline/alphabetic.svg fail text: phase 3
-text/dominant-baseline/auto.svg fail text: phase 3
-text/dominant-baseline/central.svg fail text: phase 3
-text/dominant-baseline/complex.svg fail text: phase 3
-text/dominant-baseline/different-alignment-baseline-on-tspan.svg fail text: phase 3
-text/dominant-baseline/dummy-tspan.svg fail text: phase 3
-text/dominant-baseline/equal-alignment-baseline-on-tspan.svg fail text: phase 3
-text/dominant-baseline/hanging.svg fail text: phase 3
-text/dominant-baseline/ideographic.svg fail text: phase 3
-text/dominant-baseline/inherit.svg fail text: phase 3
-text/dominant-baseline/mathematical.svg fail text: phase 3
-text/dominant-baseline/middle.svg fail text: phase 3
-text/dominant-baseline/nested.svg fail text: phase 3
-text/dominant-baseline/no-change.svg fail text: phase 3
+text/direction/rtl.svg fail text: T4 (direction and bidi)
+text/dominant-baseline/alignment-baseline-and-baseline-shift-on-tspans.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/alignment-baseline=baseline-on-tspan.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/alphabetic.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
+text/dominant-baseline/auto.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
+text/dominant-baseline/central.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/complex.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/different-alignment-baseline-on-tspan.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/dummy-tspan.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/equal-alignment-baseline-on-tspan.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/hanging.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/ideographic.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/inherit.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/mathematical.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/middle.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/nested.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/no-change.svg fail text: T3 (dominant-baseline)
 text/dominant-baseline/reset-size.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/dominant-baseline/sequential.svg fail text: phase 3
-text/dominant-baseline/text-after-edge.svg fail text: phase 3
-text/dominant-baseline/text-before-edge.svg fail text: phase 3
+text/dominant-baseline/sequential.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/text-after-edge.svg fail text: T3 (dominant-baseline)
+text/dominant-baseline/text-before-edge.svg fail text: T3 (dominant-baseline)
 text/dominant-baseline/use-script.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/font-family/bold-sans-serif.svg fail text: phase 3
-text/font-family/cursive.svg fail text: phase 3
-text/font-family/double-quoted.svg fail text: phase 3
-text/font-family/fallback-1.svg fail text: phase 3
-text/font-family/fallback-2.svg fail text: phase 3
-text/font-family/fantasy.svg fail text: phase 3
-text/font-family/font-list.svg fail text: phase 3
-text/font-family/monospace.svg fail text: phase 3
-text/font-family/noto-sans.svg fail text: phase 3
-text/font-family/sans-serif.svg fail text: phase 3
-text/font-family/serif.svg fail text: phase 3
-text/font-family/source-sans-pro.svg fail text: phase 3
-text/font-kerning/arabic-script.svg fail text: phase 3
-text/font-kerning/as-property.svg fail text: phase 3
-text/font-kerning/none.svg fail text: phase 3
-text/font-size-adjust/simple-case.svg fail text: phase 3
-text/font-size/em-nested-and-mixed.svg fail text: phase 3
-text/font-size/em-on-the-root-element.svg fail text: phase 3
-text/font-size/em.svg fail text: phase 3
-text/font-size/ex-nested-and-mixed.svg fail text: phase 3
-text/font-size/ex-on-the-root-element.svg fail text: phase 3
-text/font-size/ex.svg fail text: phase 3
-text/font-size/inheritance.svg fail text: phase 3
-text/font-size/mixed-values.svg fail text: phase 3
-text/font-size/named-value-without-a-parent.svg fail text: phase 3
-text/font-size/named-value.svg fail text: phase 3
+text/font-family/bold-sans-serif.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/cursive.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/double-quoted.svg pass
+text/font-family/fallback-1.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/fallback-2.svg pass
+text/font-family/fantasy.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/font-list.svg pass
+text/font-family/monospace.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/noto-sans.svg pass
+text/font-family/sans-serif.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/serif.svg fail text: fonts: the reference draws the generic or default family with a font that the suite does not ship (Times New Roman, Arial, Comic Sans MS, Impact); the runner maps the generic families as the resvg test harness does
+text/font-family/source-sans-pro.svg pass
+text/font-kerning/arabic-script.svg fail text: T3 (font-kerning)
+text/font-kerning/as-property.svg fail text: T3 (font-kerning)
+text/font-kerning/none.svg fail text: T3 (font-kerning)
+text/font-size-adjust/simple-case.svg fail text: reference: the reference image has an opaque white background
+text/font-size/em-nested-and-mixed.svg pass
+text/font-size/em-on-the-root-element.svg fail text: initial font size: the reference uses 12px (resvg); Chromium and this renderer use 16px
+text/font-size/em.svg pass
+text/font-size/ex-nested-and-mixed.svg pass
+text/font-size/ex-on-the-root-element.svg fail text: initial font size: the reference uses 12px (resvg); Chromium and this renderer use 16px
+text/font-size/ex.svg pass
+text/font-size/inheritance.svg pass
+text/font-size/mixed-values.svg pass
+text/font-size/named-value-without-a-parent.svg fail text: initial font size: the reference uses 12px (resvg); Chromium and this renderer use 16px
+text/font-size/named-value.svg fail text: initial font size: the reference uses 12px (resvg); Chromium and this renderer use 16px
 text/font-size/negative-size.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/font-size/nested-percent-values-1.svg fail text: phase 3
-text/font-size/nested-percent-values-2.svg fail text: phase 3
-text/font-size/percent-value-without-a-parent.svg fail text: phase 3
-text/font-size/percent-value.svg fail text: phase 3
-text/font-size/simple-case.svg fail text: phase 3
-text/font-size/zero-size-on-parent-1.svg fail text: phase 3
-text/font-size/zero-size-on-parent-2.svg fail text: phase 3
+text/font-size/nested-percent-values-1.svg fail text: glyph positions: the red text under the covering text shows at sub-pixel glyph position differences (92 mismatched pixels; Chromium differs from the reference too)
+text/font-size/nested-percent-values-2.svg fail text: glyph positions: the red text under the covering text shows at sub-pixel glyph position differences (92 mismatched pixels; Chromium differs from the reference too)
+text/font-size/percent-value-without-a-parent.svg fail text: initial font size: the reference uses 12px (resvg); Chromium and this renderer use 16px
+text/font-size/percent-value.svg fail text: glyph positions: the red text under the covering text shows at sub-pixel glyph position differences (92 mismatched pixels; Chromium differs from the reference too)
+text/font-size/simple-case.svg pass
+text/font-size/zero-size-on-parent-1.svg pass
+text/font-size/zero-size-on-parent-2.svg pass
 text/font-size/zero-size-on-parent-3.svg pass
 text/font-size/zero-size.svg pass
-text/font-stretch/extra-condensed.svg fail text: phase 3
-text/font-stretch/inherit.svg fail text: phase 3
-text/font-stretch/narrower.svg fail text: phase 3
-text/font-style/inherit.svg fail text: phase 3
-text/font-style/italic.svg fail text: phase 3
-text/font-style/oblique.svg fail text: phase 3
-text/font-variant/inherit.svg fail text: phase 3
-text/font-variant/small-caps.svg fail text: phase 3
-text/font-weight/650.svg fail text: phase 3
-text/font-weight/700.svg fail text: phase 3
-text/font-weight/bold.svg fail text: phase 3
-text/font-weight/bolder-with-clamping.svg fail text: phase 3
-text/font-weight/bolder-without-parent.svg fail text: phase 3
-text/font-weight/bolder.svg fail text: phase 3
-text/font-weight/inherit.svg fail text: phase 3
-text/font-weight/invalid-number-1.svg fail text: phase 3
-text/font-weight/lighter-with-clamping.svg fail text: phase 3
-text/font-weight/lighter-without-parent.svg fail text: phase 3
-text/font-weight/lighter.svg fail text: phase 3
-text/font-weight/normal.svg fail text: phase 3
-text/font/font-shorthand.svg fail text: phase 3
-text/font/simple-case.svg fail text: phase 3
-text/glyph-orientation-horizontal/simple-case.svg fail text: phase 3
-text/glyph-orientation-vertical/simple-case.svg fail text: phase 3
-text/kerning/0.svg fail text: phase 3
-text/kerning/10percent.svg fail text: phase 3
-text/lengthAdjust/spacingAndGlyphs.svg fail text: phase 3
-text/lengthAdjust/text-on-path.svg fail text: phase 3
-text/lengthAdjust/vertical.svg fail text: phase 3
-text/lengthAdjust/with-underline.svg fail text: phase 3
-text/letter-spacing/-3.svg fail text: phase 3
-text/letter-spacing/0.svg fail text: phase 3
-text/letter-spacing/1mm.svg fail text: phase 3
-text/letter-spacing/3.svg fail text: phase 3
-text/letter-spacing/5percent.svg fail text: phase 3
-text/letter-spacing/filter-bbox.svg fail text: phase 3
+text/font-stretch/extra-condensed.svg pass
+text/font-stretch/inherit.svg pass
+text/font-stretch/narrower.svg fail text: font-stretch: the SVG 1.1 keyword narrower is not valid CSS, as in Chromium
+text/font-style/inherit.svg pass
+text/font-style/italic.svg pass
+text/font-style/oblique.svg pass
+text/font-variant/inherit.svg fail text: T3 (font-variant)
+text/font-variant/small-caps.svg fail text: T3 (font-variant)
+text/font-weight/650.svg pass
+text/font-weight/700.svg pass
+text/font-weight/bold.svg pass
+text/font-weight/bolder-with-clamping.svg fail text: font faces: the reference does not group Noto Sans Black, Light, and Thin into Noto Sans; Chromium and this renderer select them by weight
+text/font-weight/bolder-without-parent.svg pass
+text/font-weight/bolder.svg pass
+text/font-weight/inherit.svg pass
+text/font-weight/invalid-number-1.svg pass
+text/font-weight/lighter-with-clamping.svg fail text: font faces: the reference does not group Noto Sans Black, Light, and Thin into Noto Sans; Chromium and this renderer select them by weight
+text/font-weight/lighter-without-parent.svg fail text: font faces: the reference does not group Noto Sans Black, Light, and Thin into Noto Sans; Chromium and this renderer select them by weight
+text/font-weight/lighter.svg pass
+text/font-weight/normal.svg pass
+text/font/font-shorthand.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 708 mismatched pixels, 0 off the crosshair
+text/font/simple-case.svg fail text: font: SVG 2 and Chromium have no font presentation attribute
+text/glyph-orientation-horizontal/simple-case.svg fail text: T4 (glyph-orientation)
+text/glyph-orientation-vertical/simple-case.svg fail text: T4 (glyph-orientation)
+text/kerning/0.svg fail text: T3 (kerning)
+text/kerning/10percent.svg fail text: T3 (kerning)
+text/lengthAdjust/spacingAndGlyphs.svg fail text: T2 (lengthAdjust)
+text/lengthAdjust/text-on-path.svg fail text: T2 (lengthAdjust)
+text/lengthAdjust/vertical.svg fail text: T2 (lengthAdjust)
+text/lengthAdjust/with-underline.svg fail text: T2 (lengthAdjust)
+text/letter-spacing/-3.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 270 mismatched pixels, 0 off the crosshair
+text/letter-spacing/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 273 mismatched pixels, 0 off the crosshair
+text/letter-spacing/1mm.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 269 mismatched pixels, 0 off the crosshair
+text/letter-spacing/3.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 270 mismatched pixels, 0 off the crosshair
+text/letter-spacing/5percent.svg fail text: spacing percentage: this renderer takes the percentage of the font size (CSS Text Level 4); the reference and Chromium resolve it otherwise
+text/letter-spacing/filter-bbox.svg fail filters: phase 4
 text/letter-spacing/large-negative.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/letter-spacing/mixed-scripts.svg fail text: phase 3
-text/letter-spacing/mixed-spacing.svg fail text: phase 3
-text/letter-spacing/non-ASCII-character.svg fail text: phase 3
-text/letter-spacing/normal.svg fail text: phase 3
-text/letter-spacing/on-Arabic.svg fail text: phase 3
-text/text-anchor/coordinates-list.svg fail text: phase 3
-text/text-anchor/end-on-text.svg fail text: phase 3
-text/text-anchor/end-with-letter-spacing.svg fail text: phase 3
-text/text-anchor/inheritance-1.svg fail text: phase 3
-text/text-anchor/inheritance-2.svg fail text: phase 3
-text/text-anchor/inheritance-3.svg fail text: phase 3
-text/text-anchor/invalid-value-on-text.svg fail text: phase 3
-text/text-anchor/middle-on-text.svg fail text: phase 3
-text/text-anchor/on-the-first-tspan.svg fail text: phase 3
-text/text-anchor/on-tspan-with-arabic.svg fail text: phase 3
-text/text-anchor/on-tspan.svg fail text: phase 3
-text/text-anchor/start-on-text.svg fail text: phase 3
-text/text-anchor/text-anchor-not-on-text-chunk.svg fail text: phase 3
-text/text-decoration/all-types-inline-comma-separated.svg fail text: phase 3
-text/text-decoration/all-types-inline-no-spaces.svg fail text: phase 3
-text/text-decoration/all-types-inline.svg fail text: phase 3
-text/text-decoration/all-types-nested.svg fail text: phase 3
-text/text-decoration/indirect-with-multiple-colors.svg fail text: phase 3
-text/text-decoration/indirect.svg fail text: phase 3
-text/text-decoration/line-through.svg fail text: phase 3
-text/text-decoration/outside-the-text-element.svg fail text: phase 3
-text/text-decoration/overline.svg fail text: phase 3
-text/text-decoration/style-resolving-1.svg fail text: phase 3
-text/text-decoration/style-resolving-2.svg fail text: phase 3
-text/text-decoration/style-resolving-3.svg fail text: phase 3
-text/text-decoration/style-resolving-4.svg fail text: phase 3
-text/text-decoration/tspan-decoration.svg fail text: phase 3
-text/text-decoration/underline-with-dy-list-1.svg fail text: phase 3
-text/text-decoration/underline-with-dy-list-2.svg fail text: phase 3
-text/text-decoration/underline-with-rotate-list-3.svg fail text: phase 3
-text/text-decoration/underline-with-rotate-list-4.svg fail text: phase 3
-text/text-decoration/underline-with-y-list.svg fail text: phase 3
-text/text-decoration/underline.svg fail text: phase 3
-text/text-decoration/with-textLength-on-a-single-character.svg fail text: phase 3
-text/text-rendering/geometricPrecision.svg fail text: phase 3
-text/text-rendering/on-tspan.svg fail text: phase 3
-text/text-rendering/optimizeLegibility.svg fail text: phase 3
-text/text-rendering/optimizeSpeed.svg fail text: phase 3
-text/text-rendering/with-underline.svg fail text: phase 3
-text/text/bidi-reordering.svg fail text: phase 3
+text/letter-spacing/mixed-scripts.svg fail text: T4 (right-to-left and complex scripts)
+text/letter-spacing/mixed-spacing.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 263 mismatched pixels, 8 off the crosshair
+text/letter-spacing/non-ASCII-character.svg fail text: text-anchor: the letter-spacing after the last character counts for the anchor in Chromium and here, not in the reference
+text/letter-spacing/normal.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 273 mismatched pixels, 0 off the crosshair
+text/letter-spacing/on-Arabic.svg fail text: T4 (right-to-left and complex scripts)
+text/text-anchor/coordinates-list.svg fail text: reference: the reference image has an opaque white background
+text/text-anchor/end-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 0 off the crosshair
+text/text-anchor/end-with-letter-spacing.svg fail text: text-anchor: the letter-spacing after the last character counts for the anchor in Chromium and here, not in the reference
+text/text-anchor/inheritance-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 197 mismatched pixels, 0 off the crosshair
+text/text-anchor/inheritance-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 306 mismatched pixels, 21 off the crosshair
+text/text-anchor/inheritance-3.svg fail text: text-anchor: the anchor of a chunk comes from its first character, as in Chromium
+text/text-anchor/invalid-value-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 324 mismatched pixels, 0 off the crosshair
+text/text-anchor/middle-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text-anchor/on-the-first-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 288 mismatched pixels, 0 off the crosshair
+text/text-anchor/on-tspan-with-arabic.svg fail text: T4 (right-to-left and complex scripts)
+text/text-anchor/on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 271 mismatched pixels, 0 off the crosshair
+text/text-anchor/start-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 324 mismatched pixels, 0 off the crosshair
+text/text-anchor/text-anchor-not-on-text-chunk.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 206 mismatched pixels, 0 off the crosshair
+text/text-decoration/all-types-inline-comma-separated.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 283 mismatched pixels, 0 off the crosshair
+text/text-decoration/all-types-inline-no-spaces.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 283 mismatched pixels, 0 off the crosshair
+text/text-decoration/all-types-inline.svg fail text: T3 (text-decoration)
+text/text-decoration/all-types-nested.svg fail text: T3 (text-decoration)
+text/text-decoration/indirect-with-multiple-colors.svg fail text: T3 (text-decoration)
+text/text-decoration/indirect.svg fail text: T3 (text-decoration)
+text/text-decoration/line-through.svg fail text: T3 (text-decoration)
+text/text-decoration/outside-the-text-element.svg fail text: T3 (text-decoration)
+text/text-decoration/overline.svg fail text: T3 (text-decoration)
+text/text-decoration/style-resolving-1.svg fail text: T3 (text-decoration)
+text/text-decoration/style-resolving-2.svg fail text: T3 (text-decoration)
+text/text-decoration/style-resolving-3.svg fail text: T3 (text-decoration)
+text/text-decoration/style-resolving-4.svg fail text: T3 (text-decoration)
+text/text-decoration/tspan-decoration.svg fail text: T3 (text-decoration)
+text/text-decoration/underline-with-dy-list-1.svg fail text: T3 (text-decoration)
+text/text-decoration/underline-with-dy-list-2.svg fail text: T3 (text-decoration)
+text/text-decoration/underline-with-rotate-list-3.svg fail text: T3 (text-decoration)
+text/text-decoration/underline-with-rotate-list-4.svg fail text: T3 (text-decoration)
+text/text-decoration/underline-with-y-list.svg fail text: T3 (text-decoration)
+text/text-decoration/underline.svg fail text: T3 (text-decoration)
+text/text-decoration/with-textLength-on-a-single-character.svg fail text: T3 (text-decoration)
+text/text-rendering/geometricPrecision.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text-rendering/on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text-rendering/optimizeLegibility.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text-rendering/optimizeSpeed.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text-rendering/with-underline.svg fail text: T3 (text-decoration)
+text/text/bidi-reordering.svg fail text: T4 (right-to-left and complex scripts)
 text/text/complex-grapheme-split-by-tspan.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/text/complex-graphemes-and-coordinates-list.svg fail text: phase 3
-text/text/complex-graphemes.svg fail text: phase 3
-text/text/compound-emojis-and-coordinates-list.svg fail text: phase 3
-text/text/compound-emojis.svg fail text: phase 3
-text/text/dx-and-dy-instead-of-x-and-y.svg fail text: phase 3
-text/text/dx-and-dy-with-less-values-than-characters.svg fail text: phase 3
-text/text/dx-and-dy-with-more-values-than-characters.svg fail text: phase 3
-text/text/dx-and-dy-with-multiple-values.svg fail text: phase 3
-text/text/em-and-ex-coordinates.svg fail text: phase 3
-text/text/emojis.svg fail text: phase 3
-text/text/escaped-text-1.svg fail text: phase 3
-text/text/escaped-text-2.svg fail text: phase 3
-text/text/escaped-text-3.svg fail text: phase 3
-text/text/escaped-text-4.svg fail text: phase 3
-text/text/fill-rule=evenodd.svg fail text: phase 3
-text/text/filter-bbox.svg fail text: phase 3
-text/text/ligatures-handling-in-mixed-fonts-1.svg fail text: phase 3
-text/text/ligatures-handling-in-mixed-fonts-2.svg fail text: phase 3
-text/text/mm-coordinates.svg fail text: phase 3
-text/text/nested.svg fail text: phase 3
-text/text/no-coordinates.svg fail text: phase 3
-text/text/percent-value-on-dx-and-dy.svg fail text: phase 3
-text/text/percent-value-on-x-and-y.svg fail text: phase 3
-text/text/real-text-height.svg fail text: phase 3
+text/text/complex-graphemes-and-coordinates-list.svg fail text: grapheme clusters: positions inside a cluster are ignored; Chromium and the reference differ too
+text/text/complex-graphemes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 366 mismatched pixels, 0 off the crosshair
+text/text/compound-emojis-and-coordinates-list.svg fail text: colour emoji: bitmap glyphs (CBDT) do not render, so the emoji draw monochrome from Noto Emoji or not at all
+text/text/compound-emojis.svg fail text: colour emoji: bitmap glyphs (CBDT) do not render, so the emoji draw monochrome from Noto Emoji or not at all
+text/text/dx-and-dy-instead-of-x-and-y.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/text/dx-and-dy-with-less-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 257 mismatched pixels, 0 off the crosshair
+text/text/dx-and-dy-with-more-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 322 mismatched pixels, 0 off the crosshair
+text/text/dx-and-dy-with-multiple-values.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 322 mismatched pixels, 0 off the crosshair
+text/text/em-and-ex-coordinates.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 369 mismatched pixels, 0 off the crosshair
+text/text/emojis.svg fail text: colour emoji: bitmap glyphs (CBDT) do not render, so the emoji draw monochrome from Noto Emoji or not at all
+text/text/escaped-text-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 31 off the crosshair
+text/text/escaped-text-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 355 mismatched pixels, 0 off the crosshair
+text/text/escaped-text-3.svg fail text: glyph positions: the red text under the covering text shows at sub-pixel glyph position differences (353 mismatched pixels; Chromium differs from the reference too)
+text/text/escaped-text-4.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 360 mismatched pixels, 0 off the crosshair
+text/text/fill-rule=evenodd.svg fail text: T4 (right-to-left and complex scripts)
+text/text/filter-bbox.svg fail filters: phase 4
+text/text/ligatures-handling-in-mixed-fonts-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 597 mismatched pixels, 0 off the crosshair
+text/text/ligatures-handling-in-mixed-fonts-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 544 mismatched pixels, 0 off the crosshair
+text/text/mm-coordinates.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 270 mismatched pixels, 0 off the crosshair
+text/text/nested.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
+text/text/no-coordinates.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 278 mismatched pixels, 0 off the crosshair
+text/text/percent-value-on-dx-and-dy.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 309 mismatched pixels, 0 off the crosshair
+text/text/percent-value-on-x-and-y.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 309 mismatched pixels, 0 off the crosshair
+text/text/real-text-height.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 672 mismatched pixels, 0 off the crosshair
 text/text/rotate-on-Arabic.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/text/rotate-with-an-invalid-angle.svg fail text: phase 3
-text/text/rotate-with-less-values-than-characters.svg fail text: phase 3
-text/text/rotate-with-more-values-than-characters.svg fail text: phase 3
-text/text/rotate-with-multiple-values-and-complex-text.svg fail text: phase 3
-text/text/rotate-with-multiple-values-underline-and-pattern.svg fail text: phase 3
-text/text/rotate-with-multiple-values.svg fail text: phase 3
-text/text/rotate.svg fail text: phase 3
-text/text/simple-case.svg fail text: phase 3
-text/text/transform.svg fail text: phase 3
-text/text/x-and-y-with-dx-and-dy-lists.svg fail text: phase 3
-text/text/x-and-y-with-dx-and-dy.svg fail text: phase 3
-text/text/x-and-y-with-less-values-than-characters.svg fail text: phase 3
-text/text/x-and-y-with-more-values-than-characters.svg fail text: phase 3
-text/text/x-and-y-with-multiple-values-and-arabic-text.svg fail text: phase 3
-text/text/x-and-y-with-multiple-values-and-tspan.svg fail text: phase 3
-text/text/x-and-y-with-multiple-values.svg fail text: phase 3
-text/text/xml-lang=ja.svg fail text: phase 3
-text/text/xml-space.svg fail text: phase 3
-text/text/zalgo.svg fail text: phase 3
-text/textLength/150-on-parent.svg fail text: phase 3
-text/textLength/150-on-tspan.svg fail text: phase 3
-text/textLength/150.svg fail text: phase 3
-text/textLength/40mm.svg fail text: phase 3
-text/textLength/75percent.svg fail text: phase 3
-text/textLength/arabic-with-lengthAdjust.svg fail text: phase 3
-text/textLength/arabic.svg fail text: phase 3
-text/textLength/inherit.svg fail text: phase 3
-text/textLength/negative.svg fail text: phase 3
-text/textLength/on-a-single-tspan.svg fail text: phase 3
-text/textLength/on-text-and-tspan.svg fail text: phase 3
-text/textLength/zero.svg fail text: phase 3
-text/textPath/closed-path.svg fail text: phase 3
+text/text/rotate-with-an-invalid-angle.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 275 mismatched pixels, 0 off the crosshair
+text/text/rotate-with-less-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
+text/text/rotate-with-more-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 289 mismatched pixels, 0 off the crosshair
+text/text/rotate-with-multiple-values-and-complex-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 263 mismatched pixels, 0 off the crosshair
+text/text/rotate-with-multiple-values-underline-and-pattern.svg fail text: T3 (text-decoration)
+text/text/rotate-with-multiple-values.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 289 mismatched pixels, 0 off the crosshair
+text/text/rotate.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 282 mismatched pixels, 0 off the crosshair
+text/text/simple-case.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 278 mismatched pixels, 0 off the crosshair
+text/text/transform.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 275 mismatched pixels, 0 off the crosshair
+text/text/x-and-y-with-dx-and-dy-lists.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 262 mismatched pixels, 0 off the crosshair
+text/text/x-and-y-with-dx-and-dy.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/text/x-and-y-with-less-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 297 mismatched pixels, 0 off the crosshair
+text/text/x-and-y-with-more-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
+text/text/x-and-y-with-multiple-values-and-arabic-text.svg fail text: T4 (right-to-left and complex scripts)
+text/text/x-and-y-with-multiple-values-and-tspan.svg fail text: kerning: no kerning across a text chunk boundary, as in Chromium; the reference positions the chunk otherwise
+text/text/x-and-y-with-multiple-values.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
+text/text/xml-lang=ja.svg fail text: xml:lang: the render matches Chromium; the reference uses another glyph form
+text/text/xml-space.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 253 mismatched pixels, 0 off the crosshair
+text/text/zalgo.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 525 mismatched pixels, 0 off the crosshair
+text/textLength/150-on-parent.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
+text/textLength/150-on-tspan.svg fail text: T2 (textLength)
+text/textLength/150.svg fail text: T2 (textLength)
+text/textLength/40mm.svg fail text: T2 (textLength)
+text/textLength/75percent.svg fail text: T2 (textLength)
+text/textLength/arabic-with-lengthAdjust.svg fail text: T2 (textLength)
+text/textLength/arabic.svg fail text: T2 (textLength)
+text/textLength/inherit.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
+text/textLength/negative.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
+text/textLength/on-a-single-tspan.svg fail text: T2 (textLength)
+text/textLength/on-text-and-tspan.svg fail text: T2 (textLength)
+text/textLength/zero.svg fail text: T2 (textLength)
+text/textPath/closed-path.svg fail text: T2 (textPath)
 text/textPath/complex.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/textPath/dy-with-tiny-coordinates.svg fail text: phase 3
+text/textPath/dy-with-tiny-coordinates.svg fail text: T2 (textPath)
 text/textPath/invalid-link.svg pass
-text/textPath/invalid-textPath-in-the-middle.svg fail text: phase 3
-text/textPath/link-to-rect.svg fail text: phase 3
-text/textPath/m-A-path.svg fail text: phase 3
-text/textPath/m-L-Z-path.svg fail text: phase 3
-text/textPath/method=stretch.svg fail text: phase 3
-text/textPath/mixed-children-1.svg fail text: phase 3
-text/textPath/mixed-children-2.svg fail text: phase 3
-text/textPath/nested.svg fail text: phase 3
+text/textPath/invalid-textPath-in-the-middle.svg fail text: T2 (textPath)
+text/textPath/link-to-rect.svg fail text: T2 (textPath)
+text/textPath/m-A-path.svg fail text: T2 (textPath)
+text/textPath/m-L-Z-path.svg fail text: T2 (textPath)
+text/textPath/method=stretch.svg fail text: T2 (textPath)
+text/textPath/mixed-children-1.svg fail text: T2 (textPath)
+text/textPath/mixed-children-2.svg fail text: T2 (textPath)
+text/textPath/nested.svg fail text: T2 (textPath)
 text/textPath/no-link.svg pass
-text/textPath/path-with-ClosePath.svg fail text: phase 3
-text/textPath/path-with-subpaths-and-startOffset.svg fail text: phase 3
-text/textPath/path-with-subpaths.svg fail text: phase 3
-text/textPath/side=right.svg fail text: phase 3
-text/textPath/simple-case.svg fail text: phase 3
-text/textPath/spacing=auto.svg fail text: phase 3
-text/textPath/startOffset=-100.svg fail text: phase 3
-text/textPath/startOffset=10percent.svg fail text: phase 3
-text/textPath/startOffset=30.svg fail text: phase 3
-text/textPath/startOffset=5mm.svg fail text: phase 3
+text/textPath/path-with-ClosePath.svg fail text: T2 (textPath)
+text/textPath/path-with-subpaths-and-startOffset.svg fail text: T2 (textPath)
+text/textPath/path-with-subpaths.svg fail text: T2 (textPath)
+text/textPath/side=right.svg fail text: T2 (textPath)
+text/textPath/simple-case.svg fail text: T2 (textPath)
+text/textPath/spacing=auto.svg fail text: T2 (textPath)
+text/textPath/startOffset=-100.svg fail text: T2 (textPath)
+text/textPath/startOffset=10percent.svg fail text: T2 (textPath)
+text/textPath/startOffset=30.svg fail text: T2 (textPath)
+text/textPath/startOffset=5mm.svg fail text: T2 (textPath)
 text/textPath/startOffset=9999.svg pass
-text/textPath/tspan-with-absolute-position.svg fail text: phase 3
-text/textPath/tspan-with-relative-position.svg fail text: phase 3
-text/textPath/two-paths.svg fail text: phase 3
-text/textPath/very-long-text.svg fail text: phase 3
+text/textPath/tspan-with-absolute-position.svg fail text: T2 (textPath)
+text/textPath/tspan-with-relative-position.svg fail text: T2 (textPath)
+text/textPath/two-paths.svg fail text: T2 (textPath)
+text/textPath/very-long-text.svg fail text: T2 (textPath)
 text/textPath/with-baseline-shift-and-rotate.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/textPath/with-baseline-shift.svg fail text: phase 3
-text/textPath/with-big-letter-spacing.svg fail text: phase 3
-text/textPath/with-coordinates-on-text.svg fail text: phase 3
-text/textPath/with-coordinates-on-textPath.svg fail text: phase 3
-text/textPath/with-filter.svg fail text: phase 3
-text/textPath/with-invalid-path-and-xlink-href.svg fail text: phase 3
-text/textPath/with-letter-spacing.svg fail text: phase 3
-text/textPath/with-path-and-xlink-href.svg fail text: phase 3
-text/textPath/with-path.svg fail text: phase 3
-text/textPath/with-rotate.svg fail text: phase 3
-text/textPath/with-text-anchor.svg fail text: phase 3
-text/textPath/with-transform-on-a-referenced-path.svg fail text: phase 3
-text/textPath/with-transform-outside-a-referenced-path.svg fail text: phase 3
-text/textPath/with-underline.svg fail text: phase 3
-text/textPath/writing-mode=tb.svg fail text: phase 3
-text/tref/link-to-a-complex-text.svg fail text: phase 3
-text/tref/link-to-a-non-SVG-element.svg fail text: phase 3
-text/tref/link-to-a-non-text-element.svg fail text: phase 3
-text/tref/link-to-an-external-file-element.svg fail text: phase 3
-text/tref/link-to-text.svg fail text: phase 3
-text/tref/nested.svg fail text: phase 3
-text/tref/position-attributes.svg fail text: phase 3
-text/tref/style-attributes.svg fail text: phase 3
-text/tref/with-a-title-child.svg fail text: phase 3
-text/tref/with-text.svg fail text: phase 3
-text/tref/xml-space.svg fail text: phase 3
-text/tspan/bidi-reordering.svg fail text: phase 3
-text/tspan/mixed-font-size.svg fail text: phase 3
-text/tspan/mixed-xml-space-1.svg fail text: phase 3
-text/tspan/mixed-xml-space-2.svg fail text: phase 3
-text/tspan/mixed-xml-space-3.svg fail text: phase 3
-text/tspan/mixed.svg fail text: phase 3
-text/tspan/multiple-coordinates.svg fail text: phase 3
-text/tspan/nested-rotate.svg fail text: phase 3
-text/tspan/nested-whitespaces.svg fail text: phase 3
-text/tspan/nested.svg fail text: phase 3
-text/tspan/only-with-y.svg fail text: phase 3
-text/tspan/outside-the-text.svg fail text: phase 3
-text/tspan/pseudo-multi-line.svg fail text: phase 3
-text/tspan/rotate-and-display-none.svg fail text: phase 3
-text/tspan/rotate-on-child.svg fail text: phase 3
-text/tspan/sequential.svg fail text: phase 3
-text/tspan/style-override.svg fail text: phase 3
-text/tspan/text-shaping-across-multiple-tspan-1.svg fail text: phase 3
-text/tspan/text-shaping-across-multiple-tspan-2.svg fail text: phase 3
-text/tspan/transform.svg fail text: phase 3
-text/tspan/tspan-bbox-1.svg fail text: phase 3
-text/tspan/tspan-bbox-2.svg fail text: phase 3
-text/tspan/with-clip-path.svg fail text: phase 3
-text/tspan/with-dy.svg fail text: phase 3
-text/tspan/with-filter.svg fail text: phase 3
-text/tspan/with-mask.svg fail text: phase 3
-text/tspan/with-opacity.svg fail text: phase 3
-text/tspan/with-x-and-y.svg fail text: phase 3
-text/tspan/without-attributes.svg fail text: phase 3
-text/tspan/xml-space-1.svg fail text: phase 3
-text/tspan/xml-space-2.svg fail text: phase 3
-text/unicode-bidi/bidi-override.svg fail text: phase 3
-text/word-spacing/-5.svg fail text: phase 3
-text/word-spacing/0.svg fail text: phase 3
-text/word-spacing/10.svg fail text: phase 3
-text/word-spacing/2mm.svg fail text: phase 3
-text/word-spacing/5percent.svg fail text: phase 3
+text/textPath/with-baseline-shift.svg fail text: T2 (textPath)
+text/textPath/with-big-letter-spacing.svg fail text: T2 (textPath)
+text/textPath/with-coordinates-on-text.svg fail text: T2 (textPath)
+text/textPath/with-coordinates-on-textPath.svg fail text: T2 (textPath)
+text/textPath/with-filter.svg fail text: T2 (textPath)
+text/textPath/with-invalid-path-and-xlink-href.svg fail text: T2 (textPath)
+text/textPath/with-letter-spacing.svg fail text: T2 (textPath)
+text/textPath/with-path-and-xlink-href.svg fail text: T2 (textPath)
+text/textPath/with-path.svg fail text: T2 (textPath)
+text/textPath/with-rotate.svg fail text: T2 (textPath)
+text/textPath/with-text-anchor.svg fail text: T2 (textPath)
+text/textPath/with-transform-on-a-referenced-path.svg fail text: T2 (textPath)
+text/textPath/with-transform-outside-a-referenced-path.svg fail text: T2 (textPath)
+text/textPath/with-underline.svg fail text: T2 (textPath)
+text/textPath/writing-mode=tb.svg fail text: T2 (textPath)
+text/tref/link-to-a-complex-text.svg fail text: T4 (tref)
+text/tref/link-to-a-non-SVG-element.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
+text/tref/link-to-a-non-text-element.svg fail text: T4 (tref)
+text/tref/link-to-an-external-file-element.svg fail text: T4 (tref)
+text/tref/link-to-text.svg fail text: T4 (tref)
+text/tref/nested.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
+text/tref/position-attributes.svg fail text: T4 (tref)
+text/tref/style-attributes.svg fail text: T4 (tref)
+text/tref/with-a-title-child.svg fail text: T4 (tref)
+text/tref/with-text.svg fail text: T4 (tref)
+text/tref/xml-space.svg fail text: T4 (tref)
+text/tspan/bidi-reordering.svg fail text: T4 (right-to-left and complex scripts)
+text/tspan/mixed-font-size.svg fail text: shaping: Chromium and this renderer shape each tspan apart; the reference shapes across the tspan boundary
+text/tspan/mixed-xml-space-1.svg fail text: white space: CSS white space rules as in Chromium, which differ from the reference
+text/tspan/mixed-xml-space-2.svg fail text: white space: CSS white space rules as in Chromium, which differ from the reference
+text/tspan/mixed-xml-space-3.svg fail text: white space: CSS white space rules as in Chromium, which differ from the reference
+text/tspan/mixed.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 253 mismatched pixels, 0 off the crosshair
+text/tspan/multiple-coordinates.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 332 mismatched pixels, 0 off the crosshair
+text/tspan/nested-rotate.svg pass
+text/tspan/nested-whitespaces.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 665 mismatched pixels, 0 off the crosshair
+text/tspan/nested.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 233 mismatched pixels, 0 off the crosshair
+text/tspan/only-with-y.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/outside-the-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
+text/tspan/pseudo-multi-line.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 220 mismatched pixels, 0 off the crosshair
+text/tspan/rotate-and-display-none.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 361 mismatched pixels, 0 off the crosshair
+text/tspan/rotate-on-child.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 223 mismatched pixels, 0 off the crosshair
+text/tspan/sequential.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 253 mismatched pixels, 0 off the crosshair
+text/tspan/style-override.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/text-shaping-across-multiple-tspan-1.svg fail text: shaping: Chromium and this renderer shape each tspan apart; the reference shapes across the tspan boundary
+text/tspan/text-shaping-across-multiple-tspan-2.svg fail text: shaping: Chromium and this renderer shape each tspan apart; the reference shapes across the tspan boundary
+text/tspan/transform.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/tspan-bbox-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 206 mismatched pixels, 0 off the crosshair
+text/tspan/tspan-bbox-2.svg fail text: T3 (text-decoration)
+text/tspan/with-clip-path.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 397 mismatched pixels, 1 off the crosshair
+text/tspan/with-dy.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 278 mismatched pixels, 0 off the crosshair
+text/tspan/with-filter.svg fail filters: phase 4
+text/tspan/with-mask.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/with-opacity.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 216 mismatched pixels, 1 off the crosshair
+text/tspan/with-x-and-y.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/without-attributes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
+text/tspan/xml-space-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 255 mismatched pixels, 0 off the crosshair
+text/tspan/xml-space-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 255 mismatched pixels, 0 off the crosshair
+text/unicode-bidi/bidi-override.svg fail text: T4 (direction and bidi)
+text/word-spacing/-5.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 219 mismatched pixels, 0 off the crosshair
+text/word-spacing/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 226 mismatched pixels, 0 off the crosshair
+text/word-spacing/10.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 239 mismatched pixels, 0 off the crosshair
+text/word-spacing/2mm.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 231 mismatched pixels, 0 off the crosshair
+text/word-spacing/5percent.svg fail text: spacing percentage: this renderer takes the percentage of the font size (CSS Text Level 4); the reference and Chromium resolve it otherwise
 text/word-spacing/large-negative.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/word-spacing/normal.svg fail text: phase 3
-text/writing-mode/arabic-with-rl.svg fail text: phase 3
-text/writing-mode/horizontal-tb.svg fail text: phase 3
-text/writing-mode/inheritance.svg fail text: phase 3
-text/writing-mode/invalid-value.svg fail text: phase 3
-text/writing-mode/japanese-with-tb.svg fail text: phase 3
-text/writing-mode/lr-tb.svg fail text: phase 3
-text/writing-mode/lr.svg fail text: phase 3
-text/writing-mode/mixed-languages-with-tb-and-underline.svg fail text: phase 3
-text/writing-mode/mixed-languages-with-tb.svg fail text: phase 3
-text/writing-mode/on-tspan.svg fail text: phase 3
-text/writing-mode/rl-tb.svg fail text: phase 3
-text/writing-mode/rl.svg fail text: phase 3
-text/writing-mode/tb-and-punctuation.svg fail text: phase 3
-text/writing-mode/tb-rl.svg fail text: phase 3
-text/writing-mode/tb-with-alignment.svg fail text: phase 3
-text/writing-mode/tb-with-dx-on-second-tspan.svg fail text: phase 3
-text/writing-mode/tb-with-dx-on-tspan.svg fail text: phase 3
-text/writing-mode/tb-with-dy-on-second-tspan.svg fail text: phase 3
+text/word-spacing/normal.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 226 mismatched pixels, 0 off the crosshair
+text/writing-mode/arabic-with-rl.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/horizontal-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 1 off the crosshair
+text/writing-mode/inheritance.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/invalid-value.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/japanese-with-tb.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/lr-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/lr.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/mixed-languages-with-tb-and-underline.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/mixed-languages-with-tb.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/rl-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/rl.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
+text/writing-mode/tb-and-punctuation.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-rl.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-with-alignment.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-with-dx-on-second-tspan.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-with-dx-on-tspan.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-with-dy-on-second-tspan.svg fail text: T4 (vertical writing-mode)
 text/writing-mode/tb-with-rotate-and-underline.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/writing-mode/tb-with-rotate.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/writing-mode/tb.svg fail text: phase 3
-text/writing-mode/vertical-lr.svg fail text: phase 3
-text/writing-mode/vertical-rl.svg fail text: phase 3
+text/writing-mode/tb.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/vertical-lr.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/vertical-rl.svg fail text: T4 (vertical writing-mode)

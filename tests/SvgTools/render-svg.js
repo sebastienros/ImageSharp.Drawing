@@ -20,6 +20,12 @@ Size options (all optional):
   --long-edge <px>      Scale the intrinsic size so that its longer side is this length.
   --view-box "<x y w h>" Use this viewBox instead of the one in the file.
 
+Font options (all optional):
+  --font-dir <dir>      Render with the fonts of this directory only. Repeat for more directories.
+  --generic-family <generic>=<family>
+                        Map a CSS generic family (serif, sans-serif, monospace, cursive, fantasy) to a family.
+  --resvg-fonts <dir>   --font-dir <dir> with the generic families of the resvg test harness.
+
 Without size options the output has the intrinsic size of the document.`;
 
 /**
@@ -28,7 +34,7 @@ Without size options the output has the intrinsic size of the document.`;
  * @returns {{options: object, jobs: {input: string, output: string}[]}} The options and the files to render.
  */
 function parseArgs(args) {
-    const options = { width: 0, height: 0, longEdge: 0, viewBox: null };
+    const options = { width: 0, height: 0, longEdge: 0, viewBox: null, fontDirs: [], genericFamilies: {} };
     const files = [];
     let outDir = null;
 
@@ -47,6 +53,29 @@ function parseArgs(args) {
             case '--height': options.height = positiveInt(arg, next()); break;
             case '--long-edge': options.longEdge = positiveInt(arg, next()); break;
             case '--view-box': options.viewBox = next(); break;
+            case '--font-dir': options.fontDirs.push(next()); break;
+            case '--generic-family': {
+                const value = next();
+                const separator = value.indexOf('=');
+                if (separator <= 0 || separator === value.length - 1) {
+                    fail('--generic-family needs <generic>=<family>');
+                }
+
+                options.genericFamilies[value.slice(0, separator)] = value.slice(separator + 1);
+                break;
+            }
+            case '--resvg-fonts': {
+                // The fonts of the resvg suite with the generic families of the resvg test harness.
+                options.fontDirs.push(next());
+                Object.assign(options.genericFamilies, {
+                    serif: 'Noto Serif',
+                    'sans-serif': 'Noto Sans',
+                    cursive: 'Yellowtail',
+                    fantasy: 'Sedgwick Ave Display',
+                    monospace: 'Noto Mono',
+                });
+                break;
+            }
             case '--out-dir': outDir = next(); break;
             case '-h':
             case '--help':
@@ -236,8 +265,16 @@ async function prepareInPage({ base64, options }) {
 async function main() {
     const { options, jobs } = parseArgs(process.argv.slice(2));
 
-    // sRGB output without a monitor color profile keeps the pixels independent of the machine.
-    const browser = await chromium.launch({ args: ['--force-color-profile=srgb'] });
+    // sRGB output without a monitor color profile keeps the pixels independent of the machine. With --font-dir, Chromium
+    // sees only the given fonts, through a fontconfig configuration of its own (see writeFontConfig).
+    const launchOptions = { args: ['--force-color-profile=srgb'] };
+    let fontConfigDir = null;
+    if (options.fontDirs.length > 0) {
+        fontConfigDir = writeFontConfig(options);
+        launchOptions.env = { ...process.env, FONTCONFIG_FILE: path.join(fontConfigDir, 'fonts.conf') };
+    }
+
+    const browser = await chromium.launch(launchOptions);
     let exitCode = 0;
     try {
         const context = await browser.newContext({ deviceScaleFactor: 1, viewport: { width: 100, height: 100 } });
@@ -268,9 +305,45 @@ async function main() {
         }
     } finally {
         await browser.close();
+        if (fontConfigDir) {
+            fs.rmSync(fontConfigDir, { recursive: true, force: true });
+        }
     }
 
     return exitCode;
+}
+
+/**
+ * Writes a fontconfig configuration that offers Chromium only the fonts of the --font-dir directories, maps the CSS
+ * generic families as --generic-family says, and maps every other family name that no font has to the serif family,
+ * which is also what Chromium's default font (Times New Roman) becomes.
+ * @param {object} options The parsed options.
+ * @returns {string} The temporary directory that holds fonts.conf and the font cache.
+ */
+function writeFontConfig(options) {
+    const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'render-svg-fonts-'));
+    const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lines = ['<?xml version="1.0"?>', '<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">', '<fontconfig>'];
+    for (const fontDir of options.fontDirs) {
+        lines.push(`  <dir>${escape(path.resolve(fontDir))}</dir>`);
+    }
+
+    lines.push(`  <cachedir>${escape(path.join(dir, 'cache'))}</cachedir>`);
+    const generic = { serif: null, 'sans-serif': null, monospace: null, cursive: null, fantasy: null, ...options.genericFamilies };
+    for (const [name, family] of Object.entries(generic)) {
+        if (family) {
+            lines.push(`  <alias binding="same"><family>${escape(name)}</family><prefer><family>${escape(family)}</family></prefer></alias>`);
+        }
+    }
+
+    if (generic.serif) {
+        lines.push(`  <alias binding="same"><family>Times New Roman</family><prefer><family>${escape(generic.serif)}</family></prefer></alias>`);
+        lines.push('  <match target="pattern"><edit name="family" mode="append_last"><string>serif</string></edit></match>');
+    }
+
+    lines.push('</fontconfig>', '');
+    fs.writeFileSync(path.join(dir, 'fonts.conf'), lines.join('\n'));
+    return dir;
 }
 
 main().then(

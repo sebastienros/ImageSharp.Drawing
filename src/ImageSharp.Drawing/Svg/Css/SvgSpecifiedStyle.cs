@@ -55,7 +55,8 @@ internal struct SvgSpecifiedStyle
         | (1UL << (int)SvgPropertyId.MarkerEnd)
         | (1UL << (int)SvgPropertyId.ImageRendering)
         | (1UL << (int)SvgPropertyId.ShapeRendering)
-        | (1UL << (int)SvgPropertyId.ColorInterpolation);
+        | (1UL << (int)SvgPropertyId.ColorInterpolation)
+        | (SvgTextStyle.Properties & ~SvgTextStyle.NonInheritedProperties);
 
     /// <summary>
     /// The mask of the properties whose values live in <see cref="Extended"/>: every property from

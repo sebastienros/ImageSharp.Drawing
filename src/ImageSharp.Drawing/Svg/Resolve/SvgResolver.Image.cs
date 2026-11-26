@@ -27,6 +27,11 @@ internal sealed partial class SvgResolver
     private const int MaxDecompressedSvgBytes = 64 * 1024 * 1024;
 
     /// <summary>
+    /// The font collection of nested SVG documents: a collection without fonts, so their text draws nothing.
+    /// </summary>
+    private static readonly SixLabors.Fonts.FontCollection NestedDocumentFonts = new();
+
+    /// <summary>
     /// The loaded resources by <c>href</c>, so each distinct source decodes once. A failed or refused load is kept as
     /// <see langword="null"/>. Created on first use, so documents without the feature allocate nothing for it.
     /// </summary>
@@ -355,8 +360,12 @@ internal sealed partial class SvgResolver
             MaxCharactersFromEntities = limits.MaxCharactersFromEntities,
             MaxImagePixels = Math.Max(1, this.MaxImagePixels - this.decodedImagePixels),
             MaxPatternTilePixels = limits.MaxPatternTilePixels,
+            MaxTextCharacters = (int)Math.Max(1, limits.MaxTextCharacters - this.TextCharacters),
         };
 
+        // Text in a nested document draws nothing: the nested document gets a font collection without fonts. This keeps
+        // the behavior of resvg and of the reference image of the resvg suite (structure/image/embedded-svg-with-text);
+        // Chromium draws such text with the system fonts. See the phase 3 hand-back report.
         SvgLoadOptions options = new()
         {
             Dpi = this.loadOptions.Dpi,
@@ -365,6 +374,7 @@ internal sealed partial class SvgResolver
             Languages = this.loadOptions.Languages,
             UserStyleSheet = this.loadOptions.UserStyleSheet,
             ResourceBaseDirectory = null,
+            FontCollection = NestedDocumentFonts,
         };
 
         try
@@ -373,12 +383,18 @@ internal sealed partial class SvgResolver
                 nestedLimits.MaxElements,
                 nestedLimits.MaxNestingDepth,
                 nestedLimits.MaxCharactersFromEntities,
-                options.UserStyleSheet);
+                options.UserStyleSheet,
+                nestedLimits.MaxTextCharacters);
             SvgElementTree tree = SvgReader.Read(stream, in readerOptions);
             SvgResolver resolver = new(tree, options) { imageDepth = this.imageDepth + 1 };
             SvgDocument document = resolver.ResolveDocument();
             this.nestedElements += tree.Count + resolver.nestedElements;
             this.decodedImagePixels += resolver.decodedImagePixels;
+            if (resolver.TextCharacters > 0)
+            {
+                this.TextState.Characters += resolver.TextCharacters;
+            }
+
             return new LoadedImage(null, document, document.Size);
         }
         catch (InvalidImageContentException)

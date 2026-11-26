@@ -15,12 +15,19 @@ internal readonly struct SvgReaderOptions
     /// <param name="maxNestingDepth">The maximum element nesting depth; the root element has depth 1.</param>
     /// <param name="maxCharactersFromEntities">The maximum number of characters that entity expansion may produce.</param>
     /// <param name="userStyleSheet">The CSS text of the user style sheet, or <see langword="null"/> for none.</param>
-    public SvgReaderOptions(int maxElements, int maxNestingDepth, long maxCharactersFromEntities, string? userStyleSheet = null)
+    /// <param name="maxTextCharacters">The maximum number of characters of character data inside <c>text</c> elements.</param>
+    public SvgReaderOptions(
+        int maxElements,
+        int maxNestingDepth,
+        long maxCharactersFromEntities,
+        string? userStyleSheet = null,
+        int maxTextCharacters = 1_000_000)
     {
         this.MaxElements = maxElements;
         this.MaxNestingDepth = maxNestingDepth;
         this.MaxCharactersFromEntities = maxCharactersFromEntities;
         this.UserStyleSheet = userStyleSheet;
+        this.MaxTextCharacters = maxTextCharacters;
     }
 
     /// <summary>
@@ -51,4 +58,10 @@ internal readonly struct SvgReaderOptions
     /// user origin of the cascade.
     /// </summary>
     public string? UserStyleSheet { get; }
+
+    /// <summary>
+    /// Gets the maximum number of characters of character data that the reader keeps inside <c>text</c> elements, before
+    /// white space processing, from <see cref="SvgLimits.MaxTextCharacters"/>.
+    /// </summary>
+    public int MaxTextCharacters { get; }
 }

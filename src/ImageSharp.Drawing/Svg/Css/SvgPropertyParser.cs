@@ -12,7 +12,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="SvgDashArray"/> values point into, so values parsed from attributes and from style sheets share one table.
 /// It is not thread-safe.
 /// </remarks>
-internal sealed class SvgPropertyParser
+internal sealed partial class SvgPropertyParser
 {
     private static readonly Dictionary<string, SvgPropertyId> PropertiesByName = CreatePropertiesByName();
     private static readonly Dictionary<string, SvgPropertyId>.AlternateLookup<ReadOnlySpan<char>> PropertyLookup =
@@ -315,7 +315,11 @@ internal sealed class SvgPropertyParser
                 style.StopColor = stopColor;
                 break;
             default:
-                if (!TryParseExtended(property, source, ref style))
+                bool valid = SvgTextStyle.IsTextProperty(property)
+                    ? this.TryParseText(property, source, ref style)
+                    : TryParseExtended(property, source, ref style);
+
+                if (!valid)
                 {
                     return false;
                 }
@@ -868,5 +872,29 @@ internal sealed class SvgPropertyParser
             ["color-interpolation"] = SvgPropertyId.ColorInterpolation,
             ["transform-origin"] = SvgPropertyId.TransformOrigin,
             [SvgNames.Transform] = SvgPropertyId.Transform,
+            ["font-family"] = SvgPropertyId.FontFamily,
+            ["font-style"] = SvgPropertyId.FontStyle,
+            ["font-weight"] = SvgPropertyId.FontWeight,
+            ["font-stretch"] = SvgPropertyId.FontStretch,
+            ["font-variant"] = SvgPropertyId.FontVariant,
+            ["font-size-adjust"] = SvgPropertyId.FontSizeAdjust,
+            ["font-kerning"] = SvgPropertyId.FontKerning,
+            ["text-anchor"] = SvgPropertyId.TextAnchor,
+            ["text-decoration-line"] = SvgPropertyId.TextDecorationLine,
+            ["text-decoration-style"] = SvgPropertyId.TextDecorationStyle,
+            ["text-decoration-color"] = SvgPropertyId.TextDecorationColor,
+            ["letter-spacing"] = SvgPropertyId.LetterSpacing,
+            ["word-spacing"] = SvgPropertyId.WordSpacing,
+            ["dominant-baseline"] = SvgPropertyId.DominantBaseline,
+            ["alignment-baseline"] = SvgPropertyId.AlignmentBaseline,
+            ["baseline-shift"] = SvgPropertyId.BaselineShift,
+            ["writing-mode"] = SvgPropertyId.WritingMode,
+            ["direction"] = SvgPropertyId.Direction,
+            ["unicode-bidi"] = SvgPropertyId.UnicodeBidi,
+            ["white-space"] = SvgPropertyId.WhiteSpace,
+            ["text-rendering"] = SvgPropertyId.TextRendering,
+            ["kerning"] = SvgPropertyId.Kerning,
+            ["glyph-orientation-vertical"] = SvgPropertyId.GlyphOrientationVertical,
+            ["glyph-orientation-horizontal"] = SvgPropertyId.GlyphOrientationHorizontal,
         };
 }
