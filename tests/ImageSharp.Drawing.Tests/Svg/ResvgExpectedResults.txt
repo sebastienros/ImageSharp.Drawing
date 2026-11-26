@@ -1286,7 +1286,7 @@ structure/transform-origin/on-image.svg pass
 structure/transform-origin/on-pattern-object-bounding-box.svg pass
 structure/transform-origin/on-pattern-user-space-on-use.svg pass
 structure/transform-origin/on-shape.svg pass
-structure/transform-origin/on-text-path.svg fail text: T2 (textPath)
+structure/transform-origin/on-text-path.svg pass
 structure/transform-origin/on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 663 mismatched pixels, 0 off the crosshair
 structure/transform-origin/right-bottom.svg pass
 structure/transform-origin/right.svg pass
@@ -1367,11 +1367,11 @@ text/alignment-baseline/hanging.svg fail text: rasterization: the 0.5 wide cross
 text/alignment-baseline/ideographic.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/alignment-baseline/inherit.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
 text/alignment-baseline/mathematical.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 351 mismatched pixels, 1 off the crosshair
-text/alignment-baseline/middle-on-textPath.svg fail text: T2 (textPath)
+text/alignment-baseline/middle-on-textPath.svg pass
 text/alignment-baseline/middle.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 321 mismatched pixels, 1 off the crosshair
 text/alignment-baseline/text-after-edge.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/alignment-baseline/text-before-edge.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 397 mismatched pixels, 1 off the crosshair
-text/alignment-baseline/two-textPath-with-middle-on-first.svg fail text: T2 (textPath)
+text/alignment-baseline/two-textPath-with-middle-on-first.svg pass
 text/baseline-shift/-10.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 220 mismatched pixels, 0 off the crosshair
 text/baseline-shift/-50percent.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 203 mismatched pixels, 0 off the crosshair
 text/baseline-shift/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 218 mismatched pixels, 0 off the crosshair
@@ -1479,10 +1479,10 @@ text/glyph-orientation-horizontal/simple-case.svg fail text: T4 (glyph-orientati
 text/glyph-orientation-vertical/simple-case.svg fail text: T4 (glyph-orientation)
 text/kerning/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 760 mismatched pixels, 38 off the crosshair
 text/kerning/10percent.svg fail text: known gap: a kerning length adds no spacing (SVG 1.1); Chromium ignores the kerning property and renders as here, and resvg fails the test too; 7645 mismatched pixels, 6691 off the crosshair
-text/lengthAdjust/spacingAndGlyphs.svg fail text: T2 (lengthAdjust)
-text/lengthAdjust/text-on-path.svg fail text: T2 (lengthAdjust)
-text/lengthAdjust/vertical.svg fail text: T2 (lengthAdjust)
-text/lengthAdjust/with-underline.svg fail text: T2 (lengthAdjust)
+text/lengthAdjust/spacingAndGlyphs.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 249 mismatched pixels, 0 off the crosshair
+text/lengthAdjust/text-on-path.svg pass
+text/lengthAdjust/vertical.svg fail text: T4 (vertical writing-mode)
+text/lengthAdjust/with-underline.svg fail text: T3 (text-decoration)
 text/letter-spacing/-3.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 270 mismatched pixels, 0 off the crosshair
 text/letter-spacing/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 273 mismatched pixels, 0 off the crosshair
 text/letter-spacing/1mm.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 269 mismatched pixels, 0 off the crosshair
@@ -1581,61 +1581,61 @@ text/text/xml-lang=ja.svg fail text: xml:lang: the render matches Chromium; the 
 text/text/xml-space.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 253 mismatched pixels, 0 off the crosshair
 text/text/zalgo.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 525 mismatched pixels, 0 off the crosshair
 text/textLength/150-on-parent.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
-text/textLength/150-on-tspan.svg fail text: T2 (textLength)
-text/textLength/150.svg fail text: T2 (textLength)
-text/textLength/40mm.svg fail text: T2 (textLength)
-text/textLength/75percent.svg fail text: T2 (textLength)
-text/textLength/arabic-with-lengthAdjust.svg fail text: T2 (textLength)
-text/textLength/arabic.svg fail text: T2 (textLength)
+text/textLength/150-on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 299 mismatched pixels, 0 off the crosshair
+text/textLength/150.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 299 mismatched pixels, 0 off the crosshair
+text/textLength/40mm.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 298 mismatched pixels, 0 off the crosshair
+text/textLength/75percent.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 299 mismatched pixels, 0 off the crosshair
+text/textLength/arabic-with-lengthAdjust.svg fail text: T4 (right-to-left and complex scripts)
+text/textLength/arabic.svg fail text: T4 (right-to-left and complex scripts)
 text/textLength/inherit.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
 text/textLength/negative.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 2 off the crosshair
-text/textLength/on-a-single-tspan.svg fail text: T2 (textLength)
-text/textLength/on-text-and-tspan.svg fail text: T2 (textLength)
-text/textLength/zero.svg fail text: T2 (textLength)
-text/textPath/closed-path.svg fail text: T2 (textPath)
+text/textLength/on-a-single-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 264 mismatched pixels, 0 off the crosshair
+text/textLength/on-text-and-tspan.svg fail text: textLength: as in Chromium, the textLength of the text element spreads over both chunks before their x positions apply; the reference differs (17806 mismatched pixels; Chromium 17445; 362 against Chromium, the crosshair)
+text/textLength/zero.svg fail text: textLength: a zero textLength has no effect, as in Chromium; the reference draws all glyphs at one position (8683 mismatched pixels; Chromium 8423; 356 against Chromium, the crosshair)
+text/textPath/closed-path.svg fail text: path length: Chromium measures the arcs differently, so its glyphs drift along the circle; this render lies closer to the reference (381 mismatched pixels; Chromium 7199)
 text/textPath/complex.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/textPath/dy-with-tiny-coordinates.svg fail text: T2 (textPath)
+text/textPath/dy-with-tiny-coordinates.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (3854 mismatched pixels; Chromium 13855; 13941 against Chromium); Chromium also spaces the tiny text wider, as it lays it out with a scaled font
 text/textPath/invalid-link.svg pass
-text/textPath/invalid-textPath-in-the-middle.svg fail text: T2 (textPath)
-text/textPath/link-to-rect.svg fail text: T2 (textPath)
-text/textPath/m-A-path.svg fail text: T2 (textPath)
-text/textPath/m-L-Z-path.svg fail text: T2 (textPath)
-text/textPath/method=stretch.svg fail text: T2 (textPath)
-text/textPath/mixed-children-1.svg fail text: T2 (textPath)
-text/textPath/mixed-children-2.svg fail text: T2 (textPath)
-text/textPath/nested.svg fail text: T2 (textPath)
+text/textPath/invalid-textPath-in-the-middle.svg fail text: textPath: as in Chromium, a textPath without a path hides its text, and the text after it takes the cross position 0 of the path, out of view (4890 mismatched pixels; Chromium 4911; 3 against Chromium)
+text/textPath/link-to-rect.svg fail text: reference: the reference image has an opaque white background; the render matches Chromium, which lays text only on a path element (0 mismatched pixels against Chromium)
+text/textPath/m-A-path.svg pass
+text/textPath/m-L-Z-path.svg fail text: T3 (baseline-shift)
+text/textPath/method=stretch.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1456 mismatched pixels; Chromium 1736; 171 against Chromium); method has no effect in Chromium
+text/textPath/mixed-children-1.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (3345 mismatched pixels; Chromium 3626; 171 against Chromium); the text after the path starts at its end point, as in Chromium
+text/textPath/mixed-children-2.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (7215 mismatched pixels; Chromium 7177; 150 against Chromium); the text after each path starts at its end point, as in Chromium
+text/textPath/nested.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1447 mismatched pixels; Chromium 1655; 189 against Chromium)
 text/textPath/no-link.svg pass
-text/textPath/path-with-ClosePath.svg fail text: T2 (textPath)
-text/textPath/path-with-subpaths-and-startOffset.svg fail text: T2 (textPath)
-text/textPath/path-with-subpaths.svg fail text: T2 (textPath)
-text/textPath/side=right.svg fail text: T2 (textPath)
-text/textPath/simple-case.svg fail text: T2 (textPath)
-text/textPath/spacing=auto.svg fail text: T2 (textPath)
-text/textPath/startOffset=-100.svg fail text: T2 (textPath)
-text/textPath/startOffset=10percent.svg fail text: T2 (textPath)
-text/textPath/startOffset=30.svg fail text: T2 (textPath)
-text/textPath/startOffset=5mm.svg fail text: T2 (textPath)
+text/textPath/path-with-ClosePath.svg pass
+text/textPath/path-with-subpaths-and-startOffset.svg pass
+text/textPath/path-with-subpaths.svg pass
+text/textPath/side=right.svg pass
+text/textPath/simple-case.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1456 mismatched pixels; Chromium 1736; 171 against Chromium)
+text/textPath/spacing=auto.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1456 mismatched pixels; Chromium 1736; 171 against Chromium); spacing has no effect in Chromium
+text/textPath/startOffset=-100.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (436 mismatched pixels; Chromium 546; 7 against Chromium)
+text/textPath/startOffset=10percent.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1684 mismatched pixels; Chromium 2168; 73 against Chromium)
+text/textPath/startOffset=30.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1895 mismatched pixels; Chromium 2482; 192 against Chromium)
+text/textPath/startOffset=5mm.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1696 mismatched pixels; Chromium 2079; 43 against Chromium)
 text/textPath/startOffset=9999.svg pass
-text/textPath/tspan-with-absolute-position.svg fail text: T2 (textPath)
-text/textPath/tspan-with-relative-position.svg fail text: T2 (textPath)
-text/textPath/two-paths.svg fail text: T2 (textPath)
-text/textPath/very-long-text.svg fail text: T2 (textPath)
+text/textPath/tspan-with-absolute-position.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (817 mismatched pixels; Chromium 1349; 52 against Chromium)
+text/textPath/tspan-with-relative-position.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1399 mismatched pixels; Chromium 1753; 52 against Chromium)
+text/textPath/two-paths.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (2896 mismatched pixels; Chromium 3310; 378 against Chromium)
+text/textPath/very-long-text.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (3284 mismatched pixels; Chromium 3323; 12 against Chromium); the text after the path starts at its end point, as in Chromium
 text/textPath/with-baseline-shift-and-rotate.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/textPath/with-baseline-shift.svg fail text: T2 (textPath)
-text/textPath/with-big-letter-spacing.svg fail text: T2 (textPath)
-text/textPath/with-coordinates-on-text.svg fail text: T2 (textPath)
-text/textPath/with-coordinates-on-textPath.svg fail text: T2 (textPath)
-text/textPath/with-filter.svg fail text: T2 (textPath)
-text/textPath/with-invalid-path-and-xlink-href.svg fail text: T2 (textPath)
-text/textPath/with-letter-spacing.svg fail text: T2 (textPath)
-text/textPath/with-path-and-xlink-href.svg fail text: T2 (textPath)
-text/textPath/with-path.svg fail text: T2 (textPath)
-text/textPath/with-rotate.svg fail text: T2 (textPath)
-text/textPath/with-text-anchor.svg fail text: T2 (textPath)
-text/textPath/with-transform-on-a-referenced-path.svg fail text: T2 (textPath)
-text/textPath/with-transform-outside-a-referenced-path.svg fail text: T2 (textPath)
-text/textPath/with-underline.svg fail text: T2 (textPath)
-text/textPath/writing-mode=tb.svg fail text: T2 (textPath)
+text/textPath/with-baseline-shift.svg pass
+text/textPath/with-big-letter-spacing.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (2544 mismatched pixels; Chromium 2567; 155 against Chromium); the middle of a glyph includes its letter-spacing, as in Chromium
+text/textPath/with-coordinates-on-text.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1663 mismatched pixels; Chromium 1931; 53 against Chromium)
+text/textPath/with-coordinates-on-textPath.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1451 mismatched pixels; Chromium 1727; 169 against Chromium)
+text/textPath/with-filter.svg fail filters: phase 4
+text/textPath/with-invalid-path-and-xlink-href.svg fail text: reference: the reference image has an opaque white background; the render matches Chromium, which finds no path for href="path1" (0 mismatched pixels against Chromium)
+text/textPath/with-letter-spacing.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1840 mismatched pixels; Chromium 1738; 6 against Chromium)
+text/textPath/with-path-and-xlink-href.svg fail text: reference: the reference image has an opaque white background; the path attribute wins, as in Chromium (171 mismatched pixels against Chromium)
+text/textPath/with-path.svg fail text: reference: the reference image has an opaque white background; the path attribute works as in Chromium (171 mismatched pixels against Chromium)
+text/textPath/with-rotate.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (8040 mismatched pixels; Chromium 7813; 176 against Chromium); rotate turns a glyph about its point on the path, as in Chromium
+text/textPath/with-text-anchor.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (768 mismatched pixels; Chromium 1243; 5 against Chromium)
+text/textPath/with-transform-on-a-referenced-path.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1421 mismatched pixels; Chromium 1799; 138 against Chromium)
+text/textPath/with-transform-outside-a-referenced-path.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1464 mismatched pixels; Chromium 1749; 166 against Chromium)
+text/textPath/with-underline.svg fail text: T3 (text-decoration)
+text/textPath/writing-mode=tb.svg fail text: T4 (vertical writing-mode)
 text/tref/link-to-a-complex-text.svg fail text: T4 (tref)
 text/tref/link-to-a-non-SVG-element.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
 text/tref/link-to-a-non-text-element.svg fail text: T4 (tref)

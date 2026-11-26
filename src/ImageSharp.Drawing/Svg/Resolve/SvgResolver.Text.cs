@@ -41,7 +41,7 @@ internal sealed partial class SvgResolver
     /// <summary>
     /// Gets the text state of the load, creating it on first use.
     /// </summary>
-    private SvgTextResolveState TextState => this.textState ??= new SvgTextResolveState(this.loadOptions);
+    internal SvgTextResolveState TextState => this.textState ??= new SvgTextResolveState(this.loadOptions);
 
     /// <summary>
     /// Gets the number of characters of text that the load has laid out, counted per instance.

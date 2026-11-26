@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"
+     font-family="Open Sans" font-size="14">
+    <path id="wave" d="M 10 45 C 35 10 60 10 75 45 S 115 80 130 45" fill="none" stroke="#bbb"/>
+    <text>
+        <textPath href="#wave">Wavy <tspan fill="red" dy="-3">text</tspan> on a path</textPath>
+        <tspan fill="blue">end</tspan>
+    </text>
+    <path id="arc" d="M 15 125 A 45 45 0 0 1 105 125" fill="none" stroke="#bbb"/>
+    <text text-anchor="middle" letter-spacing="1" fill="green">
+        <textPath href="#arc" startOffset="50%">Centred on arc</textPath>
+    </text>
+    <path id="square" d="M 130 90 h 55 v 55 h -55 Z" fill="none" stroke="#bbb"/>
+    <text font-size="12" rotate="15">
+        <textPath href="#square" side="right">Around a square path</textPath>
+    </text>
+    <path id="line" d="M 20 160 L 180 160" transform="rotate(-8 100 160)" fill="none" stroke="#bbb"/>
+    <text fill="purple" y="10" dx="4">
+        <textPath href="#line" startOffset="-12">Hidden start, turned line</textPath>
+    </text>
+    <text font-size="11" fill="orange">
+        <textPath path="M 20 190 Q 100 170 180 190" method="stretch">The path attribute, as in Chromium</textPath>
+    </text>
+</svg>
