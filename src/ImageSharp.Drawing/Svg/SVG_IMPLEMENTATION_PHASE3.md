@@ -18,6 +18,7 @@ Phase 3 scope (`SVG_DESIGN.md` section 11): `text`, `tspan`, `textPath`, anchors
 | T4 | Vertical `writing-mode`, `direction`, `unicode-bidi`, complex scripts, `tref`, `text-rendering`. | T1 |
 | T5 | Integration: cross-feature tests, conformance totals, benchmarks with text, hostile documents, document status. | T2, T3, T4 |
 | T6 | The Unicode bidirectional algorithm as a local copy from SixLabors.Fonts, replacing the T4 workaround (section 9). | T5 |
+| T7 | Text on a path and `textLength` rewritten from the specification, replacing the code adapted from Chromium (section 10). | T5 |
 
 T2, T3, and T4 run at the same time in separate work trees. T1 therefore builds the pipeline as separate stages in separate files (section 4), parses everything all packages need, and leaves a documented hook for each later feature. T2, T3, and T4 each put their feature in new files and keep edits to shared files to short hooks, with new enum members and fields at the end. In the conformance expected-results list, a package changes only the lines of its own features.
 
@@ -160,3 +161,28 @@ Decision of the user: copy the algorithm into this repository, with a comment th
 ### 9.4 Upstream issue draft
 
 Put a draft of the issue for SixLabors.Fonts in the hand-back report, and do not post it: what is internal today, the smallest public API that would remove the copy (levels for a span of text with a paragraph direction, and the level runs), and why run-level shaping needs it. Do not name this project's private details beyond "SVG text layout on top of `TextShaper.ShapeRun`". Mention the two shaping gaps of 9.2 as separate, optional requests.
+
+## 10. Package T7: Text on a Path and `textLength` Rewritten from the Specification (added after T5)
+
+T2 adapted two files from the SVG text layout code of the Blink engine of Chromium (BSD 3-Clause): `Text/SvgTextPaths.Placement.cs` and `Text/SvgTextPositioner.TextLength.cs`. Decision of the user: reimplement them so that the repository needs no Chromium license.
+
+### 10.1 Independence rules
+
+The new code must not derive from the old code or from any renderer source.
+
+- The main session removes both files, the Chromium entry of `THIRD-PARTY-NOTICES`, and the Blink sources that T2 had downloaded, in a commit of its own before the package starts. The package starts from a tree without them.
+- Do not read the removed files in the Git history, in other work trees, or in the session transcript. Do not read or download source code of Chromium, Blink, WebKit, Gecko, Skia, resvg, librsvg, or any other SVG renderer.
+- Allowed sources: the SVG 2 specification (the text chapter with its layout algorithm, `textPath`, `textLength`, and `lengthAdjust`), SVG 1.1, the CSS specifications it refers to, the tests and reference images of this repository, the resvg suite images, and the Chromium oracle as a black box (rendered output only).
+- State in the hand-back report which sources were used, and confirm that none of the excluded ones was.
+
+### 10.2 Work
+
+- Implement the two hooks again in new files: `SvgTextPaths.PlaceOnPaths` and `SvgTextPositioner.ApplyTextLength`. Their declarations and the contracts of the pipeline stages stay as they are; `SvgTextPathMeasure.cs` stays and is used.
+- Behavior to cover, from section 5.1 and from the tests: `startOffset` as a length and a percentage, `x`, `y`, `dx`, `dy`, and `rotate` on a path, `text-anchor` on a path, clusters outside the path, closed paths, `side`, `method`, `spacing`, the referenced basic shapes and the `path` attribute, the transform of the referenced path, text after a `textPath`, `textLength` with both `lengthAdjust` values on `text`, `tspan`, and `textPath`, nested `textLength`, and the combinations that T5 covers (vertical and right-to-left text, decorations and baselines on a path).
+- Where the specification leaves a case open, decide it from the oracle output, as before, and say so in a comment.
+
+### 10.3 Evidence
+
+- Every existing unit and render test of text on a path and `textLength` passes again, with no reference image changed. A reference image that the new code cannot match is reported with the oracle comparison, not replaced.
+- The conformance results of `text/textPath`, `text/textLength`, `text/lengthAdjust`, and of the tests that the two features share with other directories are the same as before the removal, or better. List every test that changed in either direction.
+- `LoadSvg` for the text documents is not slower beyond noise.
