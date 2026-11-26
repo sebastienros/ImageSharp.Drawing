@@ -34,7 +34,7 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
     /// </summary>
     /// <param name="input">The input index.</param>
     /// <param name="matrix">The 20 numbers of the matrix, row by row.</param>
-    private SvgFeColorMatrix(int input, ReadOnlySpan<float> matrix)
+    internal SvgFeColorMatrix(int input, ReadOnlySpan<float> matrix)
         : base([input])
     {
         this.rows =
@@ -74,15 +74,7 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
                     return SvgFilterBuildResult.PassThrough;
                 }
 
-                float s = numbers.Length == 1 ? numbers[0] : 1F;
-                ReadOnlySpan<float> saturate =
-                [
-                    0.213F + (0.787F * s), 0.715F - (0.715F * s), 0.072F - (0.072F * s), 0F, 0F,
-                    0.213F - (0.213F * s), 0.715F + (0.285F * s), 0.072F - (0.072F * s), 0F, 0F,
-                    0.213F - (0.213F * s), 0.715F - (0.715F * s), 0.072F + (0.928F * s), 0F, 0F,
-                    0F, 0F, 0F, 1F, 0F,
-                ];
-                saturate.CopyTo(matrix);
+                GetSaturateMatrix(numbers.Length == 1 ? numbers[0] : 1F, matrix);
                 break;
             }
 
@@ -93,17 +85,7 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
                     return SvgFilterBuildResult.PassThrough;
                 }
 
-                float angle = numbers.Length == 1 ? numbers[0] * (MathF.PI / 180F) : 0F;
-                float cos = MathF.Cos(angle);
-                float sin = MathF.Sin(angle);
-                ReadOnlySpan<float> hueRotate =
-                [
-                    0.213F + (cos * 0.787F) - (sin * 0.213F), 0.715F - (cos * 0.715F) - (sin * 0.715F), 0.072F - (cos * 0.072F) + (sin * 0.928F), 0F, 0F,
-                    0.213F - (cos * 0.213F) + (sin * 0.143F), 0.715F + (cos * 0.285F) + (sin * 0.140F), 0.072F - (cos * 0.072F) - (sin * 0.283F), 0F, 0F,
-                    0.213F - (cos * 0.213F) - (sin * 0.787F), 0.715F - (cos * 0.715F) + (sin * 0.715F), 0.072F + (cos * 0.928F) + (sin * 0.072F), 0F, 0F,
-                    0F, 0F, 0F, 1F, 0F,
-                ];
-                hueRotate.CopyTo(matrix);
+                GetHueRotateMatrix(numbers.Length == 1 ? numbers[0] : 0F, matrix);
                 break;
             }
 
@@ -145,6 +127,43 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
         return SvgFilterBuildResult.Created;
     }
 
+    /// <summary>
+    /// Writes the matrix of <c>type="saturate"</c>, which the <c>saturate()</c> filter function shares.
+    /// </summary>
+    /// <param name="s">The saturation; 1 is the identity.</param>
+    /// <param name="matrix">Receives the 20 numbers, row by row.</param>
+    internal static void GetSaturateMatrix(float s, Span<float> matrix)
+    {
+        ReadOnlySpan<float> saturate =
+        [
+            0.213F + (0.787F * s), 0.715F - (0.715F * s), 0.072F - (0.072F * s), 0F, 0F,
+            0.213F - (0.213F * s), 0.715F + (0.285F * s), 0.072F - (0.072F * s), 0F, 0F,
+            0.213F - (0.213F * s), 0.715F - (0.715F * s), 0.072F + (0.928F * s), 0F, 0F,
+            0F, 0F, 0F, 1F, 0F,
+        ];
+        saturate.CopyTo(matrix);
+    }
+
+    /// <summary>
+    /// Writes the matrix of <c>type="hueRotate"</c>, which the <c>hue-rotate()</c> filter function shares.
+    /// </summary>
+    /// <param name="degrees">The angle in degrees; 0 is the identity.</param>
+    /// <param name="matrix">Receives the 20 numbers, row by row.</param>
+    internal static void GetHueRotateMatrix(float degrees, Span<float> matrix)
+    {
+        float angle = degrees * (MathF.PI / 180F);
+        float cos = MathF.Cos(angle);
+        float sin = MathF.Sin(angle);
+        ReadOnlySpan<float> hueRotate =
+        [
+            0.213F + (cos * 0.787F) - (sin * 0.213F), 0.715F - (cos * 0.715F) - (sin * 0.715F), 0.072F - (cos * 0.072F) + (sin * 0.928F), 0F, 0F,
+            0.213F - (cos * 0.213F) + (sin * 0.143F), 0.715F + (cos * 0.285F) + (sin * 0.140F), 0.072F - (cos * 0.072F) - (sin * 0.283F), 0F, 0F,
+            0.213F - (cos * 0.213F) - (sin * 0.787F), 0.715F - (cos * 0.715F) + (sin * 0.715F), 0.072F + (cos * 0.928F) + (sin * 0.072F), 0F, 0F,
+            0F, 0F, 0F, 1F, 0F,
+        ];
+        hueRotate.CopyTo(matrix);
+    }
+
     /// <inheritdoc/>
     public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
     {
@@ -180,7 +199,7 @@ internal sealed class SvgFeColorMatrix : SvgFilterPrimitive
     /// </summary>
     /// <param name="matrix">The matrix, row by row.</param>
     /// <returns><see langword="true"/> if the matrix is the identity; otherwise, <see langword="false"/>.</returns>
-    private static bool IsIdentity(ReadOnlySpan<float> matrix)
+    internal static bool IsIdentity(ReadOnlySpan<float> matrix)
     {
         for (int i = 0; i < 20; i++)
         {

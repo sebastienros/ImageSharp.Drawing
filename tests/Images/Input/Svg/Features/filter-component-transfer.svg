@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gray">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="spectrum">
+      <stop offset="0" stop-color="#ff0000"/>
+      <stop offset="0.5" stop-color="#00ff00"/>
+      <stop offset="1" stop-color="#0000ff"/>
+    </linearGradient>
+    <linearGradient id="fade">
+      <stop offset="0" stop-color="#0000ff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0000ff" stop-opacity="1"/>
+    </linearGradient>
+    <filter id="table" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="table" tableValues="0 1 0.5"/>
+        <feFuncG type="table" tableValues="0 1 0.5"/>
+        <feFuncB type="table" tableValues="0 1 0.5"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="discrete" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="discrete" tableValues="0 0.5 1"/>
+        <feFuncG type="discrete" tableValues="0.2 0.8"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="linear">
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="2" intercept="-0.5"/>
+        <feFuncG type="linear" slope="2" intercept="-0.5"/>
+        <feFuncB type="linear" slope="-1" intercept="1"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="gamma" color-interpolation-filters="sRGB">
+      <feComponentTransfer>
+        <feFuncR type="gamma" amplitude="1" exponent="2.2"/>
+        <feFuncG type="gamma" amplitude="0.5" exponent="0.5" offset="0.25"/>
+        <feFuncB type="gamma" exponent="4"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="alpha" x="0" y="0" width="1" height="1">
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="1 0"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="linear-rgb">
+      <feComponentTransfer>
+        <feFuncR type="discrete" tableValues="0 1"/>
+        <feFuncG type="discrete" tableValues="0 1"/>
+        <feFuncB type="discrete" tableValues="0 1"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <rect x="10" y="5" width="180" height="20" fill="url(#gray)"/>
+  <rect x="10" y="29" width="180" height="20" fill="url(#gray)" filter="url(#table)"/>
+  <rect x="10" y="53" width="180" height="20" fill="url(#spectrum)" filter="url(#discrete)"/>
+  <rect x="10" y="77" width="180" height="20" fill="url(#gray)" filter="url(#linear)"/>
+  <rect x="10" y="101" width="180" height="20" fill="url(#spectrum)" filter="url(#gamma)"/>
+  <rect x="10" y="125" width="180" height="20" fill="url(#gray)" filter="url(#linear-rgb)"/>
+  <rect x="10" y="149" width="180" height="20" fill="url(#fade)" filter="url(#alpha)"/>
+  <circle cx="100" cy="185" r="10" fill="#ff8000" opacity="0.5" filter="url(#alpha)"/>
+</svg>

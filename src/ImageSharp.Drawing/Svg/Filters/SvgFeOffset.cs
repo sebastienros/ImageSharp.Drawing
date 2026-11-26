@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Numerics;
+using SixLabors.ImageSharp.Memory;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
@@ -53,9 +54,21 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
 
     /// <inheritdoc/>
     public override Rectangle GetInputArea(int input, Rectangle area, in SvgFilterRenderContext context)
+        => GetInputArea(area, this.GetPixelOffset(in context));
+
+    /// <inheritdoc/>
+    public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
+        => Offset(inputs[0], output, this.GetPixelOffset(in context), context.Allocator);
+
+    /// <summary>
+    /// Returns the area of the input that an offset output area reads.
+    /// </summary>
+    /// <param name="area">The output area in filter space.</param>
+    /// <param name="offset">The offset in filter pixels, as <see cref="ToPixelOffset"/> returns it.</param>
+    /// <returns>The input area.</returns>
+    internal static Rectangle GetInputArea(Rectangle area, Vector2 offset)
     {
         // Output pixel x reads input pixels floor(x - dx) and the one after it; the second only for a fractional offset.
-        Vector2 offset = this.GetPixelOffset(in context);
         int x = (int)MathF.Floor(-offset.X);
         int y = (int)MathF.Floor(-offset.Y);
         int extraX = -offset.X - x > 0F ? 1 : 0;
@@ -63,11 +76,15 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
         return new Rectangle(area.X + x, area.Y + y, area.Width + extraX, area.Height + extraY);
     }
 
-    /// <inheritdoc/>
-    public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
+    /// <summary>
+    /// Moves an image into the area of another. The output must be transparent; the input can have any area.
+    /// </summary>
+    /// <param name="input">The input image.</param>
+    /// <param name="output">The output image, transparent, not empty.</param>
+    /// <param name="offset">The offset in filter pixels, as <see cref="ToPixelOffset"/> returns it.</param>
+    /// <param name="allocator">The allocator for scratch memory.</param>
+    internal static void Offset(SvgFilterImage input, SvgFilterImage output, Vector2 offset, MemoryAllocator allocator)
     {
-        SvgFilterImage input = inputs[0];
-        Vector2 offset = this.GetPixelOffset(in context);
         Rectangle area = output.Area;
 
         // The output pixel x takes the input at x - dx, interpolated linearly between the two nearest pixels on each
@@ -100,7 +117,7 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
         }
 
         int width = area.Width + 1;
-        using IMemoryOwner<Rgba32> scratch = context.Allocator.Allocate<Rgba32>(width * 2);
+        using IMemoryOwner<Rgba32> scratch = allocator.Allocate<Rgba32>(width * 2);
         Span<Rgba32> upper = scratch.Memory.Span[..width];
         Span<Rgba32> lower = scratch.Memory.Span.Slice(width, width);
         for (int row = area.Top; row < area.Bottom; row++)
@@ -149,14 +166,22 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
         => context.TryGetValue(attribute, out SvgFilterAttributeValue value) && value.NumberCount == 1 ? context.GetNumbers(in value)[0] : 0F;
 
     /// <summary>
+    /// Converts an offset in user units to filter pixels.
+    /// </summary>
+    /// <param name="offset">The offset in user units.</param>
+    /// <param name="scale">The filter pixels per user unit.</param>
+    /// <returns>The horizontal and vertical offset in filter pixels, clamped to 2^28 in magnitude.</returns>
+    internal static Vector2 ToPixelOffset(Vector2 offset, Vector2 scale)
+    {
+        // An offset larger than any image moves everything out; clamping keeps the int conversions defined.
+        const float limit = 1 << 28;
+        return Vector2.Clamp(offset * scale, new Vector2(-limit), new Vector2(limit));
+    }
+
+    /// <summary>
     /// Returns the offset in filter pixels.
     /// </summary>
     /// <param name="context">The context of the run.</param>
     /// <returns>The horizontal and vertical offset.</returns>
-    private Vector2 GetPixelOffset(in SvgFilterRenderContext context)
-    {
-        // An offset larger than any image moves everything out; clamping keeps the int conversions defined.
-        const float limit = 1 << 28;
-        return Vector2.Clamp(new Vector2(this.dx, this.dy) * context.Scale, new Vector2(-limit), new Vector2(limit));
-    }
+    private Vector2 GetPixelOffset(in SvgFilterRenderContext context) => ToPixelOffset(new Vector2(this.dx, this.dy), context.Scale);
 }

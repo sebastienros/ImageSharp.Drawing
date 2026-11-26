@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Globalization;
+using System.Text;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Svg;
 using SixLabors.ImageSharp.PixelFormats;
@@ -253,9 +255,12 @@ public class SvgFilterTests
     [InlineData("<rect width=\"10\" height=\"10\" filter=\"url(#missing)\"/>", false)]
     [InlineData("<linearGradient id=\"f\"/><rect width=\"10\" height=\"10\" filter=\"url(#f)\"/>", false)]
 
-    // A filter that this build does not render draws the element without it.
-    [InlineData("<filter id=\"f\"><feTile/></filter><rect width=\"10\" height=\"10\" filter=\"url(#f)\"/>", false)]
-    [InlineData("<rect width=\"10\" height=\"10\" filter=\"blur(2px)\"/>", false)]
+    // Filter functions and lists render; a list of identity functions leaves the element without a filter.
+    [InlineData("<rect width=\"10\" height=\"10\" filter=\"blur(2px)\"/>", true)]
+    [InlineData("<rect width=\"10\" height=\"10\" filter=\"blur(0) grayscale(0) opacity(1) hue-rotate(0deg)\"/>", false)]
+
+    // Filter Effects: a reference in a list that names no filter makes the whole list ignored.
+    [InlineData("<rect width=\"10\" height=\"10\" filter=\"grayscale(0.5) url(#missing)\"/>", false)]
 
     // An element without content still renders through a region in user space.
     [InlineData("<filter id=\"f\" filterUnits=\"userSpaceOnUse\"><feFlood/></filter><g filter=\"url(#f)\"/>", true)]
@@ -573,6 +578,358 @@ public class SvgFilterTests
         Assert.Equal(new Rgba32(128, 255, 0, 255), image.Pixels[0]);
         image.Dispose();
     }
+
+    [Theory]
+
+    // The fill is rgb(64, 100, 128); each function maps C in the range 0 to 1, in sRGB. table "0 1 0.5" on 100 / 255:
+    // 2 C = 0.784, in the first interval, so C' = 0.784, 200. discrete "0.2 0.8" on 100: floor(2 C) = 0, so 0.2, 51; with
+    // three values floor(3 C) = 1, so 0.5. linear 0.5 C + 0.2 on 128: 0.451, 115. gamma 2 C^2 + 0.1 on 64: 0.226, 58. One
+    // table value is a constant.
+    [InlineData("<feFuncG type=\"table\" tableValues=\"0 1 0.5\"/>", 64, 200, 128)]
+    [InlineData("<feFuncG type=\"discrete\" tableValues=\"0.2 0.8\"/>", 64, 51, 128)]
+    [InlineData("<feFuncG type=\"discrete\" tableValues=\"0 0.5 1\"/>", 64, 128, 128)]
+    [InlineData("<feFuncB type=\"linear\" slope=\"0.5\" intercept=\"0.2\"/>", 64, 100, 115)]
+    [InlineData("<feFuncR type=\"gamma\" amplitude=\"2\" exponent=\"2\" offset=\"0.1\"/>", 58, 100, 128)]
+    [InlineData("<feFuncB type=\"table\" tableValues=\"0.5\"/>", 64, 100, 128)]
+
+    // Results clamp to the range 0 to 1; invalid numbers take the initial values; the last function of a channel applies,
+    // and an invalid type is the identity.
+    [InlineData("<feFuncR type=\"linear\" slope=\"10\"/><feFuncB type=\"table\" tableValues=\"-5 -5\"/>", 255, 100, 0)]
+    [InlineData("<feFuncR type=\"linear\" slope=\"2px\" intercept=\"50%\"/>", 64, 100, 128)]
+    [InlineData("<feFuncR type=\"table\" tableValues=\"1 1\"/><feFuncR type=\"identity\"/>", 64, 100, 128)]
+    [InlineData("<feFuncR type=\"random\" tableValues=\"1 1\"/>", 64, 100, 128)]
+    public void ComponentTransfer_AppliesTheTransferFunctions(string functions, byte r, byte g, byte b)
+    {
+        using Image<Rgba32> image = Render(
+            $"<filter id=\"f\" color-interpolation-filters=\"sRGB\"><feComponentTransfer>{functions}</feComponentTransfer></filter>"
+            + "<rect width=\"20\" height=\"20\" fill=\"rgb(64, 100, 128)\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(r, g, b, 255), image[10, 10]);
+    }
+
+    [Theory]
+    [InlineData("sRGB", 255)]
+    [InlineData("linearRGB", 0)]
+    public void ComponentTransfer_WorksInTheColorSpaceOfThePrimitive(string space, byte expected)
+    {
+        // sRGB 128 is 0.502, which discrete "0 1" maps to 1; in linear light it is 0.216, which maps to 0.
+        using Image<Rgba32> image = Render(
+            $"<filter id=\"f\" color-interpolation-filters=\"{space}\"><feComponentTransfer>"
+            + "<feFuncR type=\"discrete\" tableValues=\"0 1\"/></feComponentTransfer></filter>"
+            + "<rect width=\"20\" height=\"20\" fill=\"rgb(128, 0, 0)\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(expected, 0, 0, 255), image[10, 10]);
+    }
+
+    [Fact]
+    public void ComponentTransfer_CanMakeTransparentPixelsVisible()
+    {
+        // Transparent black maps like any color: inverting alpha makes it opaque black, and the square transparent.
+        using Image<Rgba32> image = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\">"
+            + "<feComponentTransfer><feFuncA type=\"table\" tableValues=\"1 0\"/></feComponentTransfer></filter>"
+            + "<rect x=\"5\" y=\"5\" width=\"10\" height=\"10\" fill=\"#ff0000\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(0, 0, 0, 255), image[2, 2]);
+        Assert.Equal(0, image[10, 10].A);
+    }
+
+    [Fact]
+    public void DropShadow_DrawsTheInputOverTheOffsetFloodedAlpha()
+    {
+        // The red square spans 5 to 10, its shadow 8 to 13: blue at half opacity, under the square where they overlap.
+        using Image<Rgba32> image = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\" color-interpolation-filters=\"sRGB\">"
+            + "<feDropShadow dx=\"3\" dy=\"3\" stdDeviation=\"0\" flood-color=\"#0000ff\" flood-opacity=\"0.5\"/></filter>"
+            + "<rect x=\"5\" y=\"5\" width=\"5\" height=\"5\" fill=\"#ff0000\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[9, 9]);
+        AssertPixel(new Rgba32(0, 0, 255, 128), image[12, 12]);
+        Assert.Equal(0, image[13, 13].A);
+        Assert.Equal(0, image[7, 12].A);
+    }
+
+    [Theory]
+
+    // dx and dy default to 2, also for an invalid value such as a percentage; the shadow of the square from 5 to 10 spans
+    // 7 to 12.
+    [InlineData("stdDeviation=\"0\"")]
+    [InlineData("dx=\"50%\" dy=\"2px\" stdDeviation=\"0\"")]
+    public void DropShadow_DefaultsTheOffsetToTwo(string attributes)
+    {
+        using Image<Rgba32> image = Render(
+            $"<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\"><feDropShadow {attributes}/></filter>"
+            + "<rect x=\"5\" y=\"5\" width=\"5\" height=\"5\" filter=\"url(#f)\"/>");
+
+        Assert.Equal(255, image[11, 11].A);
+        Assert.Equal(0, image[12, 12].A);
+    }
+
+    [Fact]
+    public void DropShadow_BlursWithTheDefaultDeviation()
+    {
+        // stdDeviation defaults to 2: next to the square the shadow is partly transparent, on both sides of its edges.
+        using Image<Rgba32> image = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\"><feDropShadow dx=\"0\" dy=\"0\"/></filter>"
+            + "<rect x=\"5\" y=\"5\" width=\"10\" height=\"10\" filter=\"url(#f)\"/>");
+
+        Assert.InRange(image[16, 10].A, 10, 200);
+        Assert.Equal(image[3, 10].A, image[16, 10].A);
+    }
+
+    [Fact]
+    public void Tile_RepeatsTheInputSubregionFromItsOrigin()
+    {
+        // The tile spans 2 to 6 on each axis with red in its top left quarter (2 to 4); it repeats every 4 pixels in both
+        // directions over the filter region.
+        using Image<Rgba32> image = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\" color-interpolation-filters=\"sRGB\">"
+            + "<feFlood flood-color=\"#ff0000\" x=\"2\" y=\"2\" width=\"2\" height=\"2\" result=\"a\"/>"
+            + "<feMerge x=\"2\" y=\"2\" width=\"4\" height=\"4\"><feMergeNode in=\"a\"/></feMerge>"
+            + "<feTile/></filter>"
+            + "<g filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[3, 3]);
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[6, 6]);
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[19, 2]);
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[11, 10]);
+        Assert.Equal(0, image[1, 1].A);
+        Assert.Equal(0, image[4, 3].A);
+        Assert.Equal(0, image[8, 6].A);
+        Assert.Equal(0, image[0, 0].A);
+    }
+
+    [Fact]
+    public void Image_RendersAnElementTranslatedByTheSubregionOrigin()
+    {
+        using Image<Rgba32> image = Render(
+            "<defs><rect id=\"m\" width=\"3\" height=\"2\" fill=\"#00ff00\"/></defs>"
+            + "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\">"
+            + "<feImage href=\"#m\" x=\"5\" y=\"7\"/></filter>"
+            + "<rect width=\"20\" height=\"20\" fill=\"#ff0000\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(0, 255, 0, 255), image[5, 7]);
+        AssertPixel(new Rgba32(0, 255, 0, 255), image[7, 8]);
+        Assert.Equal(0, image[4, 7].A);
+        Assert.Equal(0, image[8, 7].A);
+        Assert.Equal(0, image[5, 9].A);
+    }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData(" image-rendering=\"optimizeSpeed\"", false)]
+    public void Image_PlacesAnImageInTheSubregionAndHonorsImageRendering(string rendering, bool smooth)
+    {
+        // A red and a blue pixel stretched over 20 by 20 pixels: each covers 10 columns. Pixel 9 lies half a pixel left
+        // of the boundary; bilinear sampling mixes in blue there, the nearest texel is red.
+        string href = ToDataUri(CreatePng(Color.Red, Color.Blue));
+        using Image<Rgba32> image = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\" color-interpolation-filters=\"sRGB\">"
+            + $"<feImage preserveAspectRatio=\"none\"{rendering} href=\"{href}\"/></filter>"
+            + "<g filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(255, 0, 0, 255), image[2, 10]);
+        AssertPixel(new Rgba32(0, 0, 255, 255), image[17, 10]);
+        if (smooth)
+        {
+            Assert.InRange(image[9, 10].B, 40, 215);
+        }
+        else
+        {
+            AssertPixel(new Rgba32(255, 0, 0, 255), image[9, 10]);
+        }
+    }
+
+    [Theory]
+
+    // No href, a reference to nothing, and an element without geometry give a transparent result.
+    [InlineData("<filter id=\"f\"><feImage/></filter><rect width=\"20\" height=\"20\" filter=\"url(#f)\"/>")]
+    [InlineData("<filter id=\"f\"><feImage href=\"#missing\"/></filter><rect width=\"20\" height=\"20\" filter=\"url(#f)\"/>")]
+    [InlineData("<filter id=\"f\"><feImage href=\"#e\"/></filter><rect id=\"e\"/>"
+        + "<rect width=\"20\" height=\"20\" filter=\"url(#f)\"/>")]
+
+    // A cycle through feImage drops the element that closes it: the filtered element itself, an element that uses the
+    // filter again, or a group around it.
+    [InlineData("<filter id=\"f\"><feImage href=\"#r\"/></filter><rect id=\"r\" width=\"20\" height=\"20\" filter=\"url(#f)\"/>")]
+    [InlineData("<defs><rect id=\"e\" width=\"20\" height=\"20\" filter=\"url(#f)\"/></defs>"
+        + "<filter id=\"f\"><feImage href=\"#e\"/></filter><rect width=\"20\" height=\"20\" filter=\"url(#f)\"/>")]
+    [InlineData("<filter id=\"f\"><feImage href=\"#g\"/></filter><g id=\"g\"><rect width=\"20\" height=\"20\" filter=\"url(#f)\"/></g>")]
+    public void Image_WithNothingToRenderOrACycleIsTransparent(string content)
+    {
+        using Image<Rgba32> image = Render(content);
+
+        Assert.Equal(0, image[10, 10].A);
+    }
+
+    [Theory]
+
+    // An image that declares more pixels than the limit is refused before it decodes, as for the image element.
+    [InlineData(100000, 100000, 64 * 1024 * 1024)]
+    [InlineData(2, 1, 1)]
+    public void Image_RefusesImagesAboveTheImagePixelLimit(int width, int height, long limit)
+    {
+        byte[] png = width == 2 ? CreatePng(Color.Red, Color.Blue) : CreatePngHeader(width, height);
+        SvgDocument document = SvgDocument.Parse(
+            SvgOpen + "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\">"
+            + $"<feImage preserveAspectRatio=\"none\" href=\"{ToDataUri(png)}\"/></filter><g filter=\"url(#f)\"/></svg>",
+            new SvgLoadOptions { Limits = new SvgLimits { MaxImagePixels = limit } });
+
+        using Image<Rgba32> image = new(20, 20);
+        image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, 20, 20))));
+
+        Assert.Equal(0, image[10, 10].A);
+    }
+
+    public static TheoryData<string, string, byte[]> FilterFunctions { get; } = new()
+    {
+        // The matrices and transfer functions of Filter Effects, in sRGB. grayscale(1) of red: 0.2126, 54; sepia(1) of
+        // white: rows 1.351, 1.203, 0.937 clamped; saturate(0) of red: 0.213; hue-rotate(180deg) of red: rows -0.574,
+        // 0.426, 0.426.
+        { "grayscale(1)", "#ff0000", [54, 54, 54, 255] },
+        { "grayscale(2)", "#ff0000", [54, 54, 54, 255] },
+        { "sepia(1)", "#ffffff", [255, 255, 239, 255] },
+        { "saturate(0)", "#ff0000", [54, 54, 54, 255] },
+        { "hue-rotate(180deg)", "#ff0000", [0, 109, 109, 255] },
+
+        // On rgb(51, 102, 153) = (0.2, 0.4, 0.6): invert(a) is the table [a, 1 - a], brightness(a) a C, contrast(a)
+        // a C - a / 2 + 1 / 2, opacity(a) the table [0, a] on alpha.
+        { "invert(1)", "rgb(51, 102, 153)", [204, 153, 102, 255] },
+        { "invert(0.25)", "rgb(51, 102, 153)", [89, 115, 140, 255] },
+        { "brightness(2)", "rgb(51, 102, 153)", [102, 204, 255, 255] },
+        { "contrast(2)", "rgb(51, 102, 153)", [0, 77, 179, 255] },
+        { "opacity(0.5)", "#ff0000", [255, 0, 0, 128] },
+
+        // A list applies in order: 0.4 halved then stretched is 0; stretched then halved it is 0.15.
+        { "brightness(0.5) contrast(2)", "rgb(102, 102, 102)", [0, 0, 0, 255] },
+        { "contrast(2) brightness(0.5)", "rgb(102, 102, 102)", [38, 38, 38, 255] },
+    };
+
+    [Theory]
+    [MemberData(nameof(FilterFunctions))]
+    public void Functions_MapToThePrimitivesOfFilterEffects(string filter, string fill, byte[] expected)
+    {
+        using Image<Rgba32> image = Render($"<rect width=\"20\" height=\"20\" fill=\"{fill}\" filter=\"{filter}\"/>");
+
+        AssertPixel(new Rgba32(expected[0], expected[1], expected[2], expected[3]), image[10, 10]);
+    }
+
+    [Fact]
+    public void Functions_HaveARegionThatDoesNotClip()
+    {
+        // The default filter region of the square from 2 to 6 would end at 6.4; a function region grows by the reach.
+        using Image<Rgba32> blurred = Render("<rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" filter=\"blur(1px)\"/>");
+        using Image<Rgba32> shadow = Render("<rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" filter=\"drop-shadow(#ff0000 10px 0 0)\"/>");
+
+        Assert.True(blurred[7, 4].A > 0);
+        AssertPixel(new Rgba32(255, 0, 0, 255), shadow[13, 4]);
+        AssertPixel(new Rgba32(0, 0, 0, 255), shadow[4, 4]);
+    }
+
+    [Fact]
+    public void Functions_DropShadowResolvesCurrentColorAndUnitlessLengths()
+    {
+        // Chromium accepts unitless lengths in drop-shadow() in the filter attribute; currentColor is the color of the
+        // element.
+        using Image<Rgba32> image = Render("<rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" color=\"#0000ff\" filter=\"drop-shadow(currentColor 8 8)\"/>");
+
+        AssertPixel(new Rgba32(0, 0, 255, 255), image[12, 12]);
+    }
+
+    [Fact]
+    public void List_ChainsUrlEntries()
+    {
+        // Two filters move the square from 2 to 6 by 4 to the right, then by 4 down.
+        using Image<Rgba32> image = Render(
+            "<filter id=\"a\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\"><feOffset dx=\"4\"/></filter>"
+            + "<filter id=\"b\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\"><feOffset dy=\"4\"/></filter>"
+            + "<rect x=\"2\" y=\"2\" width=\"4\" height=\"4\" filter=\"url(#a) url(#b)\"/>");
+
+        Assert.Equal(255, image[8, 8].A);
+        Assert.Equal(0, image[4, 4].A);
+        Assert.Equal(0, image[8, 4].A);
+        Assert.Equal(0, image[4, 8].A);
+    }
+
+    [Theory]
+
+    // Each entry runs on the result of the one before, and each blur grows the region of the next one. A list of up to 32
+    // entries renders; a longer one is an error that bounds the work, and the element does not draw.
+    [InlineData(16, true)]
+    [InlineData(200, false)]
+    public void Hostile_LongFilterListsAreBounded(int pairs, bool rendered)
+    {
+        string list = string.Concat(Enumerable.Repeat("blur(1px) hue-rotate(10deg) ", pairs));
+        using Image<Rgba32> image = Render($"<rect x=\"5\" y=\"5\" width=\"10\" height=\"10\" fill=\"#ff0000\" filter=\"{list}\"/>");
+
+        Assert.Equal(rendered, image[10, 10].A > 0);
+    }
+
+    [Fact]
+    public void Hostile_HugeTileRegionsFinish()
+    {
+        // A small tile over a huge region costs only the visible pixels; a huge tile (the whole region of SourceGraphic)
+        // runs at the resolution that the pixel limit allows.
+        using Image<Rgba32> small = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"-1e7\" y=\"-1e7\" width=\"2e7\" height=\"2e7\" color-interpolation-filters=\"sRGB\">"
+            + "<feFlood flood-color=\"#ff0000\" x=\"0\" y=\"0\" width=\"1\" height=\"1\"/><feTile/></filter>"
+            + "<g filter=\"url(#f)\"/>");
+        using Image<Rgba32> large = Render(
+            "<filter id=\"f\" filterUnits=\"userSpaceOnUse\" x=\"-1e7\" y=\"-1e7\" width=\"2e7\" height=\"2e7\"><feTile/></filter>"
+            + "<rect width=\"20\" height=\"20\" filter=\"url(#f)\"/>");
+
+        AssertPixel(new Rgba32(255, 0, 0, 255), small[13, 7]);
+    }
+
+    [Theory]
+
+    // A short chain renders through every level. Deeper levels get half the pixel budget each, so a long chain finishes
+    // in bounded memory and its deepest levels draw nothing.
+    [InlineData(8, true)]
+    [InlineData(60, false)]
+    public void Hostile_NestedImageChainsFinish(int levels, bool rendered)
+    {
+        // Each filter renders an element that uses the next filter. The last element has a missing filter, so it draws
+        // green without one, and every filter above it passes it on.
+        StringBuilder builder = new("<defs>");
+        for (int i = 0; i < levels; i++)
+        {
+            string level = (i + 1).ToString(CultureInfo.InvariantCulture);
+            builder.Append("<filter id=\"f").Append(i.ToString(CultureInfo.InvariantCulture))
+                .Append("\" filterUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"20\" height=\"20\"><feImage href=\"#e")
+                .Append(level).Append("\"/></filter>");
+            builder.Append("<rect id=\"e").Append(level).Append("\" width=\"20\" height=\"20\" fill=\"#00ff00\" filter=\"url(#f")
+                .Append(level).Append(")\"/>");
+        }
+
+        builder.Append("</defs><rect width=\"20\" height=\"20\" filter=\"url(#f0)\"/>");
+        using Image<Rgba32> image = Render(builder.ToString());
+
+        if (rendered)
+        {
+            AssertPixel(new Rgba32(0, 255, 0, 255), image[10, 10]);
+        }
+    }
+
+    private static byte[] CreatePng(Color left, Color right)
+    {
+        using Image<Rgba32> image = new(2, 1);
+        image[0, 0] = left.ToPixel<Rgba32>();
+        image[1, 0] = right.ToPixel<Rgba32>();
+        using MemoryStream stream = new();
+        image.SaveAsPng(stream);
+        return stream.ToArray();
+    }
+
+    private static byte[] CreatePngHeader(int width, int height)
+    {
+        // The IHDR chunk follows the 8-byte signature and the 8-byte chunk length and type; the file ends after it.
+        byte[] result = CreatePng(Color.Red, Color.Blue).AsSpan(0, 33).ToArray();
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(result.AsSpan(16), width);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(result.AsSpan(20), height);
+        return result;
+    }
+
+    private static string ToDataUri(byte[] png) => $"data:image/png;base64,{Convert.ToBase64String(png)}";
 
     private static Image<Rgba32> Render(string content, int width = 20, int height = 20)
     {

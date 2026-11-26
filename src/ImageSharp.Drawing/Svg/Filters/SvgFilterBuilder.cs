@@ -45,6 +45,7 @@ internal static class SvgFilterBuilder
         SvgElementTree tree = context.Tree;
         SvgComputedStyle initial = context.Resolver.InitialStyle;
         List<SvgFilterPrimitive> primitives = [];
+        context.SetPrevious(primitives);
 
         for (int child = tree.GetFirstChild(filter); child >= 0; child = tree.GetNextSibling(child))
         {

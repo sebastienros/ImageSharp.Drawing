@@ -191,7 +191,7 @@ internal sealed partial class SvgPropertyParser
             {
                 // blur( <length>? ): a non-negative length without percentages; the default is 0.
                 SvgLength radius = new(0F, SvgLengthUnit.Px);
-                if (!arguments.IsEmpty && (!TryParseFilterLength(arguments, out radius) || radius.Value < 0F))
+                if (!arguments.IsEmpty && (!TryParseFilterLength(arguments, false, out radius) || radius.Value < 0F))
                 {
                     return false;
                 }
@@ -253,6 +253,10 @@ internal sealed partial class SvgPropertyParser
     /// Parses the arguments of <c>drop-shadow()</c>: <c>[ &lt;color&gt;? &amp;&amp; &lt;length&gt;{2,3} ]</c>, where the
     /// third length, the blur radius, must not be negative. The color defaults to <c>currentColor</c>.
     /// </summary>
+    /// <remarks>
+    /// A length may also be a unitless number, which is pixels: Chromium accepts <c>drop-shadow(blue 4 5 6)</c> in the
+    /// <c>filter</c> attribute (it refuses <c>blur(4)</c>), and the resvg suite tests it there.
+    /// </remarks>
     /// <param name="arguments">The trimmed arguments.</param>
     /// <param name="function">When this method returns <see langword="true"/>, contains the entry.</param>
     /// <returns><see langword="true"/> if the arguments are valid; otherwise, <see langword="false"/>.</returns>
@@ -279,7 +283,7 @@ internal sealed partial class SvgPropertyParser
 
             ReadOnlySpan<char> token = rest[..end];
             rest = SvgNumberParser.SkipWhitespace(rest[end..]);
-            if (TryParseFilterLength(token, out SvgLength length))
+            if (TryParseFilterLength(token, true, out SvgLength length))
             {
                 // The lengths are one group: a length after a color that followed lengths is invalid.
                 if (lengthCount == 3 || colorAfterLengths)
@@ -315,9 +319,10 @@ internal sealed partial class SvgPropertyParser
     /// lengths here.
     /// </summary>
     /// <param name="source">The characters to parse.</param>
+    /// <param name="allowNumbers">Whether any unitless number is a length in pixels, as in <c>drop-shadow()</c>.</param>
     /// <param name="length">When this method returns <see langword="true"/>, contains the length.</param>
     /// <returns><see langword="true"/> if the value is such a length; otherwise, <see langword="false"/>.</returns>
-    private static bool TryParseFilterLength(ReadOnlySpan<char> source, out SvgLength length)
+    private static bool TryParseFilterLength(ReadOnlySpan<char> source, bool allowNumbers, out SvgLength length)
     {
         if (!SvgLength.TryParse(source, out length) || length.Unit == SvgLengthUnit.Percent)
         {
@@ -326,12 +331,12 @@ internal sealed partial class SvgPropertyParser
 
         if (length.Unit == SvgLengthUnit.Number)
         {
-            if (length.Value != 0F)
+            if (length.Value != 0F && !allowNumbers)
             {
                 return false;
             }
 
-            length = new SvgLength(0F, SvgLengthUnit.Px);
+            length = new SvgLength(length.Value, SvgLengthUnit.Px);
         }
 
         return true;

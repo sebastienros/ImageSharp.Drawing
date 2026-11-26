@@ -16,6 +16,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 internal sealed class SvgFilterBuildContext
 {
     private readonly Dictionary<string, int> results = new(StringComparer.Ordinal);
+    private IReadOnlyList<SvgFilterPrimitive> previous = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgFilterBuildContext"/> class.
@@ -230,4 +231,19 @@ internal sealed class SvgFilterBuildContext
             this.results[name] = index;
         }
     }
+
+    /// <summary>
+    /// Returns the subregion of an input, as the builder set it: the subregion of an earlier primitive, or the filter
+    /// region for a standard input. <c>feTile</c> repeats it.
+    /// </summary>
+    /// <param name="input">The input index, as <see cref="GetInput"/> returns it.</param>
+    /// <returns>The subregion in the user space of the filtered element.</returns>
+    internal RectangleF GetInputSubregion(int input) => input >= 0 ? this.previous[input].Subregion : this.FilterRegion;
+
+    /// <summary>
+    /// Sets the primitives created so far, with their subregions, for <see cref="GetInputSubregion"/>. Only the builder
+    /// calls this.
+    /// </summary>
+    /// <param name="primitives">The list that the builder adds the primitives to.</param>
+    internal void SetPrevious(IReadOnlyList<SvgFilterPrimitive> primitives) => this.previous = primitives;
 }

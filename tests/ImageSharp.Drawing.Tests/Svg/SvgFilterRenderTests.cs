@@ -11,12 +11,15 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
 /// Reference image tests for SVG filters: one document per primitive (<c>feFlood</c>, <c>feOffset</c> with
-/// <c>feMerge</c>, <c>feGaussianBlur</c>, <c>feColorMatrix</c>, <c>feComposite</c>, <c>feBlend</c>) and per engine rule
-/// (regions and units, subregions, color spaces, transforms, content outside the canvas, error cases, and the bounds of
-/// layers around filtered content). The blur document also renders at a second size, because filters run on the pixel
-/// grid of each render, and a blur accuracy document blurs hard edges and single pixels with standard deviations from
-/// 0.5 to 12 pixels, across the switch from the Gaussian kernel to the three box blurs at 2 pixels. The reference images
-/// were accepted only after a comparison with the Chromium render oracle in <c>tests/SvgTools</c> at the same size.
+/// <c>feMerge</c>, <c>feGaussianBlur</c>, <c>feColorMatrix</c>, <c>feComposite</c>, <c>feBlend</c>,
+/// <c>feComponentTransfer</c>, <c>feDropShadow</c>, <c>feTile</c>, <c>feImage</c>), one for the filter functions and
+/// filter lists, and one per engine rule (regions and units, subregions, color spaces, transforms, content outside the
+/// canvas, error cases, and the bounds of layers around filtered content). The tile document also renders at a scale
+/// that puts subregion edges between pixels. The blur document also renders at a second size, because filters run on
+/// the pixel grid of each render, and a blur accuracy document blurs hard edges and single pixels with standard
+/// deviations from 0.5 to 12 pixels, across the switch from the Gaussian kernel to the three box blurs at 2 pixels. The
+/// reference images were accepted only after a comparison with the Chromium render oracle in <c>tests/SvgTools</c> at
+/// the same size.
 /// </summary>
 [GroupOutput("Svg")]
 public class SvgFilterRenderTests
@@ -43,6 +46,12 @@ public class SvgFilterRenderTests
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-outside-canvas")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-errors")]
     [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-bounds")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-component-transfer")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-drop-shadow")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-tile")]
+    [WithBlankImage(300, 300, PixelTypes.Rgba32, "filter-tile")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-image")]
+    [WithBlankImage(200, 200, PixelTypes.Rgba32, "filter-functions")]
     public void DrawSvg_FilterFeature<TPixel>(TestImageProvider<TPixel> provider, string name)
         where TPixel : unmanaged, IPixel<TPixel>
     {
