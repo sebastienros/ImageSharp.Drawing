@@ -11,7 +11,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// Contract for the later stages: <see cref="Text"/> and <see cref="Characters"/> have the same length, one entry per
 /// UTF-16 code unit. Every character belongs to exactly one innermost span, and the spans are in document order with
 /// nested character ranges. Characters inside a <c>textPath</c> are included and carry the path in their span
-/// (<see cref="SvgTextSpan.TextPath"/>); characters of a <c>tref</c> are not included until package T4 adds them.
+/// (<see cref="SvgTextSpan.TextPath"/>); a <c>tref</c> holds the characters of the <c>text</c> element it references.
 /// </remarks>
 internal sealed class SvgTextContent
 {
@@ -42,4 +42,10 @@ internal sealed class SvgTextContent
     /// Gets the spans in document order. Span 0 is the <c>text</c> element.
     /// </summary>
     public SvgTextSpan[] Spans { get; }
+
+    /// <summary>
+    /// Gets or sets the direction data of package T4, which stage 3 sets before shaping. <see langword="null"/> for
+    /// horizontal text without right-to-left content, which keeps the logical order.
+    /// </summary>
+    public SvgTextDirections? Directions { get; set; }
 }

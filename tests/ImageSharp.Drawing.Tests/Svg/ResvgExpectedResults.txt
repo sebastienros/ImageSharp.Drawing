@@ -694,7 +694,7 @@ painting/display/none-on-defs.svg pass
 painting/display/none-on-linearGradient.svg pass
 painting/display/none-on-rect.svg pass
 painting/display/none-on-svg.svg pass
-painting/display/none-on-tref.svg fail text: T4 (tref)
+painting/display/none-on-tref.svg pass
 painting/display/none-on-tspan-1.svg pass
 painting/display/none-on-tspan-2.svg pass
 painting/fill-opacity/50percent.svg pass
@@ -1395,7 +1395,7 @@ text/baseline-shift/sub.svg fail text: Chromium: baseline-shift sub and super mo
 text/baseline-shift/super.svg fail text: Chromium: baseline-shift sub and super move by half the font height (ascent plus descent) of the span, as in Chromium; the reference uses the subscript and superscript offsets of the font; 3235 mismatched pixels, 2809 off the crosshair
 text/baseline-shift/with-rotate.svg fail text: Chromium: baseline-shift sub and super move by half the font height (ascent plus descent) of the span, as in Chromium; the reference uses the subscript and superscript offsets of the font; 3548 mismatched pixels, 3135 off the crosshair
 text/direction/rtl-with-vertical-writing-mode.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/direction/rtl.svg fail text: T4 (direction and bidi)
+text/direction/rtl.svg fail text: fonts: the reference draws the Arabic with Noto Sans Arabic, which the suite does not ship; the render matches Chromium with the suite fonts (298 mismatched pixels, 10 off the crosshair)
 text/dominant-baseline/alignment-baseline-and-baseline-shift-on-tspans.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 1 off the crosshair
 text/dominant-baseline/alignment-baseline=baseline-on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 273 mismatched pixels, 0 off the crosshair
 text/dominant-baseline/alphabetic.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
@@ -1475,8 +1475,8 @@ text/font-weight/lighter.svg pass
 text/font-weight/normal.svg pass
 text/font/font-shorthand.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 708 mismatched pixels, 0 off the crosshair
 text/font/simple-case.svg fail text: font: SVG 2 and Chromium have no font presentation attribute
-text/glyph-orientation-horizontal/simple-case.svg fail text: T4 (glyph-orientation)
-text/glyph-orientation-vertical/simple-case.svg fail text: T4 (glyph-orientation)
+text/glyph-orientation-horizontal/simple-case.svg fail text: glyph-orientation: Chromium ignores glyph-orientation-horizontal, and so does this render (632 mismatched pixels against Chromium, 297 off the crosshair, from hinting); the reference turns the glyphs
+text/glyph-orientation-vertical/simple-case.svg fail text: glyph-orientation: Chromium ignores glyph-orientation-vertical, and so does this render (744 mismatched pixels against Chromium, 315 off the crosshair, from hinting); the reference sets the glyphs upright
 text/kerning/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 760 mismatched pixels, 38 off the crosshair
 text/kerning/10percent.svg fail text: known gap: a kerning length adds no spacing (SVG 1.1); Chromium ignores the kerning property and renders as here, and resvg fails the test too; 7645 mismatched pixels, 6691 off the crosshair
 text/lengthAdjust/spacingAndGlyphs.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 249 mismatched pixels, 0 off the crosshair
@@ -1490,11 +1490,11 @@ text/letter-spacing/3.svg fail text: rasterization: the 0.5 wide crosshair line 
 text/letter-spacing/5percent.svg fail text: spacing percentage: this renderer takes the percentage of the font size (CSS Text Level 4); the reference and Chromium resolve it otherwise
 text/letter-spacing/filter-bbox.svg fail filters: phase 4
 text/letter-spacing/large-negative.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/letter-spacing/mixed-scripts.svg fail text: T4 (right-to-left and complex scripts)
+text/letter-spacing/mixed-scripts.svg fail text: cursive scripts: letter-spacing turns off the ligatures of Amiri in Chromium and in the reference; the public shaping API of SixLabors.Fonts cannot turn off a default feature, so the Arabic keeps its ligatures here
 text/letter-spacing/mixed-spacing.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 263 mismatched pixels, 8 off the crosshair
 text/letter-spacing/non-ASCII-character.svg fail text: text-anchor: the letter-spacing after the last character counts for the anchor in Chromium and here, not in the reference
 text/letter-spacing/normal.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 273 mismatched pixels, 0 off the crosshair
-text/letter-spacing/on-Arabic.svg fail text: T4 (right-to-left and complex scripts)
+text/letter-spacing/on-Arabic.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 294 mismatched pixels, 0 off the crosshair
 text/text-anchor/coordinates-list.svg fail text: reference: the reference image has an opaque white background
 text/text-anchor/end-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 303 mismatched pixels, 0 off the crosshair
 text/text-anchor/end-with-letter-spacing.svg fail text: text-anchor: the letter-spacing after the last character counts for the anchor in Chromium and here, not in the reference
@@ -1504,7 +1504,7 @@ text/text-anchor/inheritance-3.svg fail text: text-anchor: the anchor of a chunk
 text/text-anchor/invalid-value-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 324 mismatched pixels, 0 off the crosshair
 text/text-anchor/middle-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
 text/text-anchor/on-the-first-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 288 mismatched pixels, 0 off the crosshair
-text/text-anchor/on-tspan-with-arabic.svg fail text: T4 (right-to-left and complex scripts)
+text/text-anchor/on-tspan-with-arabic.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 360 mismatched pixels, 0 off the crosshair
 text/text-anchor/on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 271 mismatched pixels, 0 off the crosshair
 text/text-anchor/start-on-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 324 mismatched pixels, 0 off the crosshair
 text/text-anchor/text-anchor-not-on-text-chunk.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 206 mismatched pixels, 0 off the crosshair
@@ -1534,7 +1534,7 @@ text/text-rendering/on-tspan.svg fail text: rasterization: the 0.5 wide crosshai
 text/text-rendering/optimizeLegibility.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
 text/text-rendering/optimizeSpeed.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 300 mismatched pixels, 0 off the crosshair
 text/text-rendering/with-underline.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 327 mismatched pixels, 0 off the crosshair
-text/text/bidi-reordering.svg fail text: T4 (right-to-left and complex scripts)
+text/text/bidi-reordering.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 250 mismatched pixels, 0 off the crosshair
 text/text/complex-grapheme-split-by-tspan.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/text/complex-graphemes-and-coordinates-list.svg fail text: grapheme clusters: positions inside a cluster are ignored; Chromium and the reference differ too
 text/text/complex-graphemes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 366 mismatched pixels, 0 off the crosshair
@@ -1550,7 +1550,7 @@ text/text/escaped-text-1.svg fail text: rasterization: the 0.5 wide crosshair li
 text/text/escaped-text-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 355 mismatched pixels, 0 off the crosshair
 text/text/escaped-text-3.svg fail text: glyph positions: the red text under the covering text shows at sub-pixel glyph position differences (353 mismatched pixels; Chromium differs from the reference too)
 text/text/escaped-text-4.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 360 mismatched pixels, 0 off the crosshair
-text/text/fill-rule=evenodd.svg fail text: T4 (right-to-left and complex scripts)
+text/text/fill-rule=evenodd.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 338 mismatched pixels, 0 off the crosshair
 text/text/filter-bbox.svg fail filters: phase 4
 text/text/ligatures-handling-in-mixed-fonts-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 597 mismatched pixels, 0 off the crosshair
 text/text/ligatures-handling-in-mixed-fonts-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 544 mismatched pixels, 0 off the crosshair
@@ -1574,7 +1574,7 @@ text/text/x-and-y-with-dx-and-dy-lists.svg fail text: rasterization: the 0.5 wid
 text/text/x-and-y-with-dx-and-dy.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
 text/text/x-and-y-with-less-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 297 mismatched pixels, 0 off the crosshair
 text/text/x-and-y-with-more-values-than-characters.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
-text/text/x-and-y-with-multiple-values-and-arabic-text.svg fail text: T4 (right-to-left and complex scripts)
+text/text/x-and-y-with-multiple-values-and-arabic-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 1011 mismatched pixels, 0 off the crosshair
 text/text/x-and-y-with-multiple-values-and-tspan.svg fail text: kerning: no kerning across a text chunk boundary, as in Chromium; the reference positions the chunk otherwise
 text/text/x-and-y-with-multiple-values.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 319 mismatched pixels, 0 off the crosshair
 text/text/xml-lang=ja.svg fail text: xml:lang: the render matches Chromium; the reference uses another glyph form
@@ -1636,18 +1636,18 @@ text/textPath/with-transform-on-a-referenced-path.svg fail text: path placement:
 text/textPath/with-transform-outside-a-referenced-path.svg fail text: path placement: the glyphs lie up to a pixel apart from the reference along the path, as in Chromium (1464 mismatched pixels; Chromium 1749; 166 against Chromium)
 text/textPath/with-underline.svg fail text: T3 (text-decoration)
 text/textPath/writing-mode=tb.svg fail text: T4 (vertical writing-mode)
-text/tref/link-to-a-complex-text.svg fail text: T4 (tref)
+text/tref/link-to-a-complex-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 197 mismatched pixels, 1 off the crosshair
 text/tref/link-to-a-non-SVG-element.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
-text/tref/link-to-a-non-text-element.svg fail text: T4 (tref)
-text/tref/link-to-an-external-file-element.svg fail text: T4 (tref)
-text/tref/link-to-text.svg fail text: T4 (tref)
+text/tref/link-to-a-non-text-element.svg fail text: tref: the reference takes the text of a rect; a tref here references only text elements, because the document keeps character data only inside text, and Chromium renders no tref at all
+text/tref/link-to-an-external-file-element.svg fail text: tref: the reference takes the text of an element in another file; the document never reads external files, and Chromium renders no tref at all
+text/tref/link-to-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 31 off the crosshair
 text/tref/nested.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 396 mismatched pixels, 0 off the crosshair
-text/tref/position-attributes.svg fail text: T4 (tref)
-text/tref/style-attributes.svg fail text: T4 (tref)
-text/tref/with-a-title-child.svg fail text: T4 (tref)
-text/tref/with-text.svg fail text: T4 (tref)
-text/tref/xml-space.svg fail text: T4 (tref)
-text/tspan/bidi-reordering.svg fail text: T4 (right-to-left and complex scripts)
+text/tref/position-attributes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 31 off the crosshair
+text/tref/style-attributes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 310 mismatched pixels, 31 off the crosshair
+text/tref/with-a-title-child.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 196 mismatched pixels, 0 off the crosshair
+text/tref/with-text.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 196 mismatched pixels, 0 off the crosshair
+text/tref/xml-space.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 258 mismatched pixels, 1 off the crosshair
+text/tspan/bidi-reordering.svg fail text: shaping context: the Arabic letters do not join across the tspan boundary; Chromium gives HarfBuzz the neighbouring characters as context, and TextShaper.ShapeRun takes no context
 text/tspan/mixed-font-size.svg fail text: shaping: Chromium and this renderer shape each tspan apart; the reference shapes across the tspan boundary
 text/tspan/mixed-xml-space-1.svg fail text: white space: CSS white space rules as in Chromium, which differ from the reference
 text/tspan/mixed-xml-space-2.svg fail text: white space: CSS white space rules as in Chromium, which differ from the reference
@@ -1678,7 +1678,7 @@ text/tspan/with-x-and-y.svg fail text: rasterization: the 0.5 wide crosshair lin
 text/tspan/without-attributes.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 0 off the crosshair
 text/tspan/xml-space-1.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 255 mismatched pixels, 0 off the crosshair
 text/tspan/xml-space-2.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 255 mismatched pixels, 0 off the crosshair
-text/unicode-bidi/bidi-override.svg fail text: T4 (direction and bidi)
+text/unicode-bidi/bidi-override.svg fail text: right-to-left kerning: the order matches Chromium, but SixLabors.Fonts puts the kerning of Latin letters shaped right to left on other gaps than HarfBuzz (495 mismatched pixels against Chromium, 273 off the crosshair)
 text/word-spacing/-5.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 219 mismatched pixels, 0 off the crosshair
 text/word-spacing/0.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 226 mismatched pixels, 0 off the crosshair
 text/word-spacing/10.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 239 mismatched pixels, 0 off the crosshair
@@ -1686,26 +1686,26 @@ text/word-spacing/2mm.svg fail text: rasterization: the 0.5 wide crosshair line 
 text/word-spacing/5percent.svg fail text: spacing percentage: this renderer takes the percentage of the font size (CSS Text Level 4); the reference and Chromium resolve it otherwise
 text/word-spacing/large-negative.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/word-spacing/normal.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 226 mismatched pixels, 0 off the crosshair
-text/writing-mode/arabic-with-rl.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/arabic-with-rl.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 350 mismatched pixels, 0 off the crosshair
 text/writing-mode/horizontal-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 277 mismatched pixels, 1 off the crosshair
-text/writing-mode/inheritance.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/inheritance.svg fail text: vertical: the render matches Chromium (468 mismatched pixels, 72 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
 text/writing-mode/invalid-value.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
-text/writing-mode/japanese-with-tb.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/japanese-with-tb.svg fail text: vertical: the render matches Chromium within 1 pixel (2022 mismatched pixels, 1615 off the crosshair, from the hinting of the stems); the reference hangs the upright glyphs 2 user units lower
 text/writing-mode/lr-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
 text/writing-mode/lr.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
-text/writing-mode/mixed-languages-with-tb-and-underline.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/mixed-languages-with-tb.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/mixed-languages-with-tb-and-underline.svg fail text: T3 (text-decoration in vertical text); the glyphs are placed as in mixed-languages-with-tb
+text/writing-mode/mixed-languages-with-tb.svg fail text: vertical: the render matches Chromium (383 mismatched pixels, 0 off the crosshair); the reference puts the sideways Latin about 1 user unit and the sideways Arabic about 3 user units further right, the Arabic on the central baseline of Amiri, where Chromium and this render use that of the primary font, Mplus 1p, as CSS takes the baselines of an inline box from its primary font
 text/writing-mode/on-tspan.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
 text/writing-mode/rl-tb.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
 text/writing-mode/rl.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 276 mismatched pixels, 0 off the crosshair
-text/writing-mode/tb-and-punctuation.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/tb-rl.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/tb-with-alignment.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/tb-with-dx-on-second-tspan.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/tb-with-dx-on-tspan.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/tb-with-dy-on-second-tspan.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb-and-punctuation.svg fail text: vertical: the render matches Chromium (389 mismatched pixels, 0 off the crosshair); the reference draws the glyphs at about the same places with thinner strokes than the suite font gives
+text/writing-mode/tb-rl.svg fail text: vertical: the render matches Chromium (468 mismatched pixels, 72 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
+text/writing-mode/tb-with-alignment.svg fail text: vertical: the render matches Chromium (446 mismatched pixels, 72 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
+text/writing-mode/tb-with-dx-on-second-tspan.svg fail text: vertical: the render matches Chromium (466 mismatched pixels, 122 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
+text/writing-mode/tb-with-dx-on-tspan.svg fail text: vertical: the render matches Chromium (663 mismatched pixels, 273 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
+text/writing-mode/tb-with-dy-on-second-tspan.svg fail text: vertical: the render matches Chromium (1799 mismatched pixels, 1375 off the crosshair, a red fringe because the advances of the first chunk add up to 0.4 user units less than in Chromium); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
 text/writing-mode/tb-with-rotate-and-underline.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 text/writing-mode/tb-with-rotate.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-text/writing-mode/tb.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/vertical-lr.svg fail text: T4 (vertical writing-mode)
-text/writing-mode/vertical-rl.svg fail text: T4 (vertical writing-mode)
+text/writing-mode/tb.svg fail text: vertical: the render matches Chromium (468 mismatched pixels, 72 off the crosshair, from hinting); the reference of the SVG 1.1 value tb draws the glyphs about 7 user units further right than the reference of vertical-rl, which this render matches
+text/writing-mode/vertical-lr.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 395 mismatched pixels, 0 off the crosshair
+text/writing-mode/vertical-rl.svg fail text: rasterization: the 0.5 wide crosshair line lies 1/8 pixel lower in Skia and tiny-skia than here; 395 mismatched pixels, 0 off the crosshair

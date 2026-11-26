@@ -271,8 +271,8 @@ internal sealed partial class SvgTextCharacters
     }
 
     /// <summary>
-    /// Assigns the values of the position lists of every <c>text</c> and <c>tspan</c> element to the characters, in
-    /// document order, so a descendant overwrites its ancestors.
+    /// Assigns the values of the position lists of every <c>text</c>, <c>tspan</c>, and <c>tref</c> element to the
+    /// characters, in document order, so a descendant overwrites its ancestors.
     /// </summary>
     /// <param name="viewport">The viewport that percentages refer to.</param>
     private void ApplyPositionLists(SizeF viewport)
@@ -281,7 +281,7 @@ internal sealed partial class SvgTextCharacters
         SvgUnitBasis units = this.resolver.Units;
         foreach (SvgTextSpan span in this.spans)
         {
-            if (span.Kind is not (SvgElementKind.Text or SvgElementKind.TSpan))
+            if (span.Kind is not (SvgElementKind.Text or SvgElementKind.TSpan or SvgElementKind.Tref))
             {
                 continue;
             }
