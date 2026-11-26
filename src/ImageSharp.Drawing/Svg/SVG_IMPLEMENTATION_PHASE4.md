@@ -6,6 +6,8 @@ Where this plan says "verify", the statement comes from reading source or from m
 
 When a rendering choice is open: follow the specification where it settles the question (Filter Effects Module Level 1, which replaces the filter chapter of SVG 1.1), otherwise Chromium, then Skia and librsvg. This is a decision of the user.
 
+Do not read, download, or port source code of another renderer (Chromium, Blink, Skia, WebKit, Gecko, resvg, librsvg, or any other). This is a decision of the user: the repository must not need their licenses. "Match Chromium" and "verify with the oracle" in this plan mean: compare with rendered output from `tests/SvgTools/render-svg.js` and with the images of the resvg suite. The allowed written sources are the specifications. `feTurbulence` is defined by reference code inside the specification; implement that algorithm, and report it in the hand-back so the main session can add the W3C notice if the code follows the reference code closely.
+
 Phase 4 scope: the `filter` property with `url()` references and CSS filter functions, the `filter` element, and all filter primitives of Filter Effects Level 1.
 
 ## 1. Work Packages
@@ -97,7 +99,7 @@ One new render node kind carries the filter: the content of the element as a nes
 
 Filter primitives work on a pixel grid along the axes of the user space.
 
-- At draw time, split the transform from user space to device space into a scale `(sx, sy)` and a remainder. For a transform that only scales and translates (the common case), the filter grid is the device grid: include the translation so that filter pixels are device pixels, and draw the result without resampling. Otherwise the filter runs in user space scaled by `(sx, sy)` and the result draws through the remainder with bilinear sampling, as Skia does for image filters under a rotated matrix (verify how Chromium renders `filters/filter` tests with rotated and skewed elements).
+- At draw time, split the transform from user space to device space into a scale `(sx, sy)` and a remainder. For a transform that only scales and translates (the common case), the filter grid is the device grid: include the translation so that filter pixels are device pixels, and draw the result without resampling. Otherwise the filter runs in user space scaled by `(sx, sy)` and the result draws through the remainder with bilinear sampling, (verify with the oracle how Chromium renders `filters/filter` tests with rotated and skewed elements).
 - Every length of a primitive scales by `sx` or `sy`: `stdDeviation`, `dx`, `dy`, `radius`, `scale`, `kernelUnitLength`, light positions, `baseFrequency` (inverse).
 - A transform that is not invertible, or a scale of zero, draws nothing.
 
@@ -142,7 +144,7 @@ Filter primitives work on a pixel grid along the axes of the user space.
 ### 6.2 X3: morphology, convolution, displacement, turbulence
 
 - `feMorphology`: `erode` and `dilate` with one or two radii, per channel on premultiplied values. The cost per pixel must not grow with the radius without bound: use a separable running minimum and maximum, or bound the radius by the working area. A zero or negative radius: section 4.4.
-- `feConvolveMatrix`: `order`, `kernelMatrix`, `divisor`, `bias`, `targetX`, `targetY`, `edgeMode` (`duplicate`, `wrap`, `none`), `preserveAlpha`. `kernelUnitLength`: do what Chromium does. Bound the work (pixels times kernel entries) with the caps Chromium uses (verify) or a documented limit of our own. The ten tests that the user had relisted as failing belong here; they pass only when the invalid cases behave correctly.
+- `feConvolveMatrix`: `order`, `kernelMatrix`, `divisor`, `bias`, `targetX`, `targetY`, `edgeMode` (`duplicate`, `wrap`, `none`), `preserveAlpha`. `kernelUnitLength`: do what Chromium does. Bound the work (pixels times kernel entries) with a documented limit of our own, chosen so that the oracle and we agree on the suite tests. The ten tests that the user had relisted as failing belong here; they pass only when the invalid cases behave correctly.
 - `feDisplacementMap`: `scale`, `xChannelSelector`, `yChannelSelector`; the map reads unpremultiplied values in the color space of the primitive; the displaced image is not converted.
 - `feTurbulence`: `baseFrequency`, `numOctaves`, `seed`, `stitchTiles`, `type`. Implement the algorithm from the reference code in the specification, evaluated at the user space point of each pixel center, so the noise does not change with the output scale. Bound `numOctaves`.
 
