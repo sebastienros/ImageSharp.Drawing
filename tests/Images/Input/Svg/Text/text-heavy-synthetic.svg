@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000"
-     font-family="sans-serif" font-size="16">
+     font-family="Open Sans" font-size="16">
   <title>Text-heavy synthetic document</title>
   <rect width="800" height="1000" fill="#fdfdf8"/>
   <text x="400" y="50" font-size="32" text-anchor="middle" fill="#1b3a5c">Synthetic text page</text>

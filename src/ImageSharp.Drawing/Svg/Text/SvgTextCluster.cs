@@ -77,8 +77,9 @@ internal struct SvgTextCluster
     public float Rotation { readonly get; set; }
 
     /// <summary>
-    /// Gets or sets the scale along the inline direction about the pen position. It is 1 unless package T2 applies
-    /// <c>lengthAdjust="spacingAndGlyphs"</c>.
+    /// Gets or sets the scale along the inline direction about the pen position. It is 1 unless
+    /// <c>lengthAdjust="spacingAndGlyphs"</c> applies. The inline direction is x for horizontal and sideways glyphs and
+    /// y for upright glyphs of vertical text.
     /// </summary>
     public float ScaleX { readonly get; set; }
 
@@ -96,8 +97,7 @@ internal struct SvgTextCluster
 
     /// <summary>
     /// Gets or sets a value indicating whether the cluster is left out of the layout: it neither renders nor counts for
-    /// the bounding box. Stage 6 sets it for clusters on a <c>textPath</c> until package T2 places them, and T2 for
-    /// clusters that fall outside their path.
+    /// the bounding box. Stage 6 sets it for clusters that fall outside their path.
     /// </summary>
     public bool Skipped { readonly get; set; }
 

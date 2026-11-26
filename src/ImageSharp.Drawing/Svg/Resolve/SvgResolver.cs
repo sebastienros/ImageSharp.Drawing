@@ -664,8 +664,8 @@ internal sealed partial class SvgResolver
     /// <c>visibility: hidden</c> and <c>opacity: 0</c> elements still contribute, because SVG excludes neither from the
     /// box. A line contributes a box with a zero side. An <c>image</c> contributes its viewport. A <c>switch</c>
     /// contributes the box of the child that it renders, and an element whose conditional processing attributes fail
-    /// contributes nothing. Kinds that are not handled here contribute nothing; a package that renders one extends the switch in
-    /// <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/>.
+    /// contributes nothing. Kinds that are not handled here contribute nothing; code that renders a new kind extends the
+    /// switch in <see cref="TryGetObjectBoundingBox(int, in SvgResolveContext, out RectangleF)"/>.
     /// </para>
     /// <para>
     /// Geometry comes from the shared shape cache, so a shape that later renders builds its path once.
@@ -1386,8 +1386,8 @@ internal sealed partial class SvgResolver
     /// <summary>
     /// Takes the render nodes from <paramref name="start"/> to the end of the node list out of the list, as a finished
     /// node array: the placeholder nodes are removed, every begin node is linked to its end node, and the deepest scope
-    /// nesting is measured. The document takes all nodes this way; a package that keeps content apart from the main paint
-    /// order, such as a pattern tile, takes the nodes that <see cref="ResolveContent(int, in SvgResolveContext)"/> added.
+    /// nesting is measured. The document takes all nodes this way; content that is kept apart from the main paint order,
+    /// such as a pattern tile, takes the nodes that <see cref="ResolveContent(int, in SvgResolveContext)"/> added.
     /// </summary>
     /// <remarks>
     /// The range must hold whole scopes: every begin node in it has its end node in it. The transform indexes of the nodes

@@ -24,14 +24,15 @@ internal static class SvgImageSharpRenderer
     public static readonly Brush ClearBrush = Brushes.Solid(Color.Transparent);
 
     /// <summary>
-    /// Loads a document from its bytes through a stream, as a caller that receives an upload does.
+    /// Loads a document from its bytes through a stream, as a caller that receives an upload does, with the fonts of
+    /// <see cref="SvgBenchmarkFonts"/>.
     /// </summary>
     /// <param name="document">The SVG bytes.</param>
     /// <returns>The loaded document.</returns>
     public static SvgDocument Load(byte[] document)
     {
         using MemoryStream stream = new(document, writable: false);
-        return SvgDocument.Load(stream);
+        return SvgDocument.Load(stream, SvgBenchmarkFonts.CreateLoadOptions());
     }
 
     /// <summary>
@@ -82,7 +83,7 @@ internal static class SvgImageSharpRenderer
         WarmThreadPool();
         byte[][] documents = SvgBenchmarkCorpus.ReadDocuments(name);
         Configuration configuration = singleThreaded ? CreateSingleThreadedConfiguration() : Configuration.Default;
-        SvgLoadOptions loadOptions = new();
+        SvgLoadOptions loadOptions = SvgBenchmarkFonts.CreateLoadOptions();
         SvgLimits limits = loadOptions.Limits;
         SvgReaderOptions readerOptions = new(limits.MaxElements, limits.MaxNestingDepth, limits.MaxCharactersFromEntities);
 

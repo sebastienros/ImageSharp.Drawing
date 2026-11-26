@@ -51,8 +51,8 @@ internal sealed class SvgTextSpan
     public SvgComputedStyle Style { get; }
 
     /// <summary>
-    /// Gets the element index of the <c>textPath</c> that the characters of the span lie on, or -1. Package T2 maps
-    /// such characters to the path in stage 6; until then they do not render.
+    /// Gets the element index of the <c>textPath</c> that the characters of the span lie on, or -1. Stage 6 maps such
+    /// characters to the path.
     /// </summary>
     public int TextPath { get; }
 

@@ -7,7 +7,7 @@ using SixLabors.Fonts.Tables.AdvancedTypographic;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <content>
-/// Package T3: kerning and the OpenType features of <c>font-variant</c>.
+/// Kerning and the OpenType features of <c>font-variant</c>.
 /// </content>
 /// <remarks>
 /// <para>

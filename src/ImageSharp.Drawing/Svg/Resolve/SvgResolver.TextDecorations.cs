@@ -8,7 +8,7 @@ using SixLabors.ImageSharp.Drawing.Processing;
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <content>
-/// Package T3: <c>text-decoration</c> of SVG text.
+/// <c>text-decoration</c> of SVG text.
 /// </content>
 /// <remarks>
 /// <para>
@@ -24,11 +24,16 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// a <c>g</c> with the paint of the <c>g</c>.
 /// </para>
 /// <para>
-/// Geometry: each line is a band along the advance of every cluster, so it follows <c>x</c>, <c>y</c>, <c>dx</c>,
-/// <c>dy</c>, <c>rotate</c>, spacing, anchoring, baseline shifts, and placement on a path, and leaves out hidden
-/// clusters. Consecutive unrotated clusters that touch on one baseline and share their metrics form one rectangle; any
-/// other cluster gets a band of its own under its transform. Position and thickness come from the font of the cluster,
-/// as in Chromium: the underline is centered on <see cref="FontMetrics.UnderlinePosition"/> with
+/// Geometry: each line is a band along the advance of every cluster in its line frame
+/// (<see cref="SvgTextLayout.GetLineFrame"/>), so it follows <c>x</c>, <c>y</c>, <c>dx</c>, <c>dy</c>, <c>rotate</c>,
+/// spacing, <c>textLength</c>, anchoring, baseline shifts, vertical text, and placement on a path, and leaves out hidden
+/// clusters and clusters that fall off their path. In vertical text the line runs down the column, left of the glyphs
+/// for an underline, as in Chromium. Consecutive clusters that touch on one line and share their metrics form one
+/// rectangle, in either direction, so right-to-left runs join too; any other cluster gets a band of its own under its
+/// transform. Spacing that <c>textLength</c> adds between clusters is not part of their advances, so the bands of
+/// <c>lengthAdjust="spacing"</c> have gaps, as in Chromium. Position and thickness come from the primary font of the
+/// span of the clusters, so the glyphs of a fallback font share the line, as in Chromium and resvg: the underline is
+/// centered on <see cref="FontMetrics.UnderlinePosition"/> with
 /// <see cref="FontMetrics.UnderlineThickness"/>, the line-through on <see cref="FontMetrics.StrikeoutPosition"/> with
 /// <see cref="FontMetrics.StrikeoutSize"/>, and the overline on the ascent with the underline thickness. These are the
 /// rules of resvg. Chromium uses a thickness of a tenth of the font size, draws the line-through at a third of the
@@ -238,65 +243,119 @@ internal sealed partial class SvgResolver
         IPath? first = null;
         List<IPath>? more = null;
 
-        // The open run of joined clusters: its left and right ends, the center of the band, and the thickness.
+        // The open run of joined clusters, in the coordinates of its line axes: the direction along the line and the
+        // direction across it toward the bottom of the glyphs (the axes of the line frame of the clusters, which are the
+        // x and y axes for unrotated horizontal text). Positions are measured along those axes from the origin of the user
+        // space: the left and right ends of the band along the line, and its center across it.
         bool open = false;
+        Vector2 along = Vector2.UnitX;
+        Vector2 across = Vector2.UnitY;
         float left = 0F;
         float right = 0F;
         float center = 0F;
         float thickness = 0F;
+
+        // The range holds the clusters of one span. Its lines take their position and thickness from the primary font of
+        // the span, as Chromium and resvg do, so glyphs of a fallback font stay on the same line.
+        SvgComputedStyle spanStyle = layout.Content.Spans[clusters[start].Span].Style;
+        SvgFontFace? face = layout.FontMatcher.GetChain(spanStyle.Text).Primary;
+        Font? primary = face is not null && spanStyle.FontSize > 0F
+            ? layout.FontMatcher.GetFont(face, spanStyle.FontSize, spanStyle.Text.FontWeight, spanStyle.Text.FontStyle)
+            : null;
+
+        float offset = 0F;
+        float size = 0F;
+        if (primary is not null)
+        {
+            GetDecorationMetrics(primary, line, out offset, out size);
+        }
 
         for (int c = start; c < end; c++)
         {
             ref readonly SvgTextCluster cluster = ref clusters[c];
             if (cluster.Hidden || cluster.Skipped || cluster.Font is null)
             {
-                Close(ref open, left, right, center, thickness, ref first, ref more);
+                Close(ref open, along, across, left, right, center, thickness, ref first, ref more);
                 continue;
             }
 
-            GetDecorationMetrics(cluster.Font, line, out float offset, out float size);
-            float width = cluster.Width * cluster.ScaleX;
+            float width = layout.GetInlineExtent(in cluster);
             if (!(size > 0F) || width == 0F)
             {
-                Close(ref open, left, right, center, thickness, ref first, ref more);
+                Close(ref open, along, across, left, right, center, thickness, ref first, ref more);
                 continue;
             }
 
-            if (cluster.Rotation == 0F)
+            // The line frame turns with the rotation of the cluster, with vertical text, and with the direction of a path.
+            Matrix3x2 frame = layout.GetLineFrame(in cluster);
+            Vector2 clusterAlong = new(frame.M11, frame.M12);
+            Vector2 clusterAcross = new(frame.M21, frame.M22);
+            float u = Vector2.Dot(frame.Translation, clusterAlong);
+            float low = MathF.Min(u, u + width);
+            float high = MathF.Max(u, u + width);
+            float v = Vector2.Dot(frame.Translation, clusterAcross) + offset;
+
+            // A cluster joins the open run when it lies on the same line and touches one of its ends: the right end in
+            // left-to-right order, the left end where right-to-left clusters, which stay in logical order, come in visual
+            // order from right to left. Bidirectional reordering, text on a path, rotations, and spacing that textLength
+            // adds outside the advances start a new band.
+            if (open
+                && clusterAlong == along
+                && clusterAcross == across
+                && MathF.Abs(v - center) <= DecorationJoinTolerance
+                && size == thickness)
             {
-                float y = cluster.Y + offset;
-                if (open && y == center && size == thickness && MathF.Abs(cluster.X - right) <= DecorationJoinTolerance)
+                if (MathF.Abs(low - right) <= DecorationJoinTolerance)
                 {
-                    right = cluster.X + width;
+                    right = high;
                     continue;
                 }
 
-                Close(ref open, left, right, center, thickness, ref first, ref more);
-                open = true;
-                left = cluster.X;
-                right = cluster.X + width;
-                center = y;
-                thickness = size;
-                continue;
+                if (MathF.Abs(high - left) <= DecorationJoinTolerance)
+                {
+                    left = low;
+                    continue;
+                }
             }
 
-            // A rotated cluster gets its own band, turned about its pen position as its glyphs are.
-            Close(ref open, left, right, center, thickness, ref first, ref more);
-            Matrix3x2 transform = Matrix3x2.CreateRotation(cluster.Rotation * (MathF.PI / 180F)) * Matrix3x2.CreateTranslation(cluster.X, cluster.Y);
-            IPath band = CreateBand(0F, width, offset, size).Transform(new Matrix4x4(transform));
-            Add(band, ref first, ref more);
+            Close(ref open, along, across, left, right, center, thickness, ref first, ref more);
+            open = true;
+            along = clusterAlong;
+            across = clusterAcross;
+            left = low;
+            right = high;
+            center = v;
+            thickness = size;
         }
 
-        Close(ref open, left, right, center, thickness, ref first, ref more);
+        Close(ref open, along, across, left, right, center, thickness, ref first, ref more);
         return more is null ? first : new ComplexPolygon([.. more]);
 
-        static void Close(ref bool open, float left, float right, float center, float thickness, ref IPath? first, ref List<IPath>? more)
+        static void Close(
+            ref bool open,
+            Vector2 along,
+            Vector2 across,
+            float left,
+            float right,
+            float center,
+            float thickness,
+            ref IPath? first,
+            ref List<IPath>? more)
         {
-            if (open)
+            if (!open)
             {
-                Add(CreateBand(left, right, center, thickness), ref first, ref more);
-                open = false;
+                return;
             }
+
+            open = false;
+            IPath band = CreateBand(left, right, center, thickness);
+            if (along != Vector2.UnitX || across != Vector2.UnitY)
+            {
+                // The band is in the coordinates of the line axes; the axes map it back to the user space of the text.
+                band = band.Transform(new Matrix4x4(new Matrix3x2(along.X, along.Y, across.X, across.Y, 0F, 0F)));
+            }
+
+            Add(band, ref first, ref more);
         }
 
         static void Add(IPath path, ref IPath? first, ref List<IPath>? more)

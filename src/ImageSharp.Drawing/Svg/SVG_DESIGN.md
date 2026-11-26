@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: accepted. Phases 0, 1, and 2 are implemented; section 14 lists the phase 2 results and the known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1) and `SVG_IMPLEMENTATION_PHASE2.md`.
+Status: accepted. Phases 0 to 3 are implemented; section 14 lists the phase 2 results and section 15 the phase 3 (text) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md`, and `SVG_IMPLEMENTATION_PHASE3.md`.
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -44,7 +44,7 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 
 ### 4.2 Feature comparison
 
-"Phase" is the phase in section 11 where this proposal adds the feature. "Implemented" is the state after phase 2. "—" means not supported.
+"Phase" is the phase in section 11 where this proposal adds the feature. "Implemented" is the state after phase 3. "—" means not supported.
 
 | Feature | librsvg (NetVips) | Skia `SkSVGDOM` | Svg.Skia | Phase | Implemented |
 |---|---|---|---|---|---|
@@ -68,9 +68,9 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 | User stylesheet | Yes | — | Yes | 2 | Yes |
 | `image` (raster, data URIs) | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
 | `image` (nested SVG file) | Yes | — | Yes | 2 | Yes |
-| `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 | — |
-| `textPath` | — | Yes | Yes | 3 | — |
-| Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 | — |
+| `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 | Yes (glyph outlines at load; section 15) |
+| `textPath` | — | Yes | Yes | 3 | Yes (`path` elements and the `path` attribute, as Chromium) |
+| Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 | Yes |
 | Filters | 17 primitives and `feDropShadow` | 14 primitives | All primitives modelled, partial parity | 4 | — |
 | CSS filter functions | Yes | — | Not stated | 4 | — |
 | Animation, scripting | — | — | Opt-in runtime | Never | — |
@@ -275,7 +275,7 @@ Sizes: 100, 1000, and 4000 pixels on the long edge. Small sizes expose fixed ove
 | Design-tool export with a `<style>` block | CSS cascade | `styled-landscape-synthetic.svg`, synthetic |
 | Clips, masks, and blend modes | Phase 2 compositing layers | `compositing-dashboard-synthetic.svg`, synthetic |
 | Patterns, markers, and an embedded image | Phase 2 paint and content | `pattern-chart-synthetic.svg`, synthetic |
-| Text-heavy document | Shaping and glyph drawing | To add in phase 3 |
+| Text-heavy document | Shaping and glyph drawing | `text-heavy-synthetic.svg` and `text-decorations-synthetic.svg`, synthetic |
 | Filter-heavy document | Blur and filter graph | To add in phase 4 |
 
 ### 9.3 Fairness rules
@@ -335,7 +335,7 @@ Each phase ships with conformance results and benchmark numbers.
 2. **Decoder integration.** Deferred to phase 5. Should an SVG `IImageDecoder` exist, and in which package?
 3. **Shared parser with Fonts.** Should the OpenType SVG glyph interpreter in SixLabors.Fonts and this feature share code?
 4. **CSS depth for phase 1.** Simple selectors cover most design-tool exports. A full selector engine is a larger piece of work.
-5. **Text fonts.** Which default font and fallback rules apply when the document names a font that is not installed?
+5. **Text fonts.** Decided in phase 3: the caller gives the fonts (`SvgLoadOptions.FontCollection`, default the system fonts), the generic families, the default family (`serif`), and the fallback families, with a fixed, documented fallback order. A document never causes a font file to be read.
 6. **Phase 1 cut.** Decided: the phase 1 list in section 11 is the first release.
 
 ## 14. Phase 2 Results
@@ -384,6 +384,99 @@ The Dashboard renders about 240 layers (each mask, blend mode, and coverage clip
 - Pattern tiles render on first use per output size and stay cached in the document (four sizes per tile), so a document drawn at large sizes keeps the tile pixels alive. Tiles of patterns nested more than three levels deep get half the pixel budget per further level.
 - Arcs in path data (`A` commands) and the core `RoundedRectanglePolygon` flatten their arcs once, in their own coordinate space, so they look polygonal when a small shape is scaled up. SVG rounded rectangles avoid this by using cubic Bézier corners.
 - The deprecated CSS `clip` property, external style sheets, and network references are not supported; file references load only from `SvgLoadOptions.ResourceBaseDirectory`.
+
+## 15. Phase 3 Results (Text)
+
+### 15.1 What renders
+
+Text resolves to glyph outlines when the document loads, as in resvg: each glyph is an ordinary draw node that shares one outline per font and glyph, so fill, stroke, paint servers, `paint-order`, clips, masks, opacity, and both backends work as for shapes. The layout follows Chromium where the specifications leave a choice.
+
+| Feature | Implemented |
+|---|---|
+| `text`, `tspan`, `a` in text, position lists, `letter-spacing`, `word-spacing`, `text-anchor`, white space | Yes |
+| Font matching (CSS weight, style, stretch; typographic families) and per-character fallback | Yes, from `SvgLoadOptions.FontCollection` only |
+| `textPath` (`startOffset`, `side`; `path` elements and the `path` attribute) | Yes; `method` and `spacing` have no effect, as in Chromium |
+| `textLength`, `lengthAdjust` | Yes, also in vertical and right-to-left text and on a path |
+| `text-decoration` | Solid lines with the metrics of the primary font, as resvg; no other styles, no skip-ink |
+| `dominant-baseline`, `alignment-baseline`, `baseline-shift` | Yes, across the line in every writing mode; the `BASE` table is not used, as in Chromium |
+| `font-variant` (caps), `font-kerning`, `kerning` | Yes, through OpenType features; no synthesized small capitals |
+| Vertical `writing-mode` (upright and sideways glyphs, `sideways-rl`, `sideways-lr`) | Yes |
+| `direction`, `unicode-bidi`, bidirectional reordering, complex script shaping | Yes, through SixLabors.Fonts |
+| `tref` | Yes (resvg supports it; Chromium does not) |
+| Text in `clipPath`, `mask`, `pattern`, `marker`, `use`, `switch` | Yes |
+| Colour glyphs (COLR, CBDT) | Monochrome outlines only |
+| `text-rendering` | No effect: the canvas has no hinting control |
+
+### 15.2 Conformance
+
+`SvgResvgConformanceTests`, criterion unchanged. Outside the text category, phase 3 changed outcomes only where those tests contain text.
+
+| Category | Run | Phase 1 | Phase 2 | Phase 3 | resvg | Chrome | librsvg |
+|---|---|---|---|---|---|---|---|
+| filters | 380 | 65 | 55 | 55 | 337 | 303 | 280 |
+| masking | 91 | 4 | 82 | 86 | 86 | 87 | 68 |
+| paint-servers | 141 | 113 | 139 | 140 | 139 | 141 | 125 |
+| painting | 298 | 148 | 258 | 273 | 294 | 264 | 268 |
+| shapes | 128 | 118 | 120 | 120 | 123 | 126 | 118 |
+| structure | 240 | 143 | 212 | 220 | 233 | 225 | 169 |
+| text | 340 | 5 | 5 | 45 | 310 | 279 | 142 |
+| total | 1618 | 596 | 871 | 939 | 1522 | 1425 | 1170 |
+
+Text, three numbers with the same criterion and the fonts of the suite:
+
+- This renderer passes 45 of the 340 text tests.
+- 139 more fail only on the pixels of the 0.5 wide crosshair line that most text tests draw (182 with at most 40 mismatched pixels elsewhere), so 184 (227) pass apart from that line.
+- Chromium with the same fonts passes 59 (2 more fail only on the line, 5 with at most 40 elsewhere).
+
+The crosshair line: at 500 px its horizontal stroke covers y = 249.375 to 250.625, so rows 249 and 250 each have an exact coverage of 0.625 (alpha 159). This renderer gives 159 and 159. The reference images (tiny-skia) and Chromium (Skia) give 128 and 192: both sample coverage on four sub-rows per pixel, which rounds each edge to a quarter pixel (249.5 and 250.75). Across columns all three are exact (159 or 160). The same quantization shows on a 0.5 wide path in `painting/stroke/control-points-clamping-1` (exact 32/255/32, reference and Chromium 0/255/64), where the full middle row keeps it inside the criterion. This renderer is exact; the references are quantized.
+
+The remaining text failures by reason (`ResvgExpectedResults.txt`): rasterization of the crosshair 184, path placement within a pixel of the reference 26, vertical text where the reference differs from Chromium 12, defects of the reference image 9, fonts that the suite does not ship 8, Chromium behavior that the reference does not follow 7, initial font size 5, sub-pixel glyph positions 4, filters 4, and 1 to 3 each for white space, anchors, shaping across tspans, font faces, colour emoji, `tref`, `textLength`, spacing percentages, `glyph-orientation`, decoration thickness with `textLength`, and seven single cases.
+
+### 15.3 Measured performance
+
+BenchmarkDotNet 0.15.8 short job (3 warmup, 3 measured iterations, 1 launch) on a shared 4-core Intel Xeon 2.30 GHz container, .NET 10.0.15, Ubuntu 24.04. Means with the error column (99.9% interval); a difference counts only where the intervals do not overlap.
+
+- Phase 1 and phase 2 documents (the eight entries from `Tiger` to `PatternChart`; every ImageSharp.Drawing method of `LoadSvg`, `RenderSvg`, and `LoadAndRenderSvg` at 100, 1000, and 4000 pixels; 152 cases): against the phase 2 build (commit 3c9c877) measured on the same machine, every mean lies within the error interval of the other. Allocations are equal within 0.5% (`LoadSvg` +0.1% to +0.3%, a few dozen bytes per document); only retained-scene renders, which allocate a few KB, vary by up to 3% in both directions.
+- Text documents, with the same font file (Open Sans) for every renderer: ImageSharp.Drawing loads it into its font collection, Svg.Skia gets a typeface provider for it, and NetVips finds it through `fonts.conf` (`tests/SvgTools/README.md`). Before the numbers were taken, each renderer's output at 1000 pixels was compared with the Chromium oracle with the same font: all draw the same glyphs at the same positions; the pixel differences (7% to 12% total difference, about the same for every renderer) come from glyph antialiasing at 16 px, the continuous lines that Chromium draws for decorations on a path, and Svg.Skia's `textLength`.
+- Text resolves to glyph outlines when the document loads, so `LoadSvg` includes font matching, shaping, and outline extraction, and `RenderSvg` draws prepared outlines. Svg.Skia also prepares at load (it records an `SKPicture`); NetVips cannot separate the stages.
+
+| Document | Benchmark | Long edge | Svg.Skia | NetVips | ImageSharp.Drawing | ImageSharp.Drawing, one thread |
+|---|---|---|---|---|---|---|
+| TextHeavy (41 texts, 4,800 characters) | Load | — | 88.8 ± 66.7 ms, 23.7 MB | — | 3.5 ± 2.5 ms, 4.9 MB | — |
+| | Render | 100 | 0.43 ± 0.10 ms | — | 6.8 ± 1.2 ms (scene 1.5 ± 1.9 ms) | 11.1 ± 15.5 ms |
+| | Render | 1000 | 1.1 ± 1.3 ms | — | 14.8 ± 13.6 ms (scene 5.5 ± 10.3 ms) | 32.0 ± 83.0 ms |
+| | Load and render | 100 | 85 ± 133 ms, 23.6 MB | 53 ± 42 ms | 10.2 ± 2.9 ms, 11.4 MB | 13.0 ± 10.2 ms |
+| | Load and render | 1000 | 86 ± 140 ms, 23.7 MB | 83 ± 19 ms | 16.2 ± 9.8 ms, 13.0 MB | 30.6 ± 13.1 ms |
+| TextDecorations (35 texts, 2,750 characters) | Load | — | 133 ± 63 ms, 33.5 MB | — | 2.7 ± 3.0 ms, 4.0 MB | — |
+| | Render | 100 | 0.90 ± 0.09 ms | — | 5.1 ± 7.8 ms (scene 1.2 ± 1.8 ms) | 9.2 ± 2.4 ms |
+| | Render | 1000 | 1.5 ± 1.7 ms | — | 11.8 ± 7.9 ms (scene 6.6 ± 3.1 ms) | 28.0 ± 17.0 ms |
+| | Load and render | 100 | 138 ± 309 ms, 33.4 MB | 31.5 ± 10.3 ms | 10.2 ± 9.6 ms, 11.2 MB | 13.9 ± 0.8 ms |
+| | Load and render | 1000 | 130 ± 51 ms, 33.4 MB | 60.2 ± 2.8 ms | 17.7 ± 14.5 ms, 11.8 MB | 29.9 ± 2.4 ms |
+
+Where ImageSharp.Drawing is slower: drawing a loaded text document takes 5 to 16 times as long as Svg.Skia replaying its picture (the intervals do not overlap for TextHeavy at 100 px and TextDecorations at 1000 px; they overlap in the other two cases), and a fresh render allocates 6.6 to 8.5 MB against none for Svg.Skia, because every render builds the scene again; a retained scene allocates about 5 KB. Where it is faster: loading takes 1/25 to 1/50 of the Svg.Skia time with 5 to 8 times less managed memory, and load and render is 5 to 14 times faster than Svg.Skia and 3 to 5 times faster than NetVips by the means. The intervals do not overlap for NetVips at 1000 px for both documents and at 100 px for TextDecorations, and for Svg.Skia only for TextDecorations at 1000 px; the Svg.Skia error intervals are wide. NetVips allocates almost no managed memory; its native memory is not measured.
+
+`--profile svg` (50 iterations, default threads) splits a TextHeavy load and render at 1000 px into the XML read 4%, resolve 24%, emit 15%, scene build 24%, and scene render 34%; for TextDecorations the scene build (22% at 1000 px, 39% at 100 px) and the scene render (29% to 34%) weigh more, because each decoration band and each glyph on a path is a node of its own. Inside the resolve stage, shaping takes about three quarters of the text layout and glyph outline extraction about a fifth; character building, font matching, and positioning take the rest (stage timings over 40 loads of each document in one thread).
+
+### 15.4 SixLabors.Fonts
+
+The text pipeline shapes one directional run at a time with `TextShaper.ShapeRun` and a `TextShapingBuffer`. What it would need public or added upstream (each checked against SixLabors.Fonts 3.2.1):
+
+- The bidirectional algorithm and its resolved levels (`SixLabors.Fonts.Unicode.BidiAlgorithm` is internal). The pipeline derives the run directions from the shaped glyph order instead, which misses the mirroring of a lone bracket between runs of the other direction.
+- A bidirectional mode (`TextBidiMode` exists for `TextOptions` only) and context characters before and after a run on `TextShapingBuffer`, so that Arabic joins across a `tspan` boundary as in Chromium.
+- A way to turn off default features: `ShapeRun` only turns features on, so ligatures under `letter-spacing` are broken by shaping each grapheme again.
+- `FontMetrics.TryGetBaselineCoordinate` (the `BASE` table) is internal. Chromium does not use the table either, so nothing renders differently today.
+- The OS/2 width class: the font matcher reads `usWidthClass` from the raw table data for `font-stretch`.
+- Family grouping by typographic family name (name ID 16): `FontCollection` groups faces by their legacy family name, so the font matcher also collects the families whose faces name the requested family as their typographic family.
+
+### 15.5 Known gaps
+
+- Decorations follow the font metrics (resvg): thickness, line-through, and overline position differ from Chromium, which uses a tenth of the font size; only solid lines; no skip-ink; on a path one band per glyph, where Chromium draws one curved line.
+- Paint servers in bounding box units on upright glyphs of vertical text map the box in user space, as SVG defines; Chromium maps them in a turned frame.
+- Colour glyphs (COLR, CBDT) draw monochrome; `text-rendering` has no effect; no synthesized small capitals; a `kerning` length adds no spacing.
+- `textPath` references `path` elements only, as Chromium; `method` and `spacing` have no effect. The cross-axis direction of `x` and `dx` for `sideways-lr` text on a path was not checked against Chromium.
+- Text in an SVG file that an `image` element references draws nothing (an open decision).
+- A text with very many bidirectional control characters costs about 30 µs per character (200,000 controls load in about 6 s); the cost is linear.
+- WebGPU backend: not verified (no GPU in the test container).
 
 ## Sources
 

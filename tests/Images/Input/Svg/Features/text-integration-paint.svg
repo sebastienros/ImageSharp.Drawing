@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200"
+     viewBox="0 0 200 200" font-family="Open Sans" font-size="18">
+  <style>
+    .big { font-size: 24px; font-weight: bold }
+    #light { font-family: 'Inter Light'; letter-spacing: 1px }
+    g.under text { text-decoration: underline }
+  </style>
+  <defs>
+    <linearGradient id="box"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient>
+    <linearGradient id="user" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="200" y2="0">
+      <stop offset="0" stop-color="green"/><stop offset="1" stop-color="orange"/>
+    </linearGradient>
+    <pattern id="boxTile" width="0.25" height="0.5"><rect width="4" height="40" fill="purple"/></pattern>
+    <pattern id="userTile" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="navy"/><rect width="3" height="3" fill="gold"/>
+    </pattern>
+    <path id="arc" d="M10,52 Q55,10 100,52"/>
+    <path id="arc2" d="M110,40 Q150,10 190,40"/>
+    <clipPath id="clipText"><text x="110" y="76" font-size="30" text-decoration="underline">Clip</text></clipPath>
+    <clipPath id="clipPathText"><text font-size="16"><textPath xlink:href="#arc2">along it</textPath></text></clipPath>
+    <mask id="maskText">
+      <text x="10" y="104" font-size="26" fill="white" text-decoration="line-through">Mask</text>
+    </mask>
+    <pattern id="textTile" width="40" height="20" patternUnits="userSpaceOnUse">
+      <text x="2" y="15" font-size="13" fill="teal" text-decoration="underline">ab</text>
+    </pattern>
+    <marker id="tag" markerWidth="30" markerHeight="20" refX="0" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <text x="0" y="14" font-size="12" fill="crimson">m</text>
+    </marker>
+    <text id="reuse" font-size="16" text-decoration="underline">Use</text>
+  </defs>
+  <!-- Paint servers in both unit types on text on a path and with decorations. -->
+  <text fill="url(#box)" text-decoration="underline"><textPath xlink:href="#arc">On a path</textPath></text>
+  <rect x="110" y="10" width="80" height="40" fill="url(#user)" clip-path="url(#clipPathText)"/>
+  <rect x="105" y="50" width="90" height="35" fill="url(#userTile)" clip-path="url(#clipText)"/>
+  <rect x="5" y="80" width="95" height="30" fill="url(#box)" mask="url(#maskText)"/>
+  <text x="110" y="104" fill="url(#boxTile)" font-size="26" font-weight="bold">Tile</text>
+  <rect x="5" y="114" width="80" height="20" fill="url(#textTile)"/>
+  <path d="M100,124 L130,124 L160,114" fill="none" stroke="gray" marker-start="url(#tag)" marker-mid="url(#tag)" marker-end="url(#tag)"/>
+  <use xlink:href="#reuse" x="10" y="156" fill="url(#user)"/>
+  <use xlink:href="#reuse" x="50" y="156" fill="url(#box)" transform="rotate(-8 60 150)"/>
+  <switch>
+    <text x="100" y="156" systemLanguage="de">Nein</text>
+    <text x="100" y="156" systemLanguage="en" fill="green" text-decoration="overline">Yes</text>
+  </switch>
+  <g class="under">
+    <text x="10" y="188" class="big">CSS</text>
+    <text x="80" y="188" id="light" fill="url(#user)">Light</text>
+  </g>
+</svg>

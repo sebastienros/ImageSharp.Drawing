@@ -24,16 +24,18 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Each segment is shaped with <see cref="TextShaper.ShapeRun(Font, TextShapingBuffer, Tag[])"/> as one directional
-/// run, left to right unless package T4 sets another direction; the glyphs map to characters through <see cref="ShapedGlyph.StringIndex"/> and
+/// run, left to right unless <see cref="ConfigureDirection"/> sets another direction; the glyphs map to characters
+/// through <see cref="ShapedGlyph.StringIndex"/> and
 /// <see cref="ShapedGlyph.GraphemeIndex"/>. A cluster that holds several graphemes (a ligature) is shaped again one
 /// grapheme at a time when a character after its first grapheme has its own position value, when the cluster crosses a
 /// span boundary, or when <c>letter-spacing</c> is not zero, as CSS disables ligatures then.
 /// </para>
 /// <para>
-/// Package T1 shapes every run horizontally, left to right, with the default features and kerning on, as Chromium does
-/// for <c>font-kerning: auto</c>. The hooks are partial methods that later packages implement in files of their own:
-/// package T4 sets the direction and layout mode in <see cref="ConfigureDirection"/>, and package T3 the kerning and
-/// the features in <see cref="ConfigureFeatures"/>.
+/// A run starts horizontal and left to right, with the default features and kerning on, as Chromium shapes text for
+/// <c>font-kerning: auto</c>. The steps for single features are partial methods in files of their own:
+/// <see cref="ConfigureDirection"/> sets the direction and layout mode (<c>SvgTextShaper.Direction.cs</c>), and
+/// <see cref="ConfigureFeatures"/> then sets the kerning and the features (<c>SvgTextShaper.Features.cs</c>) without
+/// changing the direction or the layout mode.
 /// </para>
 /// </remarks>
 internal sealed partial class SvgTextShaper
@@ -294,7 +296,7 @@ internal sealed partial class SvgTextShaper
     }
 
     /// <summary>
-    /// Hook of package T4: sets <see cref="TextShapingBuffer.TextDirection"/> and <see cref="TextShapingBuffer.LayoutMode"/>
+    /// Sets <see cref="TextShapingBuffer.TextDirection"/> and <see cref="TextShapingBuffer.LayoutMode"/>
     /// for a run of a vertical writing mode or of right-to-left text. On entry they are left to right and horizontal.
     /// </summary>
     /// <param name="buffer">The buffer that holds the text of the run.</param>
@@ -303,7 +305,7 @@ internal sealed partial class SvgTextShaper
     partial void ConfigureDirection(TextShapingBuffer buffer, SvgTextStyle style, int start);
 
     /// <summary>
-    /// Hook of package T3: sets <see cref="TextShapingBuffer.KerningMode"/> from <c>font-kerning</c> and
+    /// Sets <see cref="TextShapingBuffer.KerningMode"/> from <c>font-kerning</c> and
     /// <c>kerning</c>, and adds the OpenType features of <c>font-variant</c>. On entry the kerning mode is
     /// <see cref="KerningMode.Standard"/> and the list is empty.
     /// </summary>
@@ -408,13 +410,13 @@ internal sealed partial class SvgTextShaper
     }
 
     /// <summary>
-    /// Hook of package T4: computes the direction data of the characters (<see cref="SvgTextContent.Directions"/>) before
-    /// any run is shaped. Without an implementation all text is horizontal and left to right.
+    /// Computes the direction data of the characters (<see cref="SvgTextContent.Directions"/>) before any run is
+    /// shaped.
     /// </summary>
     partial void PrepareDirections();
 
     /// <summary>
-    /// Hook of package T4: ends a shaping run earlier where the shaping direction or the glyph orientation changes, so
+    /// Ends a shaping run earlier where the shaping direction or the glyph orientation changes, so
     /// that each run has one direction and one orientation, as in Chromium.
     /// </summary>
     /// <param name="start">The first character of the run.</param>
@@ -422,7 +424,7 @@ internal sealed partial class SvgTextShaper
     partial void LimitRun(int start, ref int end);
 
     /// <summary>
-    /// Hook of package T4: brings the shaped glyphs into the order that the cluster grouping expects. A right-to-left run
+    /// Brings the shaped glyphs into the order that the cluster grouping expects. A right-to-left run
     /// comes back from shaping in visual order; the hook puts its graphemes into logical order and keeps the visual order
     /// of the glyphs inside each grapheme.
     /// </summary>
@@ -431,7 +433,7 @@ internal sealed partial class SvgTextShaper
     static partial void OrderShapedGlyphs(TextShapingBuffer buffer, ShapedGlyph[] glyphs);
 
     /// <summary>
-    /// Hook of package T4: for a cluster of upright glyphs of vertical text, which shaping gives a vertical advance and no
+    /// For a cluster of upright glyphs of vertical text, which shaping gives a vertical advance and no
     /// horizontal one, rewrites the glyphs that <see cref="AddCluster"/> added so that they advance downward, and sets the
     /// advance of the cluster to its vertical advance.
     /// </summary>
@@ -444,7 +446,7 @@ internal sealed partial class SvgTextShaper
     partial void PlaceUprightGlyphs(ReadOnlySpan<ShapedGlyph> shaped, int glyphStart, int glyphEnd, int charStart, int first, ref float advance);
 
     /// <summary>
-    /// Hook of package T4: keeps the ligatures of a segment of a cursive script, such as Arabic, when
+    /// Keeps the ligatures of a segment of a cursive script, such as Arabic, when
     /// <c>letter-spacing</c> is not zero, because CSS does not apply letter spacing to cursive scripts.
     /// </summary>
     /// <param name="start">The first character of the segment.</param>

@@ -5,7 +5,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// The attributes of a <c>textPath</c> element. The <see cref="SvgElement.DataIndex"/> of such an element points to one
-/// of these. Package T1 parses them; package T2 lays text out on the path.
+/// of these. <see cref="SvgTextPaths"/> lays text out on the path.
 /// </summary>
 internal struct SvgTextPathAttributes
 {

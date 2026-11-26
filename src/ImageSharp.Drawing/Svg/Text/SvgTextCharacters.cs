@@ -13,8 +13,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <para>
 /// Text content children are <c>tspan</c>, <c>a</c>, <c>textPath</c>, and <c>tref</c>. Other children, children whose
 /// conditional processing attributes fail, and children with <c>display: none</c> add nothing: their characters are not
-/// addressable, as in Chromium. Package T4 adds the characters of <c>tref</c> in the hook
-/// <see cref="AddTrefCharacters"/>.
+/// addressable, as in Chromium. <see cref="AddTrefCharacters"/> adds the characters of <c>tref</c>
+/// (<c>SvgTextCharacters.Tref.cs</c>).
 /// </para>
 /// <para>
 /// White space follows CSS Text Level 3 on one line, as Chromium does for SVG text. Each character uses the
@@ -139,9 +139,9 @@ internal sealed partial class SvgTextCharacters
     }
 
     /// <summary>
-    /// Hook of package T4 for <c>tref</c>: adds the character data of the referenced element to the span, through
-    /// <see cref="AddCharacters(ReadOnlySpan{char}, int)"/> so that white space processing applies. Without an
-    /// implementation <c>tref</c> adds nothing and renders no text, as in Chromium.
+    /// Adds the character data of the <c>text</c> element that a <c>tref</c> references to the span of the <c>tref</c>,
+    /// through <see cref="AddCharacters(ReadOnlySpan{char}, int)"/> so that white space processing applies. Implemented in
+    /// <c>SvgTextCharacters.Tref.cs</c>.
     /// </summary>
     /// <param name="element">The index of the <c>tref</c> element.</param>
     /// <param name="spanIndex">The span of the <c>tref</c> element.</param>
@@ -219,6 +219,14 @@ internal sealed partial class SvgTextCharacters
 
             this.Append(c, spanIndex, !char.IsLowSurrogate(c));
             this.lastCollapsible = false;
+        }
+
+        // tref elements copy the characters of another text, so one text can hold far more characters than the document.
+        // A text above the limit can never be counted within it, so building it stops here, before its memory grows.
+        int limit = this.resolver.MaxTextCharacters;
+        if (this.text.Length > limit)
+        {
+            throw new InvalidImageContentException($"The SVG document exceeds the text character limit of {limit} after use references are expanded.");
         }
     }
 

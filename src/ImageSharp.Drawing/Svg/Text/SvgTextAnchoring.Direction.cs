@@ -4,7 +4,7 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// Package T4 in stage 5: <c>text-anchor</c> for right-to-left and vertical chunks.
+/// Stage 5: <c>text-anchor</c> for right-to-left and vertical chunks.
 /// </summary>
 /// <remarks>
 /// A right-to-left chunk runs leftward from its start position (<see cref="SvgTextPositioner"/>), so <c>start</c> keeps

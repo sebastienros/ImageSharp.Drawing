@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200"
+     viewBox="0 0 200 200" font-family="Noto Sans KR" font-size="14">
+  <path d="M18 0V140M44 0V140M70 0V140M96 0V140" stroke="#ccc" stroke-width="0.5"/>
+  <!-- Vertical text: baseline-shift moves across the line; the underline runs down the left of the column. -->
+  <text x="18" y="6" writing-mode="tb" text-decoration="underline">日本ab<tspan baseline-shift="5" fill="green">cd</tspan>語</text>
+  <!-- A dominant baseline other than central, with an overline on the right of the column. -->
+  <text x="44" y="6" writing-mode="tb" dominant-baseline="hanging" text-decoration="overline">ab日本</text>
+  <!-- textLength scales upright glyphs along y; a line-through over the scaled advances. -->
+  <text x="70" y="6" writing-mode="tb" textLength="120" lengthAdjust="spacingAndGlyphs" text-decoration="line-through">日本ab</text>
+  <!-- textLength spacing in vertical text, and alignment-baseline on a tspan. -->
+  <text x="96" y="6" writing-mode="tb" textLength="120">日<tspan alignment-baseline="hanging" fill="green">ab</tspan>本</text>
+  <!-- Vertical text on a path, with an underline per placed cluster. -->
+  <path id="curve" d="M122,6 C150,40 100,90 130,138" fill="none" stroke="#ccc" stroke-width="0.5"/>
+  <text writing-mode="tb" text-decoration="underline"><textPath xlink:href="#curve">日本 ab 日本</textPath></text>
+  <!-- sideways-lr runs upward with its underline on the right. -->
+  <text x="160" y="136" writing-mode="sideways-lr" text-decoration="underline">Side 한</text>
+  <!-- Right-to-left text: one underline over the chunk, textLength in visual order, and an Arabic run that keeps the
+       left edge of its left-to-right chunk at x. -->
+  <text x="194" y="162" direction="rtl" font-family="me_quran" font-size="16" textLength="90" text-decoration="underline">بسم الله</text>
+  <text x="8" y="190" font-family="Open Sans, me_quran" textLength="120" text-decoration="underline">ab سلام cd</text>
+</svg>

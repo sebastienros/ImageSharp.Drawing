@@ -11,14 +11,14 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// extent is the smallest pen position of its clusters to the largest pen position plus advance, which includes
 /// <c>letter-spacing</c> and the shifts inside the chunk. The anchor of the chunk is the <c>text-anchor</c> of its first
 /// cluster: <c>middle</c> moves the chunk left by half its extent and <c>end</c> by its whole extent. Clusters that stage
-/// 6 leaves out still count, as they keep their space until package T2 places them. Package T4 swaps start and end for
-/// right-to-left chunks in the hook <see cref="ApplyDirection"/>, and shifts vertical chunks along y.
+/// 6 leaves out still count, as they keep their space until stage 6 places them. <see cref="ApplyDirection"/> swaps
+/// start and end for right-to-left chunks, and vertical chunks shift along y (<c>SvgTextAnchoring.Direction.cs</c>).
 /// </remarks>
 internal static partial class SvgTextAnchoring
 {
     /// <summary>
-    /// Hook of package T4: sets the sign of the inline direction of a chunk, -1 for a right-to-left chunk, so that
-    /// <c>start</c> and <c>end</c> follow the direction. Without an implementation every chunk runs left to right.
+    /// Sets the sign of the inline direction of a chunk, -1 for a right-to-left chunk, so that <c>start</c> and
+    /// <c>end</c> follow the direction.
     /// </summary>
     /// <param name="style">The computed style of the first cluster of the chunk.</param>
     /// <param name="direction">The sign, 1 on entry.</param>
@@ -86,8 +86,8 @@ internal static partial class SvgTextAnchoring
     }
 
     /// <summary>
-    /// Hook of package T4: shifts a chunk of vertical text along y for <c>middle</c> and <c>end</c>, and sets
-    /// <paramref name="handled"/>. Without an implementation every chunk shifts along x.
+    /// Shifts a chunk of vertical text along y for <c>middle</c> and <c>end</c>, and sets <paramref name="handled"/>.
+    /// A horizontal chunk shifts along x.
     /// </summary>
     /// <param name="layout">The layout.</param>
     /// <param name="chunk">The clusters of the chunk.</param>

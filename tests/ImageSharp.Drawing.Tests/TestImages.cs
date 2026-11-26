@@ -436,9 +436,17 @@ public static class TestImages
 
         /// <summary>
         /// A synthetic page of text for the phase 3 load cost: 41 text elements with about 4,000 characters, tspans that
-        /// change paint and size, anchors, spacing, and rotate lists. It names the generic family <c>sans-serif</c>.
+        /// change paint and size, anchors, spacing, and rotate lists. It names the family <c>Open Sans</c>, which the
+        /// benchmarks give every renderer.
         /// </summary>
         public const string TextHeavy = "Svg/Text/text-heavy-synthetic.svg";
+
+        /// <summary>
+        /// A synthetic page of decorated text: six texts on curved paths, 28 lines with decorations on tspans, gradient
+        /// fills in bounding box units, strokes, letter spacing, rotate lists, and textLength, about 2,750 characters.
+        /// It names the family <c>Open Sans</c>.
+        /// </summary>
+        public const string TextDecorations = "Svg/Text/text-decorations-synthetic.svg";
 
         /// <summary>
         /// Stroked Feather icons. MIT license.

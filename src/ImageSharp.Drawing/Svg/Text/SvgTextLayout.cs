@@ -19,12 +19,12 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <item><description><see cref="SvgFontMatcher"/> and <see cref="SvgFontChain"/>: the face of every grapheme.</description></item>
 /// <item><description><see cref="SvgTextShaper"/>: glyphs and clusters (<see cref="SvgShapedGlyph"/>,
 /// <see cref="SvgTextCluster"/>).</description></item>
-/// <item><description><see cref="SvgTextPositioner"/>: pen positions, rotations, and spacing; the hooks of T2
-/// (<c>textLength</c>), T3 (baselines), and T4 (vertical, bidi).</description></item>
+/// <item><description><see cref="SvgTextPositioner"/>: pen positions, rotations, spacing, baselines, vertical text,
+/// bidirectional reordering, and <c>textLength</c>.</description></item>
 /// <item><description><see cref="SvgTextAnchoring"/>: <c>text-anchor</c> per text chunk.</description></item>
-/// <item><description><see cref="SvgTextPaths"/>: <c>textPath</c>, the hook of T2.</description></item>
-/// <item><description>The resolver turns the clusters into draw nodes (<c>SvgResolver.Text.cs</c>), with the
-/// decoration hook of T3.</description></item>
+/// <item><description><see cref="SvgTextPaths"/>: <c>textPath</c>.</description></item>
+/// <item><description>The resolver turns the clusters into draw nodes (<c>SvgResolver.Text.cs</c>) and
+/// decoration lines (<c>SvgResolver.TextDecorations.cs</c>).</description></item>
 /// </list>
 /// <para>
 /// The layout is in the user space of the <c>text</c> element. It depends on the computed styles of the subtree, the
@@ -78,13 +78,13 @@ internal sealed class SvgTextLayout
     public SvgFontMatcher FontMatcher { get; private init; } = null!;
 
     /// <summary>
-    /// Gets the viewport that percentages refer to, for <c>textLength</c> and the referenced paths of package T2.
+    /// Gets the viewport that percentages refer to, for <c>textLength</c> and the paths that <c>textPath</c> references.
     /// </summary>
     public SizeF Viewport { get; private init; }
 
     /// <summary>
     /// Gets the resolver that lays the text out, for the attributes and units that <c>textLength</c> and
-    /// <c>textPath</c> read in package T2.
+    /// <c>textPath</c> read.
     /// </summary>
     public SvgResolver Resolver { get; private init; } = null!;
 
@@ -146,7 +146,11 @@ internal sealed class SvgTextLayout
         Matrix3x2 transform = Matrix3x2.CreateTranslation(x + offset.X, offset.Y);
         if (cluster.ScaleX != 1F)
         {
-            transform *= Matrix3x2.CreateScale(cluster.ScaleX, 1F);
+            // The scale is along the inline direction: x for horizontal and sideways glyphs, y for upright glyphs of
+            // vertical text, which advance downward.
+            transform *= this.IsUpright(in cluster)
+                ? Matrix3x2.CreateScale(1F, cluster.ScaleX)
+                : Matrix3x2.CreateScale(cluster.ScaleX, 1F);
         }
 
         if (cluster.Rotation != 0F)
@@ -165,15 +169,34 @@ internal sealed class SvgTextLayout
     /// <returns>The union, or <see langword="null"/> when no cluster has a cell.</returns>
     private RectangleF? ComputeBounds(int charStart, int charEnd)
     {
-        RectangleF? bounds = null;
-        foreach (ref readonly SvgTextCluster cluster in this.clusters.AsSpan())
+        // The clusters are in logical order, so their first characters ascend: a binary search finds the first cluster
+        // of the range, and the walk ends at the first cluster after it. A span then costs its own clusters only.
+        SvgTextCluster[] clusters = this.clusters;
+        int low = 0;
+        int high = clusters.Length;
+        while (low < high)
         {
-            if (cluster.Skipped || cluster.Font is null || cluster.CharStart < charStart || cluster.CharStart >= charEnd)
+            int middle = (low + high) >>> 1;
+            if (clusters[middle].CharStart < charStart)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        RectangleF? bounds = null;
+        for (int i = low; i < clusters.Length && clusters[i].CharStart < charEnd; i++)
+        {
+            ref readonly SvgTextCluster cluster = ref clusters[i];
+            if (cluster.Skipped || cluster.Font is null)
             {
                 continue;
             }
 
-            RectangleF cell = GetCell(in cluster);
+            RectangleF cell = this.GetCell(in cluster);
             bounds = bounds is RectangleF union ? RectangleF.Union(union, cell) : cell;
         }
 
@@ -181,25 +204,73 @@ internal sealed class SvgTextLayout
     }
 
     /// <summary>
+    /// Returns whether a cluster is an upright cluster of vertical text, whose glyphs stand unturned and advance downward.
+    /// </summary>
+    /// <param name="cluster">The cluster.</param>
+    /// <returns><see langword="true"/> if the cluster is upright; otherwise, <see langword="false"/>.</returns>
+    public bool IsUpright(in SvgTextCluster cluster)
+        => this.Content.Directions is SvgTextDirections directions
+            && (directions.Flags[cluster.CharStart] & SvgTextDirections.Upright) != 0;
+
+    /// <summary>
+    /// Returns the line frame of a cluster: the transform from a space whose x axis runs along the inline direction from
+    /// the pen position, whose y axis points to the bottom of the glyphs, and whose origin lies on the alphabetic baseline
+    /// of the line, to the user space of the text. The cell and the decoration lines of the cluster are drawn in it.
+    /// </summary>
+    /// <remarks>
+    /// For a horizontal or sideways cluster this is the placement of its glyphs without their offsets. An upright cluster
+    /// of vertical text stands on the central baseline, where shaping centres it, and advances downward: its frame turns a
+    /// quarter clockwise, as sideways glyphs do, and its alphabetic baseline lies left of the pen position by the height of
+    /// the central baseline of its span (<see cref="SvgTextDirections.CentralBaselines"/>). The lines of upright and
+    /// sideways clusters of one span then fall on one line.
+    /// </remarks>
+    /// <param name="cluster">The cluster.</param>
+    /// <returns>The transform.</returns>
+    public Matrix3x2 GetLineFrame(in SvgTextCluster cluster)
+    {
+        Matrix3x2 frame = Matrix3x2.CreateTranslation(cluster.X, cluster.Y);
+        if (cluster.Rotation != 0F)
+        {
+            frame = Matrix3x2.CreateRotation(cluster.Rotation * (MathF.PI / 180F)) * frame;
+        }
+
+        if (this.IsUpright(in cluster))
+        {
+            float central = this.Content.Directions!.CentralBaselines?[cluster.Span] ?? 0F;
+            frame = Matrix3x2.CreateRotation(MathF.PI / 2F) * Matrix3x2.CreateTranslation(-central, 0F) * frame;
+        }
+
+        return frame;
+    }
+
+    /// <summary>
+    /// Returns the extent of a cluster along the x axis of its line frame (<see cref="GetLineFrame"/>): its advance with
+    /// spacing and <c>lengthAdjust</c>. In <c>sideways-lr</c> text the pen moves upward by a negative width while the
+    /// glyphs, turned counterclockwise, extend along the positive axis of the frame, so the sign turns.
+    /// </summary>
+    /// <param name="cluster">The cluster.</param>
+    /// <returns>The extent in user units.</returns>
+    public float GetInlineExtent(in SvgTextCluster cluster)
+    {
+        float extent = cluster.Width * cluster.ScaleX;
+        return this.Content.Directions?.WritingMode == SvgWritingMode.SidewaysLr ? -extent : extent;
+    }
+
+    /// <summary>
     /// Returns the cell of a cluster in the user space of the text: its advance along the baseline by the ascent and
-    /// descent of its font, turned about the pen position.
+    /// descent of its font, in its line frame.
     /// </summary>
     /// <param name="cluster">The cluster.</param>
     /// <returns>The bounding box of the cell.</returns>
-    private static RectangleF GetCell(in SvgTextCluster cluster)
+    private RectangleF GetCell(in SvgTextCluster cluster)
     {
         Font font = cluster.Font!;
         FontMetrics metrics = font.FontMetrics;
         float scale = font.Size / metrics.UnitsPerEm;
         float ascent = metrics.HorizontalMetrics.Ascender * scale;
         float descent = -metrics.HorizontalMetrics.Descender * scale;
-        RectangleF cell = new(0F, -ascent, cluster.Width * cluster.ScaleX, ascent + descent);
-
-        Matrix3x2 transform = Matrix3x2.CreateTranslation(cluster.X, cluster.Y);
-        if (cluster.Rotation != 0F)
-        {
-            transform = Matrix3x2.CreateRotation(cluster.Rotation * (MathF.PI / 180F)) * transform;
-        }
+        RectangleF cell = new(0F, -ascent, this.GetInlineExtent(in cluster), ascent + descent);
+        Matrix3x2 transform = this.GetLineFrame(in cluster);
 
         Vector2 a = Vector2.Transform(new Vector2(cell.Left, cell.Top), transform);
         Vector2 b = Vector2.Transform(new Vector2(cell.Right, cell.Top), transform);

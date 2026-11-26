@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800" height="1000" viewBox="0 0 800 1000"
+     font-family="Open Sans" font-size="18">
+  <title>Text with decorations, paint servers, and paths (synthetic)</title>
+  <defs>
+    <linearGradient id="g1"><stop offset="0" stop-color="#b03a2e"/><stop offset="1" stop-color="#1b3a5c"/></linearGradient>
+    <linearGradient id="g2" x2="0" y2="1"><stop offset="0" stop-color="#1e8449"/><stop offset="1" stop-color="#b9770e"/></linearGradient>
+    <path id="p0" d="M40,130 C240,70 560,190 760,130"/>
+    <path id="p1" d="M40,170 C240,110 560,230 760,170"/>
+    <path id="p2" d="M40,210 C240,150 560,270 760,210"/>
+    <path id="p3" d="M40,250 C240,190 560,310 760,250"/>
+    <path id="p4" d="M40,290 C240,230 560,350 760,290"/>
+    <path id="p5" d="M40,330 C240,270 560,390 760,330"/>
+  </defs>
+  <rect width="800" height="1000" fill="#fdfdf8"/>
+  <text x="400" y="60" font-size="34" text-anchor="middle" fill="url(#g1)" text-decoration="underline">Decorations and paths</text>
+  <text fill="url(#g1)" text-decoration="underline"><textPath xlink:href="#p0" startOffset="0%">lorem ipsum dolor sit amet consectetur adipiscing elit sed</textPath></text>
+  <text fill="#b03a2e" text-decoration="line-through"><textPath xlink:href="#p1" startOffset="2%">elit sed do eiusmod tempor incididunt ut labore et</textPath></text>
+  <text fill="url(#g1)" text-decoration="overline"><textPath xlink:href="#p2" startOffset="4%">labore et dolore magna aliqua enim ad minim veniam</textPath></text>
+  <text fill="#7d3c98" text-decoration="underline"><textPath xlink:href="#p3" startOffset="6%">minim veniam quis nostrud exercitation ullamco laboris nisi aliquip</textPath></text>
+  <text fill="url(#g1)" text-decoration="line-through"><textPath xlink:href="#p4" startOffset="8%">nisi aliquip ex ea commodo consequat duis aute irure</textPath></text>
+  <text fill="#1b3a5c" text-decoration="overline"><textPath xlink:href="#p5" startOffset="10%">aute irure in reprehenderit voluptate velit esse cillum fugiat</textPath></text>
+  <text x="40" y="420">lorem ipsum dolor <tspan fill="#1b3a5c" text-decoration="underline">elit sed do</tspan> labore et <tspan fill="#1e8449" font-size="15" text-decoration="underline">minim veniam quis</tspan> nisi aliquip</text>
+  <text x="40" y="440" letter-spacing="1.5">elit sed do <tspan fill="#b03a2e" text-decoration="line-through">labore et dolore</tspan> minim veniam <tspan fill="#7d3c98" font-size="15" text-decoration="underline">nisi aliquip ex</tspan> aute irure</text>
+  <text x="40" y="460" rotate="0 4 8 4 0 -4 -8 -4">labore et dolore <tspan fill="#1e8449" text-decoration="overline">minim veniam quis</tspan> nisi aliquip <tspan fill="#b9770e" font-size="15" text-decoration="underline">aute irure in</tspan> cillum fugiat</text>
+  <text x="40" y="480" stroke="#333" stroke-width="0.6" fill="url(#g2)">minim veniam quis <tspan fill="#7d3c98" text-decoration="underline overline">nisi aliquip ex</tspan> aute irure <tspan fill="#1b3a5c" font-size="15" text-decoration="underline">cillum fugiat nulla</tspan> sit amet</text>
+  <text x="40" y="500" textLength="660">nisi aliquip ex <tspan fill="#b9770e" text-decoration="underline">aute irure in</tspan> cillum fugiat <tspan fill="#b03a2e" font-size="15" text-decoration="underline">sit amet consectetur</tspan> eiusmod tempor</text>
+  <text x="40" y="520">aute irure in <tspan fill="#1b3a5c" text-decoration="line-through">cillum fugiat nulla</tspan> sit amet <tspan fill="#1e8449" font-size="15" text-decoration="underline">eiusmod tempor incididunt</tspan> magna aliqua</text>
+  <text x="40" y="540" letter-spacing="1.5">cillum fugiat nulla <tspan fill="#b03a2e" text-decoration="overline">sit amet consectetur</tspan> eiusmod tempor <tspan fill="#7d3c98" font-size="15" text-decoration="underline">magna aliqua enim</tspan> nostrud exercitation</text>
+  <text x="40" y="560" rotate="0 4 8 4 0 -4 -8 -4">sit amet consectetur <tspan fill="#1e8449" text-decoration="underline overline">eiusmod tempor incididunt</tspan> magna aliqua <tspan fill="#b9770e" font-size="15" text-decoration="underline">nostrud exercitation ullamco</tspan> ea commodo</text>
+  <text x="40" y="580" stroke="#333" stroke-width="0.6" fill="url(#g2)">eiusmod tempor incididunt <tspan fill="#7d3c98" text-decoration="underline">magna aliqua enim</tspan> nostrud exercitation <tspan fill="#1b3a5c" font-size="15" text-decoration="underline">ea commodo consequat</tspan> reprehenderit voluptate</text>
+  <text x="40" y="600" textLength="620">magna aliqua enim <tspan fill="#b9770e" text-decoration="line-through">nostrud exercitation ullamco</tspan> ea commodo <tspan fill="#b03a2e" font-size="15" text-decoration="underline">reprehenderit voluptate velit</tspan> pariatur lorem</text>
+  <text x="40" y="620">nostrud exercitation ullamco <tspan fill="#1b3a5c" text-decoration="overline">ea commodo consequat</tspan> reprehenderit voluptate <tspan fill="#1e8449" font-size="15" text-decoration="underline">pariatur lorem ipsum</tspan> adipiscing elit</text>
+  <text x="40" y="640" letter-spacing="1.5">ea commodo consequat <tspan fill="#b03a2e" text-decoration="underline overline">reprehenderit voluptate velit</tspan> pariatur lorem <tspan fill="#7d3c98" font-size="15" text-decoration="underline">adipiscing elit sed</tspan> ut labore</text>
+  <text x="40" y="660" rotate="0 4 8 4 0 -4 -8 -4">reprehenderit voluptate velit <tspan fill="#1e8449" text-decoration="underline">pariatur lorem ipsum</tspan> adipiscing elit <tspan fill="#b9770e" font-size="15" text-decoration="underline">ut labore et</tspan> ad minim</text>
+  <text x="40" y="680" stroke="#333" stroke-width="0.6" fill="url(#g2)">pariatur lorem ipsum <tspan fill="#7d3c98" text-decoration="line-through">adipiscing elit sed</tspan> ut labore <tspan fill="#1b3a5c" font-size="15" text-decoration="underline">ad minim veniam</tspan> laboris nisi</text>
+  <text x="40" y="700" textLength="700">adipiscing elit sed <tspan fill="#b9770e" text-decoration="overline">ut labore et</tspan> ad minim <tspan fill="#b03a2e" font-size="15" text-decoration="underline">laboris nisi aliquip</tspan> duis aute</text>
+  <text x="40" y="720">ut labore et <tspan fill="#1b3a5c" text-decoration="underline overline">ad minim veniam</tspan> laboris nisi <tspan fill="#1e8449" font-size="15" text-decoration="underline">duis aute irure</tspan> esse cillum</text>
+  <text x="40" y="740" letter-spacing="1.5">ad minim veniam <tspan fill="#b03a2e" text-decoration="underline">laboris nisi aliquip</tspan> duis aute <tspan fill="#7d3c98" font-size="15" text-decoration="underline">esse cillum fugiat</tspan> dolor sit</text>
+  <text x="40" y="760" rotate="0 4 8 4 0 -4 -8 -4">laboris nisi aliquip <tspan fill="#1e8449" text-decoration="line-through">duis aute irure</tspan> esse cillum <tspan fill="#b9770e" font-size="15" text-decoration="underline">dolor sit amet</tspan> do eiusmod</text>
+  <text x="40" y="780" stroke="#333" stroke-width="0.6" fill="url(#g2)">duis aute irure <tspan fill="#7d3c98" text-decoration="overline">esse cillum fugiat</tspan> dolor sit <tspan fill="#1b3a5c" font-size="15" text-decoration="underline">do eiusmod tempor</tspan> dolore magna</text>
+  <text x="40" y="800" textLength="660">esse cillum fugiat <tspan fill="#b9770e" text-decoration="underline overline">dolor sit amet</tspan> do eiusmod <tspan fill="#b03a2e" font-size="15" text-decoration="underline">dolore magna aliqua</tspan> quis nostrud</text>
+  <text x="40" y="820">dolor sit amet <tspan fill="#1b3a5c" text-decoration="underline">do eiusmod tempor</tspan> dolore magna <tspan fill="#1e8449" font-size="15" text-decoration="underline">quis nostrud exercitation</tspan> ex ea</text>
+  <text x="40" y="840" letter-spacing="1.5">do eiusmod tempor <tspan fill="#b03a2e" text-decoration="line-through">dolore magna aliqua</tspan> quis nostrud <tspan fill="#7d3c98" font-size="15" text-decoration="underline">ex ea commodo</tspan> in reprehenderit</text>
+  <text x="40" y="860" rotate="0 4 8 4 0 -4 -8 -4">dolore magna aliqua <tspan fill="#1e8449" text-decoration="overline">quis nostrud exercitation</tspan> ex ea <tspan fill="#b9770e" font-size="15" text-decoration="underline">in reprehenderit voluptate</tspan> nulla pariatur</text>
+  <text x="40" y="880" stroke="#333" stroke-width="0.6" fill="url(#g2)">quis nostrud exercitation <tspan fill="#7d3c98" text-decoration="underline overline">ex ea commodo</tspan> in reprehenderit <tspan fill="#1b3a5c" font-size="15" text-decoration="underline">nulla pariatur lorem</tspan> consectetur adipiscing</text>
+  <text x="40" y="900" textLength="620">ex ea commodo <tspan fill="#b9770e" text-decoration="underline">in reprehenderit voluptate</tspan> nulla pariatur <tspan fill="#b03a2e" font-size="15" text-decoration="underline">consectetur adipiscing elit</tspan> incididunt ut</text>
+  <text x="40" y="920">in reprehenderit voluptate <tspan fill="#1b3a5c" text-decoration="line-through">nulla pariatur lorem</tspan> consectetur adipiscing <tspan fill="#1e8449" font-size="15" text-decoration="underline">incididunt ut labore</tspan> enim ad</text>
+  <text x="40" y="940" letter-spacing="1.5">nulla pariatur lorem <tspan fill="#b03a2e" text-decoration="overline">consectetur adipiscing elit</tspan> incididunt ut <tspan fill="#7d3c98" font-size="15" text-decoration="underline">enim ad minim</tspan> ullamco laboris</text>
+  <text x="40" y="960" rotate="0 4 8 4 0 -4 -8 -4">consectetur adipiscing elit <tspan fill="#1e8449" text-decoration="underline overline">incididunt ut labore</tspan> enim ad <tspan fill="#b9770e" font-size="15" text-decoration="underline">ullamco laboris nisi</tspan> consequat duis</text>
+</svg>
