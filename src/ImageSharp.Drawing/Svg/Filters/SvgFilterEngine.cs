@@ -293,17 +293,20 @@ internal sealed class SvgFilterEngine
 
     /// <summary>
     /// Rounds a rectangle of filter space outward to whole pixels: a pixel belongs to the rectangle when any part of it
-    /// does. Chromium rounds the filter region and the primitive subregions this way.
+    /// does. Chromium rounds the filter region and the primitive subregions this way. An edge within 1/256 of a pixel
+    /// boundary counts as on it, so that float rounding does not add a row or column: the default region of a 100 unit
+    /// box ends at 40 + 1.2F * 100 = 160.0000048, which at scale 2.5 would reach into pixel 400.
     /// </summary>
     /// <param name="rectangle">The rectangle.</param>
     /// <returns>The pixel rectangle, empty for an empty or non-finite rectangle.</returns>
     private static Rectangle ToPixelsOutward(RectangleF rectangle)
     {
         const float limit = 1 << 30;
-        float left = MathF.Floor(Math.Clamp(rectangle.Left, -limit, limit));
-        float top = MathF.Floor(Math.Clamp(rectangle.Top, -limit, limit));
-        float right = MathF.Ceiling(Math.Clamp(rectangle.Right, -limit, limit));
-        float bottom = MathF.Ceiling(Math.Clamp(rectangle.Bottom, -limit, limit));
+        const float tolerance = 1F / 256F;
+        float left = MathF.Floor(Math.Clamp(rectangle.Left + tolerance, -limit, limit));
+        float top = MathF.Floor(Math.Clamp(rectangle.Top + tolerance, -limit, limit));
+        float right = MathF.Ceiling(Math.Clamp(rectangle.Right - tolerance, -limit, limit));
+        float bottom = MathF.Ceiling(Math.Clamp(rectangle.Bottom - tolerance, -limit, limit));
         if (!(right > left) || !(bottom > top))
         {
             return Rectangle.Empty;

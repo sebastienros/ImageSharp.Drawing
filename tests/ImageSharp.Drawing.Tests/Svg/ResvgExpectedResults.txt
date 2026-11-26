@@ -128,28 +128,28 @@ filters/feComposite/with-subregion-on-input-2.svg pass
 filters/feConvolveMatrix/bias=-0.5.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/bias=0.5.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
 filters/feConvolveMatrix/bias=9999.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-filters/feConvolveMatrix/custom-divisor.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/divisor=0.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/edgeMode=none.svg fail filters: X3 (feConvolveMatrix)
+filters/feConvolveMatrix/custom-divisor.svg pass
+filters/feConvolveMatrix/divisor=0.svg fail specification: Filter Effects uses the default divisor when divisor is 0; the reference follows SVG 1.1, where it is an error and the element does not draw; Chromium renders the same as this render
+filters/feConvolveMatrix/edgeMode=none.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
 filters/feConvolveMatrix/edgeMode=wrap-with-matrix-larger-than-target.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-filters/feConvolveMatrix/edgeMode=wrap.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/empty-kernelMatrix.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/kernelMatrix-with-zero-sum-and-no-divisor.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/no-kernelMatrix.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/order-with-a-negative-value-1.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/order-with-a-negative-value-2.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/order=0.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/order=4-2.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/order=4-4.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/order=4.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/preserveAlpha=true.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/targetX=-1.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/targetX=0.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/targetX=2.svg fail filters: X3 (feConvolveMatrix)
-filters/feConvolveMatrix/targetX=3.svg fail filters: X3 (feConvolveMatrix); the invalid filter must stop the element from rendering, and the test passed earlier only because pattern fills drew nothing
-filters/feConvolveMatrix/unset-order.svg fail filters: X3 (feConvolveMatrix)
+filters/feConvolveMatrix/edgeMode=wrap.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/empty-kernelMatrix.svg fail specification: Filter Effects makes the primitive a pass-through when kernelMatrix does not have orderX * orderY entries; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/kernelMatrix-with-not-enough-values.svg fail specification: Filter Effects makes the primitive a pass-through when kernelMatrix does not have orderX * orderY entries; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/kernelMatrix-with-too-many-values.svg fail specification: Filter Effects makes the primitive a pass-through when kernelMatrix does not have orderX * orderY entries; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/kernelMatrix-with-zero-sum-and-no-divisor.svg pass
+filters/feConvolveMatrix/no-kernelMatrix.svg fail specification: Filter Effects makes the primitive a pass-through when kernelMatrix does not have orderX * orderY entries; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/order-with-a-negative-value-1.svg fail specification: an order below 1 cannot match the entry count of kernelMatrix, which makes the primitive a pass-through in Filter Effects; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/order-with-a-negative-value-2.svg fail specification: an order below 1 cannot match the entry count of kernelMatrix, which makes the primitive a pass-through in Filter Effects; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/order=0.svg fail specification: an order below 1 cannot match the entry count of kernelMatrix, which makes the primitive a pass-through in Filter Effects; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/order=4-2.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/order=4-4.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/order=4.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/preserveAlpha=true.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/targetX=-1.svg fail specification: Filter Effects makes feConvolveMatrix a pass-through on unfulfilled preconditions, here a target outside the kernel; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/targetX=0.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/targetX=2.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
+filters/feConvolveMatrix/targetX=3.svg fail specification: Filter Effects makes feConvolveMatrix a pass-through on unfulfilled preconditions, here a target outside the kernel; the reference (an error in SVG 1.1) and Chromium (a transparent result) draw nothing
+filters/feConvolveMatrix/unset-order.svg fail reference: where the two translucent squares of the pattern overlap, the reference has alpha 196 instead of the 239 of the source, which a kernel that sums to its divisor keeps; this render matches the Chromium oracle (0 mismatched pixels), which fails the same way
 filters/feDiffuseLighting/complex-transform.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
 filters/feDiffuseLighting/diffuseConstant=-1.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
 filters/feDiffuseLighting/diffuseConstant=0.svg fail filters: X4 (feDiffuseLighting, feDistantLight)
@@ -237,18 +237,18 @@ filters/feMerge/color-interpolation-filters=linearRGB.svg pass
 filters/feMerge/color-interpolation-filters=sRGB.svg pass
 filters/feMerge/complex-transform.svg pass
 filters/feMorphology/empty-radius.svg pass
-filters/feMorphology/huge-radius.svg fail filters: X3 (feMorphology)
+filters/feMorphology/huge-radius.svg pass
 filters/feMorphology/negative-radius.svg pass
 filters/feMorphology/no-radius.svg pass
-filters/feMorphology/operator=dilate.svg fail filters: X3 (feMorphology)
+filters/feMorphology/operator=dilate.svg pass
 filters/feMorphology/radius-with-too-many-values.svg pass
-filters/feMorphology/radius=0.5-with-objectBoundingBox.svg fail filters: X3 (feMorphology)
+filters/feMorphology/radius=0.5-with-objectBoundingBox.svg pass
 filters/feMorphology/radius=0.5.svg pass
-filters/feMorphology/radius=1-10.svg fail filters: X3 (feMorphology)
-filters/feMorphology/radius=10-0.svg fail filters: X3 (feMorphology)
-filters/feMorphology/radius=10-1.svg fail filters: X3 (feMorphology)
-filters/feMorphology/simple-case.svg fail filters: X3 (feMorphology)
-filters/feMorphology/source-with-opacity.svg fail filters: X3 (feMorphology)
+filters/feMorphology/radius=1-10.svg pass
+filters/feMorphology/radius=10-0.svg pass
+filters/feMorphology/radius=10-1.svg pass
+filters/feMorphology/simple-case.svg pass
+filters/feMorphology/source-with-opacity.svg pass
 filters/feMorphology/zero-radius.svg pass
 filters/feOffset/complex-transform.svg pass
 filters/feOffset/fractional-offset.svg pass
@@ -290,25 +290,25 @@ filters/feTile/with-region.svg fail filters: X2 (feTile)
 filters/feTile/with-subregion-1.svg fail filters: X2 (feTile)
 filters/feTile/with-subregion-2.svg fail filters: X2 (feTile)
 filters/feTile/with-subregion-3.svg fail filters: X2 (feTile)
-filters/feTurbulence/baseFrequency=-0.05.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/baseFrequency=0.01.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/baseFrequency=0.05--0.01.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/baseFrequency=0.05-0.01.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/baseFrequency=0.05-0.05.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/baseFrequency=0.05-0.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/color-interpolation-filters=sRGB.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/complex-transform.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/no-attributes.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/numOctaves=-1.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/numOctaves=0.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/numOctaves=5.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/primitiveUnits=objectBoundingBox.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/seed=-20.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/seed=1.5.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/seed=20.svg fail filters: X3 (feTurbulence)
+filters/feTurbulence/baseFrequency=-0.05.svg pass
+filters/feTurbulence/baseFrequency=0.01.svg pass
+filters/feTurbulence/baseFrequency=0.05--0.01.svg pass
+filters/feTurbulence/baseFrequency=0.05-0.01.svg pass
+filters/feTurbulence/baseFrequency=0.05-0.05.svg pass
+filters/feTurbulence/baseFrequency=0.05-0.svg pass
+filters/feTurbulence/color-interpolation-filters=sRGB.svg pass
+filters/feTurbulence/complex-transform.svg pass
+filters/feTurbulence/no-attributes.svg pass
+filters/feTurbulence/numOctaves=-1.svg pass
+filters/feTurbulence/numOctaves=0.svg pass
+filters/feTurbulence/numOctaves=5.svg pass
+filters/feTurbulence/primitiveUnits=objectBoundingBox.svg pass
+filters/feTurbulence/seed=-20.svg pass
+filters/feTurbulence/seed=1.5.svg pass
+filters/feTurbulence/seed=20.svg pass
 filters/feTurbulence/stitchTiles=stitch.svg skip undefined behavior: results.csv marks the test as undefined (chrome = 0)
-filters/feTurbulence/type=fractalNoise.svg fail filters: X3 (feTurbulence)
-filters/feTurbulence/type=invalid.svg fail filters: X3 (feTurbulence)
+filters/feTurbulence/type=fractalNoise.svg pass
+filters/feTurbulence/type=invalid.svg pass
 filters/filter-functions/blur-function-mm-value.svg fail filters: X2 (filter functions)
 filters/filter-functions/blur-function-negative-value.svg pass
 filters/filter-functions/blur-function-no-values.svg pass

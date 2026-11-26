@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <!-- The noise is a function of user space: rendered at another size, the same pattern appears scaled. -->
+    <filter id="turbulence" filterUnits="userSpaceOnUse" x="5" y="5" width="60" height="60"><feTurbulence baseFrequency="0.05"/></filter>
+    <filter id="fractal" filterUnits="userSpaceOnUse" x="70" y="5" width="60" height="60"><feTurbulence type="fractalNoise" baseFrequency="0.08 0.03" numOctaves="3" seed="7"/></filter>
+    <!-- Many octaves are clamped to 9; in sRGB the channel values are not converted. -->
+    <filter id="octaves" filterUnits="userSpaceOnUse" x="135" y="5" width="60" height="60" color-interpolation-filters="sRGB"><feTurbulence baseFrequency="0.03" numOctaves="40" seed="-3"/></filter>
+    <!-- Stitching adjusts the frequency so that the subregion holds whole lattice cells; tiled, the edges meet. This
+         follows the reference code of Filter Effects; Chromium leaves a seam between the rows of tiles here. -->
+    <filter id="stitch" filterUnits="userSpaceOnUse" x="5" y="70" width="60" height="60">
+      <feTurbulence type="fractalNoise" baseFrequency="0.07" stitchTiles="stitch" x="5" y="70" width="30" height="30" result="tile"/>
+      <feOffset dx="30" x="5" y="70" width="60" height="60" result="right"/>
+      <feOffset in="tile" dy="30" x="5" y="70" width="60" height="60" result="down"/>
+      <feOffset in="tile" dx="30" dy="30" x="5" y="70" width="60" height="60" result="diagonal"/>
+      <feMerge><feMergeNode in="tile"/><feMergeNode in="right"/><feMergeNode in="down"/><feMergeNode in="diagonal"/></feMerge>
+    </filter>
+    <!-- A zero frequency gives a constant: transparent for turbulence, half gray at half alpha for fractal noise. -->
+    <filter id="zero" filterUnits="userSpaceOnUse" x="70" y="70" width="60" height="60"><feTurbulence type="fractalNoise" seed="2"/></filter>
+    <!-- Turbulence as a texture: its luminance cuts the element, a common use. -->
+    <filter id="texture" x="0" y="0" width="1" height="1">
+      <feTurbulence baseFrequency="0.1 0.02" numOctaves="2" result="noise"/>
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="mask"/>
+      <feComposite in="SourceGraphic" in2="mask" operator="in"/>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="50" height="50" filter="url(#turbulence)"/>
+  <rect x="75" y="10" width="50" height="50" filter="url(#fractal)"/>
+  <rect x="140" y="10" width="50" height="50" filter="url(#octaves)"/>
+  <rect x="10" y="75" width="50" height="50" filter="url(#stitch)"/>
+  <rect x="75" y="75" width="50" height="50" filter="url(#zero)"/>
+  <circle cx="165" cy="100" r="28" fill="#2ca02c" filter="url(#texture)"/>
+  <!-- Under a skew the noise follows the axes of the user space of the element. -->
+  <rect x="10" y="140" width="60" height="50" fill="#000" transform="translate(160 0) skewX(-20)" filter="url(#turbulence-local)"/>
+  <filter id="turbulence-local" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="0.06" seed="11"/></filter>
+  <rect x="10" y="140" width="80" height="50" fill="#1f77b4" filter="url(#texture)"/>
+</svg>
