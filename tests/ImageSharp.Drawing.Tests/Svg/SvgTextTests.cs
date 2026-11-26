@@ -290,17 +290,6 @@ public class SvgTextTests
     }
 
     [Fact]
-    public void Layout_TextPathContentDoesNotRenderUntilPackageT2()
-    {
-        SvgTextLayout layout = Layout("<path id=\"p\" d=\"M0 0 L100 0\"/><text id=\"t\">a<textPath href=\"#p\">bc</textPath></text>", "t");
-
-        Assert.Equal("abc", layout.Content.Text);
-        Assert.False(layout.Clusters[0].Skipped);
-        Assert.True(layout.Clusters[1].Skipped);
-        Assert.True(layout.Clusters[2].Skipped);
-    }
-
-    [Fact]
     public void Layout_BoundingBoxIsTheUnionOfTheGlyphCells()
     {
         SvgTextLayout layout = Layout("<text id=\"t\" x=\"10\" y=\"50\" font-size=\"20\">Ab</text>", "t");

@@ -72,6 +72,17 @@ internal sealed class SvgTextLayout
     public RectangleF? Bounds { get; private set; }
 
     /// <summary>
+    /// Gets the viewport that percentages refer to, for <c>textLength</c> and the referenced paths of package T2.
+    /// </summary>
+    public SizeF Viewport { get; private init; }
+
+    /// <summary>
+    /// Gets the resolver that lays the text out, for the attributes and units that <c>textLength</c> and
+    /// <c>textPath</c> read in package T2.
+    /// </summary>
+    public SvgResolver Resolver { get; private init; } = null!;
+
+    /// <summary>
     /// Lays out a <c>text</c> element.
     /// </summary>
     /// <param name="resolver">The resolver, for the styles of the children and the referenced elements.</param>
@@ -90,7 +101,7 @@ internal sealed class SvgTextLayout
             clusters = SvgTextShaper.Shape(content, matcher, out glyphs);
         }
 
-        SvgTextLayout layout = new(content, clusters, glyphs);
+        SvgTextLayout layout = new(content, clusters, glyphs) { Viewport = viewport, Resolver = resolver };
         SvgTextPositioner.Position(layout);
         SvgTextAnchoring.Apply(layout);
         SvgTextPaths.Apply(layout, resolver);

@@ -66,7 +66,7 @@ internal static partial class SvgTextAnchoring
         foreach (ref readonly SvgTextCluster cluster in chunk)
         {
             min = MathF.Min(min, cluster.X);
-            max = MathF.Max(max, cluster.X + cluster.Width);
+            max = MathF.Max(max, cluster.X + (cluster.Width * cluster.ScaleX));
         }
 
         float extent = max - min;
