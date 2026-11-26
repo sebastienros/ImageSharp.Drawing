@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" font-family="Open Sans" font-size="35">
+  <!-- ch and math functions in the lengths of basic shapes. ch is the advance of "0" in the font of the clipped element:
+       at 35px Open Sans it is 20.02px, so the Chromium oracle, which rounds ch to whole pixels, draws the same shapes. -->
+  <rect x="5" y="5" width="40" height="40" fill="green" style="clip-path: circle(0.75ch)"/>
+  <rect x="55" y="5" width="40" height="40" fill="green" style="clip-path: inset(0.25ch 0.5ch)"/>
+  <rect x="105" y="5" width="40" height="40" fill="green" style="clip-path: ellipse(min(2ch, 40%) calc(0.5ch + 5px))"/>
+  <rect x="155" y="5" width="40" height="40" fill="green" style="clip-path: polygon(0 0, 2ch 0, 0 2ch)"/>
+  <rect x="5" y="55" width="40" height="40" fill="green" style="clip-path: inset(0 round max(0.5ch, 2px))"/>
+  <rect x="55" y="55" width="40" height="40" fill="green" style="clip-path: circle(clamp(5px, 0.75ch, 50%) at 0.75ch 0.75ch)"/>
+  <rect x="105" y="55" width="40" height="40" fill="green" style="clip-path: xywh(0.25ch 0.25ch 1ch 1ch)"/>
+  <rect x="155" y="55" width="40" height="40" fill="green" style="clip-path: rect(0.25ch 1.5ch 1.5ch 0.25ch round 0.25ch)"/>
+  <rect x="5" y="105" width="40" height="40" fill="green" font-size="70" style="clip-path: circle(0.5ch)"/>
+  <rect x="55" y="105" width="40" height="40" fill="green" style="font-size: 17.5px; clip-path: inset(calc(1ch - 0.2em))"/>
+  <rect x="105" y="105" width="40" height="40" fill="green" style="clip-path: polygon(evenodd, 0 0, 2ch 0, 0 2ch, 2ch 2ch)"/>
+  <rect x="155" y="105" width="40" height="40" fill="green" style="clip-path: circle(calc(1ch * 0.75) at right 0.5ch bottom 0.5ch)"/>
+  <rect x="5" y="155" width="40" height="40" fill="green" clip-path="circle(0.75ch)"/>
+  <rect x="55" y="155" width="40" height="40" fill="green" clip-path="inset(calc(1ch - 10px))"/>
+  <rect x="105" y="155" width="40" height="40" fill="green" style="clip-path: ellipse(1ch 0.5ch at 125px 175px) view-box"/>
+  <rect x="155" y="155" width="40" height="40" fill="green" stroke="navy" stroke-width="6" style="clip-path: circle(0.75ch at 1ch 1ch) stroke-box"/>
+</svg>

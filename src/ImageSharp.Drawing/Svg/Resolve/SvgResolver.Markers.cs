@@ -214,8 +214,9 @@ internal sealed partial class SvgResolver
         ref readonly SvgMarkerAttributes attributes = ref this.tree.GetMarker(marker);
         SizeF viewport = context.Viewport;
         float fontSize = context.Style.FontSize;
-        float width = SvgUnits.ToUser(attributes.MarkerWidth, viewport.Width, fontSize, this.units, 3F);
-        float height = SvgUnits.ToUser(attributes.MarkerHeight, viewport.Height, fontSize, this.units, 3F);
+        SvgUnitBasis units = this.units.WithFont(context.Style.Text);
+        float width = SvgUnits.ToUser(attributes.MarkerWidth, viewport.Width, fontSize, units, 3F);
+        float height = SvgUnits.ToUser(attributes.MarkerHeight, viewport.Height, fontSize, units, 3F);
         if (!(width > 0F) || !(height > 0F) || !float.IsFinite(width) || !float.IsFinite(height))
         {
             return;
@@ -239,8 +240,8 @@ internal sealed partial class SvgResolver
         // The reference point is in content coordinates; its position in the viewport moves to the vertex.
         Vector2 reference = Vector2.Transform(
             new Vector2(
-                SvgUnits.ToUser(attributes.RefX, viewport.Width, fontSize, this.units, 0F),
-                SvgUnits.ToUser(attributes.RefY, viewport.Height, fontSize, this.units, 0F)),
+                SvgUnits.ToUser(attributes.RefX, viewport.Width, fontSize, units, 0F),
+                SvgUnits.ToUser(attributes.RefY, viewport.Height, fontSize, units, 0F)),
             viewBoxTransform);
 
         float scale = attributes.Units == SvgMarkerUnits.UserSpaceOnUse ? 1F : strokeWidth;

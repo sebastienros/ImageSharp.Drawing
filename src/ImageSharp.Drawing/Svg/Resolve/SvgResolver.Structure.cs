@@ -27,14 +27,21 @@ internal sealed partial class SvgResolver
     /// <returns>The transform; the identity when the root element has no transform.</returns>
     private Matrix3x2 GetRootTransform(in SvgComputedStyle style, RectangleF mappedBox)
     {
-        if (!this.tree.TryGetTransform(0, out Matrix3x2 transform))
+        // A CSS transform with percentages resolves against the box here; the reader folds every other one into the
+        // transform table. The box of the root is its viewport whatever transform-box says, as for every CSS layout box.
+        SizeF size = this.intrinsicSize;
+        Matrix3x2 transform;
+        if (style.Geometry.CssTransform is SvgCssTransform css && !css.IsStatic)
+        {
+            transform = css.Resolve(size, style.FontSize, this.units.WithFont(style.Text));
+        }
+        else if (!this.tree.TryGetTransform(0, out transform))
         {
             return Matrix3x2.Identity;
         }
 
-        SizeF size = this.intrinsicSize;
         Vector2 origin = this.tree.GetStyle(0).IsSpecified(SvgPropertyId.TransformOrigin)
-            ? style.GetTransformOrigin(size)
+            ? style.GetTransformOrigin(size, this.units)
             : new Vector2(size.Width / 2F, size.Height / 2F);
 
         Matrix3x2 viewBox = SvgViewBoxTransform.Create(mappedBox, this.tree.GetViewport(0).PreserveAspectRatio, new RectangleF(PointF.Empty, size));

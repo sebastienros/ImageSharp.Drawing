@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" font-family="Open Sans">
+  <style>
+    svg { --accent: oklch(0.55 0.15 140); --edge: navy; --gap: 8px; }
+    .card { fill: var(--accent); clip-path: inset(0 round calc(var(--gap) * 1.5)); }
+    .shadow { filter: drop-shadow(2px 2px 1px var(--edge)); }
+    text { fill: var(--edge); font-size: 14px; }
+  </style>
+  <defs>
+    <filter id="soft"><feGaussianBlur stdDeviation="1.5"/></filter>
+  </defs>
+  <rect class="card shadow" x="8" y="8" width="64" height="48"/>
+  <image x="88" y="8" width="64" height="48" preserveAspectRatio="none" image-rendering="pixelated" style="clip-path: circle(40%)"
+         href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFklEQVR4nGNgaGAAISiFwoFQUDYSBwDMNAgB89lUgAAAAABJRU5ErkJggg=="/>
+  <circle cx="40" cy="88" r="20" fill="var(--edge)" filter="url(#soft)"/>
+  <text x="70" y="85">Decoder</text>
+  <text x="70" y="105" style="letter-spacing: calc(var(--gap) / 8)">svg + css</text>
+</svg>

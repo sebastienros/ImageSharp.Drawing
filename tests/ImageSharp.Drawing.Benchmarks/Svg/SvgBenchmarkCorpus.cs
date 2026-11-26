@@ -65,7 +65,8 @@ internal static class SvgBenchmarkCorpus
         "TextDecorations",
         "FilterShadows",
         "FilterBlur",
-        "FilterChain"
+        "FilterChain",
+        "CssFeatures"
     ];
 
     /// <summary>
@@ -107,6 +108,7 @@ internal static class SvgBenchmarkCorpus
         "FilterShadows" => [TestImages.Svg.FilterShadows],
         "FilterBlur" => [TestImages.Svg.FilterBlur],
         "FilterChain" => [TestImages.Svg.FilterChain],
+        "CssFeatures" => [TestImages.Svg.CssFeatures],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 

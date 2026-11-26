@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: accepted. Phases 0 to 4 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, and section 16 the phase 4 (filters) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md`, `SVG_IMPLEMENTATION_PHASE3.md`, and `SVG_IMPLEMENTATION_PHASE4.md`.
+Status: accepted. Phases 0 to 5 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, section 16 the phase 4 (filters) results, and section 17 the phase 5 (decoder, CSS, and SVG 2) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md` to `SVG_IMPLEMENTATION_PHASE5.md`; phase 6 (performance) is planned in `SVG_IMPLEMENTATION_PHASE6.md`.
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -44,7 +44,7 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 
 ### 4.2 Feature comparison
 
-"Phase" is the phase in section 11 where this proposal adds the feature. "Implemented" is the state after phase 4. "—" means not supported.
+"Phase" is the phase in section 11 where this proposal adds the feature. "Implemented" is the state after phase 5. "—" means not supported.
 
 | Feature | librsvg (NetVips) | Skia `SkSVGDOM` | Svg.Skia | Phase | Implemented |
 |---|---|---|---|---|---|
@@ -70,15 +70,17 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 | Geometry properties and `d` in CSS | Partial | — | Not stated | 5 | Yes: `rect`, `circle`, `ellipse`, `path`, `use` (`x`, `y`), `image`; not on a nested `svg`, as Chromium |
 | CSS `transform` syntax, `transform-box` | Partial | — | Not stated | 5 | Yes: CSS units, percentages of the reference box, math functions; 3D functions flattened to the plane |
 | CSS Color 4 and 5 functions | Partial | — | Not stated | 5 | Yes: `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color()`, `none`, `color-mix()`, relative colors, `light-dark()`; clipped to sRGB as Chromium; not `currentColor` inside `color-mix()` and relative colors |
-| `calc()`, `min()`, `max()`, `clamp()` | Partial | — | Not stated | 5 | Yes: lengths, numbers, angles, color channels; percentages mixed with lengths resolve against their reference |
-| `ch` from the font | — | — | Not stated | 5 | Yes; `ex` stays half the font size: the x-height, which Chromium uses, fails three conformance tests whose references use half the font size |
+| `calc()`, `min()`, `max()`, `clamp()` | Partial | — | Not stated | 5 | Yes: lengths, numbers, angles, color channels, radii of basic shapes, `stroke-dasharray` lists, `transform-origin`; percentages mixed with lengths resolve against their reference; not in text position lists |
+| `ch` from the font | — | — | Not stated | 5 | Yes, in shapes, basic shapes, text positions, markers, patterns, `use`, and `image` (not yet in the other attributes, 17.7); `ex` stays half the font size: the x-height, which Chromium uses, fails three conformance tests whose references use half the font size |
 | `image` (raster, data URIs) | Yes | Yes | Yes | 2 | Yes (CPU backend only) |
-| `image` (nested SVG file) | Yes | — | Yes | 2 | Yes |
+| `image` (nested SVG file) | Yes | — | Yes | 2 | Yes; its text draws with the font settings of the outer load options since phase 5 |
 | `text`, `tspan`, anchors, font properties | Yes | Yes | Yes | 3 | Yes (glyph outlines at load; section 15) |
 | `textPath` | — | Yes | Yes | 3 | Yes (`path` elements and the `path` attribute, as Chromium) |
 | Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 | Yes |
 | Filters | 17 primitives and `feDropShadow` | 14 primitives | All primitives modelled, partial parity | 4 | Yes: all primitives of Filter Effects Level 1 (section 16); no `BackgroundImage`, `BackgroundAlpha`, `FillPaint`, `StrokePaint`, as in Chromium; CPU backend only |
 | CSS filter functions | Yes | — | Not stated | 4 | Yes (the ten functions and filter lists) |
+| Image decoder (`Image.Load`, `Image.Identify`, `svgz`) | Yes (libvips `svgload`) | — | — | 5 | Yes, opt-in through `SvgConfigurationModule`; renders the vector content at the target size (section 6) |
+| Layer memory limit | — | — | — | 5 | Yes (`SvgLimits.MaxLayerPixels`, section 10) |
 | Animation, scripting | — | — | Opt-in runtime | Never | — |
 | SVG fonts | — | — | Not stated | Never | — |
 
@@ -189,31 +191,68 @@ public abstract partial class DrawingCanvas
 }
 ```
 
-Phase 5 added rendering to a new image and an ImageSharp decoder (all in `SixLabors.ImageSharp.Drawing.Svg`):
+Phase 5 added rendering to a new image, an ImageSharp decoder, and a layer memory limit. This is the complete public API of the phase, all in `SixLabors.ImageSharp.Drawing.Svg` (`where TPixel : unmanaged, IPixel<TPixel>` on every generic method):
 
 ```csharp
 public sealed partial class SvgDocument
 {
-    // Intrinsic size rounded up to whole pixels, drawn as DrawSvg(document, PointF.Empty) draws it.
+    // Intrinsic size rounded up to whole pixels, drawn as DrawSvg(document, PointF.Empty) draws it, over a transparent
+    // background, with Configuration.Default. Throws InvalidImageContentException for an unusable intrinsic size, more
+    // than SvgLimits.MaxImagePixels pixels, a side over 65,535 pixels, or a draw over SvgLimits.MaxLayerPixels.
     public Image<TPixel> Render<TPixel>();
     public Image<TPixel> Render<TPixel>(Configuration configuration, Color backgroundColor);
 
-    // The view box fits the whole image; the caller's size is not limited.
+    // The view box fits the whole image with the preserveAspectRatio of the root, as DrawSvg(document, destination)
+    // fits it. The size is the caller's choice, so MaxImagePixels does not apply; ArgumentOutOfRangeException for a side
+    // that is not positive.
     public Image<TPixel> Render<TPixel>(Size size);
     public Image<TPixel> Render<TPixel>(Configuration configuration, Size size, Color backgroundColor);
 }
 
-public sealed class SvgFormat : IImageFormat;                         // "SVG", image/svg+xml, svg and svgz
-public sealed class SvgImageFormatDetector : IImageFormatDetector;    // HeaderSize 512
-public sealed class SvgDecoder : SpecializedImageDecoder<SvgDecoderOptions>;
+public sealed class SvgFormat : IImageFormat
+{
+    public static SvgFormat Instance { get; }
+    public string Name { get; }                                       // "SVG"
+    public string DefaultMimeType { get; }                            // "image/svg+xml"
+    public IEnumerable<string> MimeTypes { get; }                     // image/svg+xml
+    public IEnumerable<string> FileExtensions { get; }                // svg, svgz
+}
+
+public sealed class SvgImageFormatDetector : IImageFormatDetector
+{
+    public int HeaderSize { get; }                                    // 512
+    public bool TryDetectFormat(ReadOnlySpan<byte> header, [NotNullWhen(true)] out IImageFormat? format);
+}
+
+public sealed class SvgDecoder : SpecializedImageDecoder<SvgDecoderOptions>
+{
+    public static SvgDecoder Instance { get; }
+    protected override ImageInfo Identify(DecoderOptions options, Stream stream, CancellationToken cancellationToken);
+    protected override Image<TPixel> Decode<TPixel>(SvgDecoderOptions options, Stream stream, CancellationToken cancellationToken);
+    protected override Image Decode(SvgDecoderOptions options, Stream stream, CancellationToken cancellationToken);   // Rgba32
+    protected override SvgDecoderOptions CreateDefaultSpecializedOptions(DecoderOptions options);
+}
+
 public sealed class SvgDecoderOptions : ISpecializedDecoderOptions
 {
-    public DecoderOptions GeneralOptions { get; init; }
-    public SvgLoadOptions LoadOptions { get; init; }
-    public Color BackgroundColor { get; init; }                       // Transparent
+    public DecoderOptions GeneralOptions { get; init; }               // new DecoderOptions()
+    public SvgLoadOptions LoadOptions { get; init; }                  // new SvgLoadOptions(); null throws
+    public Color BackgroundColor { get; init; }                       // Color.Transparent
 }
-public sealed class SvgConfigurationModule : IImageFormatConfigurationModule;
+
+public sealed class SvgConfigurationModule : IImageFormatConfigurationModule
+{
+    public void Configure(Configuration configuration);               // format, both detectors, SvgDecoder.Instance
+}
+
+public sealed class SvgLimits
+{
+    // The largest total of the pixels of the layers that one draw keeps open at the same time.
+    public long MaxLayerPixels { get; set; }                          // 268,435,456 (16 × 4096 × 4096); must be > 0
+}
 ```
+
+`Identify` receives the general options only (the ImageSharp decoder contract), so it loads with default `SvgLoadOptions`; it loads the whole document, as `SvgDocument.Load` does, and does not render. An internal second detector (`SvgShortDataFormatDetector`, header size 5) is not public API.
 
 The decoder is opt-in: `configuration.Configure(new SvgConfigurationModule())`. `Configuration.Default` does not change. `DecoderOptions.TargetSize` follows the rule of the ImageSharp decoders (resize only when both sides differ, `ResizeMode.Max`), and the document renders directly at that size. Sizes that the document determines are bounded by `SvgLimits.MaxImagePixels` and by 65,535 pixels on a side before any pixel memory is allocated; gzip input inflates up to 64 MiB. The detector reads 512 bytes (the root element or a `DOCTYPE svg` must start within them); the module also registers a detector for data shorter than 512 bytes, which ImageSharp would not pass to a detector with a larger header size.
 
@@ -234,7 +273,7 @@ The decoder is opt-in: `configuration.Configure(new SvgConfigurationModule())`. 
 | `mask` | Nested `SaveLayer` with `DestIn` and a luminance-to-alpha `LayerEffect` | Needs a prototype. |
 | `filter`, every filter primitive, CSS filter functions | An engine in `Svg/Filters` that renders the element off-screen, runs the primitives on buffers it owns, and draws the result as an image (`DrawImage` through the internal texture brush) | The planned mapping to `BlurLayerEffect`, `DropShadowLayerEffect`, `ColorMatrixLayerEffect`, and a filter-graph `LayerEffect` was dropped; see 7.3. |
 | `text`, `tspan`, `textPath` | SixLabors.Fonts shaping, `DrawGlyphs`, `TextBuilder` path overloads | |
-| `image` | `DrawImage` | Nested SVG files load as a child `SvgDocument`. |
+| `image` | `DrawImage` | Nested SVG files load as a child `SvgDocument` with the font settings of the outer document. |
 
 ### 7.1 Group opacity without layers
 
@@ -345,6 +384,7 @@ SVG arrives from untrusted sources. Issue #385 showed crashes in the path parser
 - **Expansion.** Nested `use` can multiply nodes exponentially. Limits on instance count, element count, and nesting depth live in `SvgLimits`.
 - **Buffers.** Limits on layer, pattern tile, and filter region sizes. Blur radius is clamped. `SvgLimits` has `MaxElements`, `MaxNodes`, `MaxNestingDepth`, `MaxCharactersFromEntities`, `MaxImagePixels`, `MaxPatternTilePixels`, `MaxTextCharacters`, `MaxFilterPixels`, and, since phase 5, `MaxLayerPixels`: the largest total of the pixels of the layers that one draw keeps open at the same time (default 16 × 4096 × 4096). A pass over the render nodes with the transform of the draw computes the total before anything is recorded, and a draw over the limit throws `InvalidImageContentException` without changing the canvas. Nested SVG images are part of the draw that shows them. Filter content and pattern tiles draw on canvases of their own, which are checked when they draw; filter buffers count against `MaxFilterPixels`. At 4000 pixels on the long edge the largest total of the benchmark corpus is 2.2 million pixels (StyledLandscape) and of the resvg suite 41 million (`masking/mask/mask-on-child`, 2.6 canvases), a margin of 6.5 to the default.
 - **Numbers.** NaN, infinity, and overflow in lengths and transforms make the node invalid. They do not reach the rasterizer.
+- **Decoder.** `SvgDecoder` checks the size of the image before it allocates pixel memory: a size that the document determines (the intrinsic size, or the size that fits a target size) may have at most `SvgLimits.MaxImagePixels` pixels and at most 65,535 pixels on a side (an internal constant: the scratch rows of each rasterizer worker grow with the width of the canvas, about 128 bytes per pixel of width), and a document with a side that is zero, not finite, or larger than `int.MaxValue` pixels is refused; each throws `InvalidImageContentException`. `MaxImagePixels` is reused for the output size instead of a separate public limit (decided by the user), so one setting bounds both the decoded pixels of embedded `image` elements and the rendered output of the decoder and of `SvgDocument.Render` at the intrinsic size; `SvgDocument.Render(size)` with a caller's size is not limited. Gzip data (`svgz`) inflates into memory up to 64 MiB (67,108,864 bytes, the internal bound that `image` elements already used for `svgz` files), and more throws when the limit is reached. Detection reads 512 bytes: the root element, or a `DOCTYPE svg`, must start within them, so a document with a longer prolog is not detected and needs the decoder passed explicitly (the root element of every corpus and suite file starts within 277 bytes); ImageSharp reads every header into a stack buffer when no registered detector asks for more than 512 bytes, so a larger window would make the detection of every format allocate.
 - **CSS values.** Internal limits, each of which makes the value invalid when exceeded: a `var()` substitution longer than 32,768 characters (a chain of custom properties that doubles at each step stops after about 12 steps), `var()` references and fallbacks nested deeper than 32, and 16 million characters produced by all substitutions of one document (`use` instances substitute again); math functions nested deeper than 32 or with more than 256 values and operators, and 65,536 math functions that mix units per document; color functions nested deeper than 16.
 - **Fuzzing.** A fuzz target for `SvgDocument.Load` belongs in the test plan.
 
@@ -515,7 +555,7 @@ The text pipeline shapes one directional run at a time with `TextShaper.ShapeRun
 - Paint servers in bounding box units on upright glyphs of vertical text map the box in user space, as SVG defines; Chromium maps them in a turned frame.
 - Colour glyphs (COLR, CBDT) draw monochrome; `text-rendering` has no effect; no synthesized small capitals; a `kerning` length adds no spacing.
 - `textPath` references `path` elements only, as Chromium; `method` and `spacing` have no effect. The cross-axis direction of `x` and `dx` for `sideways-lr` text on a path was not checked against Chromium.
-- Text in an SVG file that an `image` element references draws nothing (an open decision).
+- Text in an SVG file that an `image` element references draws nothing (an open decision). Phase 5: the user decided that it draws, with the fonts of the outer load options (section 17.4).
 - Arabic letters do not join across a `tspan` boundary, and `letter-spacing` does not turn off Arabic ligatures (Chromium does both). These are limits of the public shaping API (section 15.4), not of the bidirectional algorithm; `SvgTextDirectionTests` holds a test of each.
 - Bidirectional text costs time linear in its length: 200,000 bidirectional control characters with 100,000 letters load and draw in about 0.3 s (6 s before package T6, which also removed a quadratic search for the end of a shaping run), and 100,000 matched isolates or 100,000 numbers after an Arabic letter in about 0.3 s to 0.8 s (shared 4-core machine, noisy).
 - WebGPU backend: not verified (no GPU in the test container).
@@ -585,7 +625,7 @@ Regression check against the phase 3 merge (commit a02a935) built in a separate 
 
 ### 16.4 Where the renderer follows the specification against Chromium or the references
 
-These are decisions for the maintainers; the behavior follows the specification today. "Fail" counts the conformance tests that fail because of the rule; "If Chromium" is the change in passing tests if the rule followed the Chromium render instead, counting a test as passing when the Chromium render passes it. FE1 is Filter Effects Module Level 1.
+These are decisions for the maintainers; the behavior follows the specification today. During phase 5 the user confirmed these choices: the rules that follow the specification over Chromium stay. "Fail" counts the conformance tests that fail because of the rule; "If Chromium" is the change in passing tests if the rule followed the Chromium render instead, counting a test as passing when the Chromium render passes it. FE1 is Filter Effects Module Level 1.
 
 | Rule | Specification | Chromium renders | References show | Fail | If Chromium |
 |---|---|---|---|---|---|
@@ -629,6 +669,161 @@ The lighting count is 21, not the 20 reported by the lighting work: 9 tests at 5
 - The deviation cap is in filter pixels, so a blur far above it (`stdDeviation="1e30"`) gives a result that depends on the output size.
 - Under a projective caller transform the filter runs at one scale, the largest scale of the linear part of the transform, in the space before the transform, and the result draws through the transform; where the perspective enlarges it more, it is resampled.
 - Pattern tiles still render with `Configuration.Default`; the filter engine uses the configuration of the canvas.
+
+## 17. Phase 5 Results (Decoder and More SVG 2)
+
+### 17.1 What renders
+
+| Area | Implemented |
+|---|---|
+| Decoder | `SvgFormat`, `SvgImageFormatDetector`, `SvgDecoder`, `SvgDecoderOptions`, `SvgConfigurationModule` (opt-in), and `SvgDocument.Render` (section 6): UTF-8, UTF-16, and gzip input; `Identify`; `Decode` at the intrinsic size or directly at the target size; the limits of section 10. |
+| Layer memory | `SvgLimits.MaxLayerPixels`, checked before a draw changes the canvas. |
+| Custom properties | `var()` with fallbacks, inheritance, cycles, the guaranteed-invalid value, shorthands, and presentation attributes where Chromium accepts it, with bounded substitution (section 10). |
+| Geometry properties | `x`, `y`, `width`, `height`, `cx`, `cy`, `r`, `rx`, `ry`, `d: path()` and `none` from CSS, on `rect`, `circle`, `ellipse`, `path`, `use` (`x`, `y`), and `image`. |
+| CSS transform | CSS syntax with units, percentages of the reference box, `transform-box`, math functions, 3D functions flattened to the plane; on the root `svg` and on a path that `textPath` references, also with percentages. |
+| Colors | CSS Color 4 and 5 functions (section 4.2); no `currentColor` inside `color-mix()`, relative colors, and `light-dark()` (17.7). |
+| Math functions | `calc()`, `min()`, `max()`, `clamp()` in lengths, numbers, angles, color channels, `transform-origin` of elements and paint servers, the radii of basic shapes, and `stroke-dasharray` lists. |
+| `ch` | The advance of "0" in the font of the element, in shapes, basic shapes, text positions, markers, patterns, `use`, and `image`. |
+| Basic shapes in `clip-path` | `inset()`, `circle()`, `ellipse()`, `polygon()`, `path()`, `xywh()`, `rect()`, and boxes alone, with `fill-box`, `stroke-box`, `view-box` (and the CSS box names), as attribute and in CSS. |
+| SVG 2 items | `pathLength` on dashes and `textPath`; the font feature and font variant properties; `white-space-collapse` and the CSS Text 4 forms of `white-space`; `:lang()`; `image-rendering` `pixelated` and `crisp-edges`; `paint-order`, `vector-effect`, and `mix-blend-mode` on text and through `use`. |
+
+Where the features meet (the cross-feature tests of `SvgCrossFeatureRenderTests`, 15 documents compared with the Chromium oracle at the test size: total differences 0 to 0.95%, all of them antialiasing of edges and glyphs and the decisions of 17.4): `var()` and math functions inside basic shapes and inside `d: path()`, `ch` in basic shapes, a CSS `d` with `pathLength`, dashes, markers, and `textPath`, geometry from CSS with clip shapes and their boxes, markers, patterns and masks in `objectBoundingBox` units, filter regions, and `use`, the CSS transform with `transform-box` and clip shapes, `var()` in paint, geometry, filters, and the font feature properties, the new colors in gradient stops, `flood-color`, `lighting-color`, and `currentColor`, `:lang()` rules that set geometry and custom properties, clip shapes with masks, filters, opacity, blend modes, patterns, and `use`, text inside embedded SVG images, and the decoder with text, an image, filters, custom properties, and clip shapes in one document (`SvgDecoderTests.Decode_DocumentWithEveryFeatureKind_EqualsDrawSvg`: equal to `DrawSvg` at the intrinsic size and at a target size; 0.40% and 0.15% from the oracle).
+
+Defects that the cross-feature tests found, each fixed with a reference image: `round` with a math function in `inset()`, `xywh()`, and `rect()` was split at its spaces and dropped the shape; `ch` in basic shapes used half the font size; `textPath` on a path whose geometry comes from CSS `d` used the `d` attribute (and `pathLength` scaled `startOffset` by the length of the attribute path).
+
+### 17.2 Conformance
+
+`SvgResvgConformanceTests`, criterion unchanged.
+
+| Category | Run | Phase 4 | Phase 5 | resvg | Chrome | librsvg |
+|---|---|---|---|---|---|---|
+| filters | 380 | 296 | 296 | 337 | 303 | 280 |
+| masking | 91 | 86 | 87 | 86 | 87 | 68 |
+| paint-servers | 141 | 140 | 140 | 139 | 141 | 125 |
+| painting | 298 | 273 | 273 | 294 | 264 | 268 |
+| shapes | 128 | 120 | 121 | 123 | 126 | 118 |
+| structure | 240 | 220 | 217 | 233 | 225 | 169 |
+| text | 340 | 45 | 45 | 310 | 279 | 142 |
+| total | 1618 | 1180 | 1179 | 1522 | 1425 | 1170 |
+
+Outcome transitions of the phase:
+
+| Test | Phase 4 | Phase 5 | Reason |
+|---|---|---|---|
+| `masking/clipPath/circle-shorthand.svg` | fail | pass | `circle()` in `clip-path`; the render differs from the Chromium render by 0.012% (antialiasing). |
+| `shapes/rect/ch-values.svg` | fail | pass | `ch` from the Noto Sans advance of "0" (18.3 px at 32 px). The only difference to the Chromium render is the rounding of Chromium to whole pixels (18 px), which moves the right edge of the rectangle by 7.6 px at 500 px; the reference image has the exact length. |
+| `structure/style/non-presentational-attribute.svg` | pass | fail | The SVG 2 geometry properties apply CSS `height` to a `rect`, as Chromium, Firefox, and Safari do; the reference follows the SVG 1.1 rule. Decided by the user: listed `fail specification:` (17.4). |
+| `structure/style-attribute/non-presentational-attribute.svg` | pass | fail | The same rule through the `style` attribute; listed `fail specification:` as well. |
+| `structure/image/embedded-svg-with-text.svg` | pass | fail | Text in the embedded SVG image draws, as the user decided and as Chromium renders it (0.25% from the Chromium render); the reference image draws none (7,040 mismatched pixels; 4 before). Listed `fail reference:`. |
+
+`masking/clipPath/circle-shorthand-with-stroke-box.svg` and `-with-view-box.svg` still fail, now on the reference image (an opaque white background) instead of a missing feature.
+
+### 17.3 Measured performance
+
+BenchmarkDotNet 0.15.8 on a shared 4-core Intel Xeon 2.30 GHz container, .NET 10.0.15, Ubuntu 24.04.5. Means with the error column (99.9% interval). The short job is 3 warmup and 3 measured iterations in one launch; where more iterations were run, it is stated. The machine is noisy: the same case varies by more than its error column between runs, so alternating rounds of two trees were used to compare them.
+
+Decoder (`DecodeSvg`, 5 warmup and 15 measured iterations, default threads, default load options): `Image.Load` with `SvgConfigurationModule` against `SvgDocument.Load` plus `DrawSvg` into a new image of the same size, and `Image.Identify` against `SvgDocument.Load`.
+
+| Document | Long edge | `Image.Load` | Load and `DrawSvg` | `Image.Identify` | `SvgDocument.Load` | Allocated (`Image.Load`) |
+|---|---|---|---|---|---|---|
+| Tiger | 100 | 3.91 ± 0.34 ms | 4.05 ± 0.22 ms | 1.80 ± 0.15 ms | 1.76 ± 0.11 ms | 3.55 MB |
+| | 1000 | 12.6 ± 0.5 ms | 13.0 ± 0.6 ms | 1.74 ± 0.12 ms | 1.71 ± 0.12 ms | 6.88 MB |
+| Icons (40) | 100 | 4.31 ± 0.35 ms | 4.56 ± 0.59 ms | 0.56 ± 0.00 ms | 0.66 ± 0.11 ms | 1.83 MB |
+| | 1000 | 52.0 ± 3.7 ms | 72.1 ± 16.0 ms | 0.63 ± 0.06 ms | 0.66 ± 0.13 ms | 4.29 MB |
+| TextHeavy | 100 | 16.0 ± 0.8 ms | 15.5 ± 1.2 ms | 5.99 ± 0.54 ms | 6.26 ± 0.54 ms | 18.1 MB |
+| | 1000 | 26.7 ± 2.0 ms ¹ | 26.1 ± 1.9 ms ¹ | 7.27 ± 0.99 ms | 6.42 ± 0.70 ms | 19.8 MB |
+| FilterShadows | 100 | 9.98 ± 0.63 ms | 10.9 ± 0.5 ms | 1.51 ± 0.16 ms | 1.68 ± 0.13 ms | 4.55 MB |
+| | 1000 | 60.1 ± 5.3 ms ¹ | 61.9 ± 5.0 ms ¹ | 1.42 ± 0.12 ms | 1.55 ± 0.13 ms | 8.06 MB |
+| CssFeatures | 100 | 21.7 ± 1.3 ms | 21.0 ± 1.7 ms | 14.2 ± 0.7 ms | 14.4 ± 1.3 ms | 17.7 MB |
+| | 1000 | 47.1 ± 6.2 ms | 49.2 ± 7.9 ms | 13.9 ± 0.7 ms | 14.3 ± 0.8 ms | 20.0 MB |
+
+¹ 10 warmup and 30 measured iterations; the 15-iteration run gave 58.4 ± 15.4 against 21.6 ± 1.2 ms (TextHeavy) and 76.2 ± 15.4 against 64.9 ± 5.9 ms (FilterShadows), which the longer run did not repeat.
+
+The decoder adds no measurable cost: every pair of intervals overlaps except Icons at 1000 pixels, where `Image.Load` is the faster one, and managed allocation is equal within 0.5% (`Identify` allocates 3.5% more than the load for Icons, 31 KB for 40 documents, the metadata and the detection buffers). `Identify` costs as much as a full load (17.7).
+
+CSS features document (`css-features-synthetic.svg`, 48 cards, short job). Svg.Skia and NetVips render it black: neither supports custom properties, so its background and every card are unpainted (67% total difference from the Chromium render for both, against 0.02% for ImageSharp.Drawing at 1000 pixels). Their times are given for completeness and are not comparable.
+
+| Benchmark | Long edge | ImageSharp.Drawing | ImageSharp.Drawing, one thread | ImageSharp.Drawing allocated | Svg.Skia (renders nothing) | NetVips (renders nothing) |
+|---|---|---|---|---|---|---|
+| Load | — | 14.1 ± 19.1 ms | — | 14.4 MB | 31.8 ± 10.5 ms | — |
+| Render | 100 | 4.55 ± 6.03 ms | 7.25 ± 8.95 ms | 2.49 MB | 0.03 ms | — |
+| | 1000 | 28.6 ± 89.6 ms | 68.7 ± 159.0 ms | 4.32 MB | 0.41 ms | — |
+| Load and render | 100 | 50.7 ± 277.4 ms | 24.4 ± 9.5 ms | 17.7 MB | 28.7 ± 3.0 ms | 4.5 ± 6.7 ms |
+| | 1000 | 57.0 ± 31.0 ms | 86.4 ± 45.1 ms | 20.0 MB | 30.8 ± 29.1 ms | 6.6 ± 4.9 ms |
+
+Loading this 56 KB document takes about eight times as long as the Tiger and allocates 14.4 MB: every element substitutes its `var()` declarations and parses them again. It is the document for phase 6 to measure that path.
+
+Regression check against the phase 4 merge (commit 68408c9, built from `git archive` on the same machine):
+
+- `LoadSvg`, 13 documents, alternating rounds of 5 warmup and 15 measured iterations. Against the start of the integration (commit 7da1390), 8 rounds: the mean of the per-round ratios lies within its 95% interval of 1 for every document (widest Styled Landscape +1.2 ± 18.0%, narrowest Tiger +0.5 ± 3.8%), and the ratio pooled over the documents is +0.5% (95% interval −2.8% to +3.9%). Against the final tree, 6 rounds: every document within its interval (Tiger +4.5 ± 5.2%, Text Heavy +8.8 ± 12.5%, Filter Shadows +10.3 ± 15.6%), pooled +0.4% (−2.6% to +3.6%). Loading is therefore not slower by more than about 4% overall; the earlier spread of the means (−5% to +9%) is noise of the machine. Allocation changes by +0.02% to +0.14%, except the icon set, +1.0% (873.5 → 882.2 KB for 40 documents, about 220 bytes per document). Documents without the new features pay nothing measurable.
+- `RenderSvg` and `LoadAndRenderSvg`, ImageSharp default and one thread, at 100 and 1000 pixels (104 cases, short job): every interval overlaps; allocation changes by −0.5% to +0.7%. Five alternating rounds of 10 iterations at 1000 pixels for the three filter documents, Tiger, and the icon set gave a pooled ratio of +5.2% (+2.6% to +7.8%), with Filter Blur on one thread +10.4 ± 8.4%; a stage profile of Filter Blur (`--profile svg`, 60 iterations, three alternating rounds) did not repeat it: emit 41.0 to 48.5 ms before against 41.9 to 42.4 ms after, scene render 30.5 to 41.2 ms against 30.6 to 30.9 ms. The only change on the render path is the layer limit pass before a draw of a document with scopes. 4000 pixels were not measured.
+
+### 17.4 Decisions
+
+"Fail" counts the conformance tests that fail because of the rule; "If changed" the change in passing tests if the rule followed the other side.
+
+| Rule | Specification | Chromium renders | This renderer | Fail | If changed |
+|---|---|---|---|---|---|
+| CSS geometry properties apply to `rect` (decided by the user) | SVG 2 makes `x` … `ry` geometry properties; SVG 1.1 had none | Applies them | Applies them; the two tests whose references follow SVG 1.1 are listed `fail specification:` (`results.csv` records Chrome, Firefox, Safari, and librsvg as failing them) | 2 | +2 with the SVG 1.1 rule, which no browser follows |
+| `ex` (decided by the user) | CSS Values 4: the x-height of the first available font | The x-height | Half the font size, the fallback of CSS Values 4: the x-height rule fails three passing suite tests, whose references use 0.5 em | 0 | −3 |
+| `ch` | CSS Values 4: the advance of "0" | Rounded to whole pixels (10ch of Open Sans at 20px is 110px, not 114.4px) | The exact advance | 0 | 0 |
+| `rec2020` in `color()` | CSS Color 4, the sample code of section 19 (`lin_2020`: a power of 2.4) | Another curve: `color(rec2020 0.5 0.3 0.2)` is (163, 83, 61) there, (144, 56, 32) here | Power 2.4 | 0 | 0 |
+| Gradient interpolation of non-legacy colors | SVG 2 and `color-interpolation`: sRGB | Oklab (an `oklch()` gradient differs by up to 24 levels in the middle) | sRGB, for every color | 0 | 0 |
+| Division by zero in `calc()` | CSS Values 4: infinity, clamped to the range of the property | The largest width it supports | Drops the declaration (the attribute applies) | 0 | 0 |
+| `hsl()` saturation above 100% | CSS Color 4: clamped | As this renderer for the cases checked (`hsl(120 150% 40%)`, `hsl(200 200% 70%)`) | Clamped | 0 | 0 |
+| `:lang()` | Selectors 4: lists, quoted ranges, wildcards, extended filtering (`de-DE` matches `de-Latn-DE`) | The Level 3 form only | Selectors 4; both agree on every Level 3 selector | 0 | 0 |
+| `pathLength="0"` with a pattern that starts with a zero dash | SVG 2: every distance but 0 becomes infinite, so only the caps of the zero dash draw | A solid stroke | The specification | 0 | 0 |
+| `pathLength` with an infinite dash offset | Undefined | Ignores the pattern | As Chromium | 0 | 0 |
+| `pathLength` that is not a number | SVG 2: an invalid attribute has no effect | Treated as zero | The specification | 0 | 0 |
+| `image-rendering="optimizeSpeed"` | CSS Images 3: as `crisp-edges` | Smooth sampling in `image` | Nearest neighbor | 0 | 0 |
+| Default reference box of a basic shape | CSS Masking: `border-box`, the stroke box on SVG elements | The stroke box | The stroke box (the plan named the object bounding box) | 0 | 0 |
+| A basic shape with `stroke-box` on a `clipPath` element | CSS Masking: the box of the element the clip applies to | The fill box of the clipped element, also with a stroke | As Chromium | 0 | 0 |
+| `light-dark()` | CSS Color 5: by the color scheme | The light color (the oracle renders an SVG document as an image) | The first color | 0 | 0 |
+| Math functions in text position lists | CSS Values 4 does not cover SVG number lists | Accepts a function without spaces (`calc(10px)`), not `calc(100px + 10px)` or `max(5px, 10px)` | No math functions in these lists | 0 | 0 |
+| Default of `SvgLimits.MaxLayerPixels` (decided by the user) | — | — | 16 × 4096 × 4096 = 268,435,456 pixels, which allows about 1 GiB of layer pixels at the limit with `Rgba32` (4 bytes per pixel); a margin of 6.5 to the largest total of the suite at 4000 px (the tighter option, half of it, would keep a margin of 3.2) | 0 | 0 |
+| Output size limit of the decoder (decided by the user) | — | — | Reuses `SvgLimits.MaxImagePixels` (plus 65,535 pixels on a side) instead of a separate public limit: the one limit bounds the embedded images and the rendered output of the decoder and of `Render` at the intrinsic size | 0 | 0 |
+| `Identify` | — | — | Loads the whole document with default `SvgLoadOptions` (the decoder contract passes general options only) | 0 | 0 |
+| `font-feature-settings` with a value above 1, `"calt" 0` | CSS Fonts 4 | Applied | The first alternate; `calt` and the other default features stay on (17.6) | 0 | 0 |
+| `currentColor` inside a custom property that `color-mix()` uses | CSS Color 5 | Resolved at the element | The declaration is invalid (17.7) | 0 | 0 |
+| Text in an SVG document that an `image` element embeds (decided by the user) | SVG 2 does not restrict it | Draws it with the fonts of the page | Draws it with the font settings of the outer load options (`FontCollection`, generic families, default and fallback families); the nested document still reads no file, `@font-face` is skipped as in every document, and its characters count against the text limit of the outer document | 1 (`structure/image/embedded-svg-with-text`, whose reference draws no text, listed `fail reference:`) | +1 |
+| The filter rules of 16.4 that follow the specification over Chromium (decided by the user during phase 5) | Filter Effects 1 | Differs (16.4) | Unchanged: they stay | As in 16.4 | As in 16.4 |
+
+### 17.5 Limits
+
+Section 10 lists them: `SvgLimits.MaxLayerPixels`, the decoder bounds (`MaxImagePixels` and 65,535 pixels on a side for sizes the document determines, 64 MiB of inflated gzip data, the 512-byte detection window), and the internal limits of CSS values (32,768 characters per substitution, nesting of 32 for `var()` and for math functions, 256 values and operators per math function, 16 million substituted characters and 65,536 mixed math functions per document, color nesting of 16). Each internal limit makes the value invalid; none throws.
+
+Hostile documents that combine the features (`SvgCrossFeatureHostileDocumentTests`): a doubling chain of custom properties inside `calc()` inside a basic shape stops at the substitution limits, twice the steps cost no more, and the shape is dropped; a document that reaches the substitution budget, the math function limits, the color nesting limit, and the layer limit at once loads and then fails at the layer limit with `InvalidImageContentException` in linear time; and every hostile document of the CSS, SVG 2, and style tests decodes through `SvgDecoder` (and through detection) or throws `InvalidImageContentException`, with the growth that its original test allows.
+
+### 17.6 SixLabors.Fonts
+
+Phase 5 adds two needs to section 15.4: a way to turn off the default features that `ShapeRun` applies (`calt` and `clig` among them), so that `font-variant-ligatures: no-contextual` and `"calt" 0` work; and feature values, so that `"salt" 2` and `"swsh" 3` select the second and third alternates. `TextShaper.ShapeRun` takes tags only, each turned on with the value 1.
+
+### 17.7 Known gaps
+
+- `currentColor` inside `color-mix()`, as the origin of a relative color, and inside `light-dark()`: the declaration is invalid; Chromium renders it. It needs the declaration kept unresolved until the computed-value stage, as a `var()` declaration is (pending, then parsed again), with `currentColor` replaced by the computed `color` of the element (of the parent for `color` itself), and, for a child that inherits the value but has another `color`, a paint kind that keeps the function so that the child resolves it with its own color.
+- `ch` in the attributes of nested `svg`, `mask`, `clipPath` and `filter` regions, filter primitives, and gradient geometry still uses half the font size (each a `SvgUnitBasis.WithFont` call at the place that converts the length).
+- Math functions in text position lists (17.4).
+- `shape()` in `clip-path` is not parsed.
+- The new colors interpolate in sRGB in gradients (17.4).
+- `Identify` loads and resolves the whole document, text included, to read the root element; reading the root attributes alone would make it far cheaper, but percentages and font-relative units of the root size need the root style.
+- No synthesized small capitals, superscripts, or subscripts for a font without the feature (Chromium synthesizes them).
+
+### 17.8 Features that stay out
+
+| Feature | Reason |
+|---|---|
+| Auto-wrapped text (`inline-size`, `shape-inside`) | No browser renders it in SVG (selection rule 2 of the phase 5 plan). |
+| Mesh gradients, hatches | No browser renders them. |
+| `stroke-linejoin: miter-clip` and `arcs` | No browser renders them; they fall back to `miter`. |
+| Markers on `rect`, `circle`, and `ellipse` | SVG 2 allows them; no browser renders them. |
+| Text on basic shapes | SVG 2 allows a `textPath` that references a shape; no browser renders it. |
+| The deprecated `clip` property | Chromium renders it on no element (`svg` with any `overflow`, `g`, the attribute); the suite test `masking/clip/simple-case` fails in Chromium too. |
+| `refX` and `refY` on `symbol` | Chromium applies neither numbers nor keywords. |
+| The attributes `font-feature-settings` and `font-variant-*` | Chromium gives the attributes no effect: the properties are CSS only. |
+| `white-space` as an attribute | Chromium gives it no effect (only `xml:space` acts); the reader keeps accepting it, as before phase 5. |
+| `white-space` values `preserve-spaces`, `discard`, `text-wrap-mode`, `white-space-trim` | Chromium renders no difference in SVG text. |
+| `font-variant-east-asian` | Parsed and applied, but not verified: no font of the suite or of the test fonts has the features. |
+| Animation, scripting, `foreignObject`, SVG fonts | Non-goals (section 2). |
 
 ## Sources
 

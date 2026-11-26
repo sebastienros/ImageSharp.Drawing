@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" font-family="Open Sans">
+  <!-- var() in paint, in geometry from CSS, in a dash array with calc(), in filters (flood-color, flood-opacity,
+       lighting-color, CSS filter functions), in the font feature properties, and in text properties. -->
+  <style>
+    svg { --ok: green; --edge: navy; --sw: 4px; --x: 5px; --w: 40px; --fc: green; --dx: 3px; --blur: 1px; }
+    .paint { fill: var(--ok); stroke: var(--edge); stroke-width: var(--sw); }
+    .geom { x: calc(var(--x) + 50px); width: var(--w); height: var(--w); }
+    .circ { cx: calc(100px + var(--w) / 2 + 5px); cy: 25px; r: calc(var(--w) / 2); }
+    .flood { --fc: rgb(0 128 0); }
+    .fn { filter: drop-shadow(var(--dx) var(--dx) var(--blur) var(--edge)); }
+    .fn2 { --g: 50%; filter: grayscale(var(--g)) blur(var(--blur)); }
+    .feat { --f: 'zero', 'ss01'; font-feature-settings: var(--f); font-family: Inter; font-weight: 300; }
+    .lig { --l: none; font-variant-ligatures: var(--l); }
+    .num { --n: tabular-nums slashed-zero; font-variant-numeric: var(--n); font-family: Inter; font-weight: 300; }
+    .pos { --p: super; font-variant-position: var(--p, normal); font-family: Inter; font-weight: 300; }
+  </style>
+  <defs>
+    <filter id="flood" x="0" y="0" width="1" height="1">
+      <feFlood style="flood-color: var(--fc); flood-opacity: var(--fo, 0.75)"/>
+    </filter>
+    <filter id="light" x="0" y="0" width="1" height="1">
+      <feDiffuseLighting style="lighting-color: var(--lc)" surfaceScale="2"><feDistantLight azimuth="45" elevation="45"/></feDiffuseLighting>
+    </filter>
+  </defs>
+  <!-- Row 1: var() in paint and in geometry from CSS. -->
+  <rect class="paint" x="5" y="5" width="40" height="40"/>
+  <rect class="geom" y="5" fill="green"/>
+  <circle class="circ" fill="var(--ok)"/>
+  <rect x="155" y="5" width="40" height="40" style="fill: var(--nothing, var(--ok)); stroke: var(--edge); stroke-width: var(--sw); stroke-dasharray: calc(var(--sw) * 2) var(--sw)"/>
+
+  <!-- Row 2: var() in filters: flood-color, lighting-color, CSS filter functions. -->
+  <rect class="flood" x="5" y="55" width="40" height="40" fill="red" filter="url(#flood)"/>
+  <rect x="55" y="55" width="40" height="40" fill="red" filter="url(#light)" style="--lc: oklch(0.6 0.15 140)"/>
+  <rect class="fn" x="105" y="55" width="35" height="35" fill="green"/>
+  <rect class="fn2" x="155" y="55" width="40" height="40" fill="rgb(200 50 50)"/>
+
+  <!-- Row 3: var() in the font feature properties. -->
+  <text class="feat" x="5" y="120" font-size="16">1110 0a</text>
+  <text class="lig" x="105" y="120" font-size="16">office fi</text>
+  <text class="num" x="5" y="145" font-size="16">1110 0123</text>
+  <text class="pos" x="105" y="145" font-size="16">1110 x2</text>
+
+  <!-- Row 4: var() in font-size, letter-spacing, and opacity of text. -->
+  <text x="5" y="185" style="--fs: 20px; --ls: 2px; font-size: var(--fs); letter-spacing: var(--ls); fill: var(--ok); opacity: var(--o, 0.8)">Spaced var()</text>
+</svg>

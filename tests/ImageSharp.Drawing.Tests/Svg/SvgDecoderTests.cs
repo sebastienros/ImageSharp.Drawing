@@ -76,6 +76,38 @@ public class SvgDecoderTests
         ImageComparer.Exact.VerifySimilarity(expected, decoded);
     }
 
+    /// <summary>
+    /// A document with text, a raster image, filters, custom properties, color functions, and basic-shape clips decodes as
+    /// it draws, at the intrinsic size and at a target size. The drawn output at both sizes was compared with the Chromium
+    /// render oracle; the intrinsic size has a reference image in <see cref="SvgCrossFeatureRenderTests"/>.
+    /// </summary>
+    /// <param name="targetWidth">The width of the target size, or 0 for none.</param>
+    /// <param name="targetHeight">The height of the target size.</param>
+    /// <param name="width">The expected image width.</param>
+    /// <param name="height">The expected image height.</param>
+    [Theory]
+    [InlineData(0, 0, 160, 120)]
+    [InlineData(400, 400, 400, 300)]
+    public void Decode_DocumentWithEveryFeatureKind_EqualsDrawSvg(int targetWidth, int targetHeight, int width, int height)
+    {
+        string path = TestFile.GetInputFileFullPath("Svg/Features/cross-decoder.svg");
+        SvgDocument document = SvgDocument.Load(path, SvgSvg2RenderTests.TextOptions);
+        DecoderOptions general = new()
+        {
+            Configuration = SvgImageFormatDetectorTests.CreateConfiguration(),
+            TargetSize = targetWidth > 0 ? new Size(targetWidth, targetHeight) : null,
+        };
+
+        SvgDecoderOptions options = new() { GeneralOptions = general, LoadOptions = SvgSvg2RenderTests.TextOptions };
+        using FileStream stream = File.OpenRead(path);
+        using Image<Rgba32> decoded = Decoder.Decode<Rgba32>(options, stream);
+        RectangleF? destination = targetWidth > 0 ? new RectangleF(0, 0, width, height) : null;
+        using Image<Rgba32> expected = Draw<Rgba32>(document, width, height, destination, default);
+
+        Assert.Equal(new Size(width, height), decoded.Size);
+        ImageComparer.Exact.VerifySimilarity(expected, decoded);
+    }
+
     [Fact]
     public void Decode_FractionalSize_RoundsUpAndDrawsAtTheExactSize()
     {

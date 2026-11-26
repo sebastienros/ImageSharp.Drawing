@@ -533,8 +533,9 @@ internal sealed partial class SvgResolver
         }
 
         SizeF viewport = context.Viewport;
-        float x = SvgUnits.ToUser(use.X, viewport.Width, context.Style.FontSize, this.units, 0F);
-        float y = SvgUnits.ToUser(use.Y, viewport.Height, context.Style.FontSize, this.units, 0F);
+        SvgUnitBasis useUnits = this.units.WithFont(context.Style.Text);
+        float x = SvgUnits.ToUser(use.X, viewport.Width, context.Style.FontSize, useUnits, 0F);
+        float y = SvgUnits.ToUser(use.Y, viewport.Height, context.Style.FontSize, useUnits, 0F);
 
         // x and y add a translation after the transform of the use element.
         Matrix3x2 transform = Matrix3x2.CreateTranslation(x, y) * context.Transform;
@@ -645,7 +646,7 @@ internal sealed partial class SvgResolver
     /// <paramref name="referenceBox"/>: for SVG elements the nearest viewport (<c>transform-box: view-box</c>), which is
     /// <see cref="SvgResolveContext.Viewport"/> of the parent. <c>clipPath</c>, <c>pattern</c> (with
     /// <c>patternTransform</c>), and paint servers in bounding box units pass their own reference box to
-    /// <see cref="SvgComputedStyle.GetTransformOrigin(SizeF)"/> and
+    /// <see cref="SvgComputedStyle.GetTransformOrigin(SizeF, SvgUnitBasis)"/> and
     /// <see cref="SvgComputedStyle.ApplyTransformOrigin(Matrix3x2, Vector2)"/> instead.
     /// </remarks>
     /// <param name="index">The element index.</param>
@@ -665,7 +666,7 @@ internal sealed partial class SvgResolver
             return false;
         }
 
-        transform = SvgComputedStyle.ApplyTransformOrigin(transform, style.GetTransformOrigin(referenceBox));
+        transform = SvgComputedStyle.ApplyTransformOrigin(transform, style.GetTransformOrigin(referenceBox, this.units));
         return true;
     }
 
@@ -798,8 +799,9 @@ internal sealed partial class SvgResolver
                     return false;
                 }
 
-                float x = SvgUnits.ToUser(use.X, context.Viewport.Width, context.Style.FontSize, this.units, 0F);
-                float y = SvgUnits.ToUser(use.Y, context.Viewport.Height, context.Style.FontSize, this.units, 0F);
+                SvgUnitBasis useUnits = this.units.WithFont(context.Style.Text);
+                float x = SvgUnits.ToUser(use.X, context.Viewport.Width, context.Style.FontSize, useUnits, 0F);
+                float y = SvgUnits.ToUser(use.Y, context.Viewport.Height, context.Style.FontSize, useUnits, 0F);
                 Matrix3x2 transform = this.TryGetLocalTransform(target, in targetStyle, context.Viewport, out Matrix3x2 local) ? local : Matrix3x2.Identity;
                 bounds = TransformBounds(box, transform * Matrix3x2.CreateTranslation(x, y));
                 return true;

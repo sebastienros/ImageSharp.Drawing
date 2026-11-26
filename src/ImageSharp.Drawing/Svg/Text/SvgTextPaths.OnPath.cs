@@ -237,7 +237,7 @@ internal static partial class SvgTextPaths
     /// <summary>
     /// Returns the measured path of a <c>textPath</c> in the user space of the <c>text</c> element: the geometry of its
     /// <c>path</c> attribute when that has a point, otherwise that of the <c>path</c> element that <c>href</c>
-    /// references, under the transform of that element.
+    /// references (its <c>d</c> property, from CSS or from the attribute), under the transform of that element.
     /// </summary>
     /// <remarks>
     /// The measures are cached for the load by the element that holds the geometry, the tolerance, and the viewport,
@@ -269,25 +269,42 @@ internal static partial class SvgTextPaths
         SvgElementTree tree = resolver.Tree;
         if (attributes.Href is not string href
             || !tree.TryGetElementById(href, out int target)
-            || tree[target].Kind != SvgElementKind.Path
-            || tree.GetPath(target).Path is not IPath path)
+            || tree[target].Kind != SvgElementKind.Path)
         {
             return null;
         }
 
-        source = target;
-
-        // Only the transform of the path element itself applies. Its transform-origin needs the computed style, which
-        // costs a walk over the ancestors, so the style is computed only for a path that has a transform.
+        // The geometry is the d property, which a declaration in CSS sets over the attribute, and only the transform of
+        // the path element itself applies. Both need the computed style, which costs a walk over the ancestors, so the
+        // style is computed only for a path with a d declaration or a transform. A CSS transform that depends on the
+        // reference box is not in the transform table, so a transform declaration also counts.
+        ref readonly SvgSpecifiedStyle specified = ref tree.GetStyle(target);
+        bool styledPath = specified.IsSpecified(SvgPropertyId.D) || specified.IsPending(SvgPropertyId.D);
+        IPath? path = tree.GetPath(target).Path;
         Matrix3x2 transform = Matrix3x2.Identity;
-        if (tree.TryGetTransform(target, out _))
+        if (styledPath
+            || tree.TryGetTransform(target, out _)
+            || specified.IsSpecified(SvgPropertyId.Transform)
+            || specified.IsPending(SvgPropertyId.Transform))
         {
             SvgComputedStyle style = resolver.ComputeDocumentStyle(target);
+            if (styledPath)
+            {
+                path = resolver.GetPathData(target, in style);
+            }
+
             if (resolver.TryGetLocalTransform(target, in style, layout.Viewport, out Matrix3x2 local))
             {
                 transform = local;
             }
         }
+
+        if (path is null)
+        {
+            return null;
+        }
+
+        source = target;
 
         return GetMeasure(layout, resolver, target, path, transform, tolerance);
     }

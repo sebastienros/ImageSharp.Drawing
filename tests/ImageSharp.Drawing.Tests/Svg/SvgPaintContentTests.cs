@@ -25,7 +25,7 @@ public class SvgPaintContentTests
     private const string SvgOpen = "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"";
 
     /// <summary>
-    /// The feature files of this package, in <c>tests/Images/Input/Svg/Features</c>.
+    /// The paint and content feature files, in <c>tests/Images/Input/Svg/Features</c>.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
     /// <param name="provider">The image provider.</param>

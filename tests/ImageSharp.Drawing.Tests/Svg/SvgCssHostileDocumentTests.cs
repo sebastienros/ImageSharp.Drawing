@@ -96,7 +96,7 @@ public class SvgCssHostileDocumentTests
         Assert.Equal(new Rgba32(0, 128, 0, 255), ((SolidBrush)parsed.Nodes[0].Fill!).Color.ToPixel<Rgba32>());
     }
 
-    private static string DoublingDocument(int steps, int elements)
+    internal static string DoublingDocument(int steps, int elements)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<style>svg { --v0: abcdefgh;");
@@ -114,7 +114,7 @@ public class SvgCssHostileDocumentTests
         return builder.Append("</svg>").ToString();
     }
 
-    private static string UseDocument(int instances)
+    internal static string UseDocument(int instances)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<defs><g id=\"g\" style=\"--twice: var(--long) var(--long)\">");
@@ -128,7 +128,7 @@ public class SvgCssHostileDocumentTests
         return builder.Append("</g></svg>").ToString();
     }
 
-    private static string ReferenceChainDocument(int count)
+    internal static string ReferenceChainDocument(int count)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect width=\"1\" height=\"1\" style=\"");
@@ -140,7 +140,7 @@ public class SvgCssHostileDocumentTests
         return builder.Append("fill: var(--p0)\"/></svg>").ToString();
     }
 
-    private static string NestedCalcDocument(int depth)
+    internal static string NestedCalcDocument(int depth)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect height=\"1\" width=\"calc(");
@@ -149,7 +149,7 @@ public class SvgCssHostileDocumentTests
         return builder.Append(")\"/></svg>").ToString();
     }
 
-    private static string LongCalcDocument(int values, int terms)
+    internal static string LongCalcDocument(int values, int terms)
     {
         StringBuilder builder = new(SvgOpen);
         string expression = "calc(" + string.Join(" + ", Enumerable.Repeat("1px", terms)) + ")";
@@ -161,7 +161,7 @@ public class SvgCssHostileDocumentTests
         return builder.Append("</svg>").ToString();
     }
 
-    private static string NestedColorDocument(int depth)
+    internal static string NestedColorDocument(int depth)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect width=\"1\" height=\"1\" fill=\"");

@@ -1134,7 +1134,7 @@ structure/image/embedded-jpeg-as-image-jpeg.svg pass
 structure/image/embedded-jpeg-as-image-jpg.svg pass
 structure/image/embedded-jpeg-without-mime.svg pass
 structure/image/embedded-png.svg pass
-structure/image/embedded-svg-with-text.svg pass
+structure/image/embedded-svg-with-text.svg fail reference: the reference image draws no text in the embedded image; the user decided that such text draws, as in Chromium (this render differs from the Chromium render by 0.25%); results.csv records chrome, firefox, and safari as passed and resvg and librsvg as failed
 structure/image/embedded-svg-without-mime.svg pass
 structure/image/embedded-svg.svg pass
 structure/image/embedded-svgz.svg pass

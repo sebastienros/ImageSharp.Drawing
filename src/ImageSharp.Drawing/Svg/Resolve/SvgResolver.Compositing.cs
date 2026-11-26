@@ -131,7 +131,7 @@ internal sealed partial class SvgResolver
         if (clipShape is not null)
         {
             RectangleF? referenceBox = this.GetClipShapeBox(element, clipShape.Box, in context, box, out shapeTransform);
-            clipKind = this.ClassifyClipShape(clipShape, referenceBox, style.FontSize, shapeTransform, geometry, out coverageShape);
+            clipKind = this.ClassifyClipShape(clipShape, referenceBox, style.FontSize, style.Text, shapeTransform, geometry, out coverageShape);
             if (clipKind == SvgClipKind.Empty)
             {
                 return false;

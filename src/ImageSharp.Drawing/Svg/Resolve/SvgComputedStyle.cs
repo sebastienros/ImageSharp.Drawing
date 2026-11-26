@@ -208,7 +208,7 @@ internal partial struct SvgComputedStyle
     /// <summary>
     /// Gets the horizontal component of <c>transform-origin</c>, in <see cref="SvgLengthUnit.Px"/> or
     /// <see cref="SvgLengthUnit.Percent"/>. Not inherited. A percentage refers to the width of the reference box; see
-    /// <see cref="GetTransformOrigin(SizeF)"/>. The value lives in <see cref="Geometry"/>.
+    /// <see cref="GetTransformOrigin(SizeF, SvgUnitBasis)"/>. The value lives in <see cref="Geometry"/>.
     /// </summary>
     public readonly SvgLength TransformOriginX => this.Geometry.TransformOriginX;
 
@@ -548,9 +548,10 @@ internal partial struct SvgComputedStyle
     /// <c>objectBoundingBox</c> units, where the resulting origin then applies in the unit square.
     /// </remarks>
     /// <param name="referenceBox">The size of the reference box.</param>
+    /// <param name="units">The unit basis, whose style context resolves a math function that mixes units.</param>
     /// <returns>The origin.</returns>
-    public readonly Vector2 GetTransformOrigin(SizeF referenceBox)
-        => ResolveTransformOrigin(this.TransformOriginX, this.TransformOriginY, referenceBox);
+    public readonly Vector2 GetTransformOrigin(SizeF referenceBox, SvgUnitBasis units)
+        => ResolveTransformOrigin(this.TransformOriginX, this.TransformOriginY, referenceBox, this.FontSize, units);
 
     /// <summary>
     /// Returns a transform origin in user units from its computed components and a reference box.
@@ -558,15 +559,17 @@ internal partial struct SvgComputedStyle
     /// <param name="x">The computed horizontal component, in pixels or as a percentage; unspecified is 0.</param>
     /// <param name="y">The computed vertical component, in pixels or as a percentage; unspecified is 0.</param>
     /// <param name="referenceBox">The size of the reference box.</param>
+    /// <param name="fontSize">The font size that font-relative terms of a math function refer to.</param>
+    /// <param name="units">The unit basis, whose style context resolves a math function that mixes units.</param>
     /// <returns>The origin.</returns>
     /// <remarks>
-    /// A math function that mixes a percentage with lengths needs the style context; without it, as here, its component
-    /// is 0. Graphics elements resolve such an origin through <see cref="SvgResolver.TryGetLocalTransform"/> instead.
+    /// A math function that mixes a percentage with lengths resolves against the reference box through the style context
+    /// of <paramref name="units"/>; without a context its component is 0.
     /// </remarks>
-    public static Vector2 ResolveTransformOrigin(SvgLength x, SvgLength y, SizeF referenceBox)
+    public static Vector2 ResolveTransformOrigin(SvgLength x, SvgLength y, SizeF referenceBox, float fontSize, SvgUnitBasis units)
         => new(
-            x.Unit == SvgLengthUnit.Percent ? x.Value * referenceBox.Width / 100F : x.Unit == SvgLengthUnit.Calc ? 0F : x.Value,
-            y.Unit == SvgLengthUnit.Percent ? y.Value * referenceBox.Height / 100F : y.Unit == SvgLengthUnit.Calc ? 0F : y.Value);
+            SvgUnits.ToUser(x, referenceBox.Width, fontSize, units, 0F),
+            SvgUnits.ToUser(y, referenceBox.Height, fontSize, units, 0F));
 
     /// <summary>
     /// Applies a transform origin to a transform: the result is <c>translate(origin) × transform × translate(-origin)</c>

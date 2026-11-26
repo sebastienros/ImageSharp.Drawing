@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100" style="transform: translate(10%, 0); transform-box: fill-box">
+  <!-- A CSS transform with relative units on the root svg. -->
+  <rect x="5" y="5" width="40" height="40" fill="green"/>
+  <rect x="55" y="55" width="40" height="40" fill="navy"/>
+</svg>

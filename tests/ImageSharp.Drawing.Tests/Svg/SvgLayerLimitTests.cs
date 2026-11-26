@@ -221,6 +221,7 @@ public class SvgLayerLimitTests
         yield return TestImages.Svg.FilterShadows;
         yield return TestImages.Svg.FilterBlur;
         yield return TestImages.Svg.FilterChain;
+        yield return TestImages.Svg.CssFeatures;
         foreach (string icon in TestImages.Svg.Icons)
         {
             yield return icon;

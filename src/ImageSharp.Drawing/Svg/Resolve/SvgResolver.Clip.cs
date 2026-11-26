@@ -90,7 +90,7 @@ internal sealed partial class SvgResolver
         {
             // A basic shape on the clipPath element refers to the box of the clipped element, as in Chromium.
             RectangleF? selfBox = SelectClipShapeBox(selfShape.Box, target.Box, target.Box, target.Viewport);
-            self = this.ClassifyClipShape(selfShape, selfBox, clipStyle.FontSize, target.Transform, geometry, out _);
+            self = this.ClassifyClipShape(selfShape, selfBox, clipStyle.FontSize, clipStyle.Text, target.Transform, geometry, out _);
             if (self == SvgClipKind.Empty)
             {
                 return SvgClipKind.Empty;
@@ -120,7 +120,7 @@ internal sealed partial class SvgResolver
             }
             else if (entry.Shape is not null)
             {
-                childClip = this.ClassifyClipShape(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Target.Transform, geometry, out _);
+                childClip = this.ClassifyClipShape(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Text, entry.Target.Transform, geometry, out _);
                 if (childClip == SvgClipKind.Empty)
                 {
                     continue;
@@ -188,7 +188,12 @@ internal sealed partial class SvgResolver
         if (this.TryGetClipTransform(clip, in clipStyle, in target, out Matrix3x2 content))
         {
             SvgClipScope self = clipStyle.ClipPath.Shape is SvgClipShape selfShape
-                ? this.BeginShapeClipScope(selfShape, SelectClipShapeBox(selfShape.Box, target.Box, target.Box, target.Viewport), clipStyle.FontSize, in target)
+                ? this.BeginShapeClipScope(
+                    selfShape,
+                    SelectClipShapeBox(selfShape.Box, target.Box, target.Box, target.Viewport),
+                    clipStyle.FontSize,
+                    clipStyle.Text,
+                    in target)
                 : this.BeginClipScope(this.GetReference(clipStyle.ClipPath, SvgElementKind.ClipPath), in target);
             if (self.Kind != SvgClipKind.Empty)
             {
@@ -201,7 +206,7 @@ internal sealed partial class SvgResolver
                     }
 
                     SvgClipScope childScope = entry.Shape is not null
-                        ? this.BeginShapeClipScope(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Target)
+                        ? this.BeginShapeClipScope(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Text, entry.Target)
                         : this.BeginClipScope(entry.Clip, entry.Target);
                     if (childScope.Kind == SvgClipKind.Empty)
                     {
@@ -390,8 +395,9 @@ internal sealed partial class SvgResolver
                 return false;
             }
 
-            float x = SvgUnits.ToUser(use.X, viewport.Width, style.FontSize, this.units, 0F);
-            float y = SvgUnits.ToUser(use.Y, viewport.Height, style.FontSize, this.units, 0F);
+            SvgUnitBasis useUnits = this.units.WithFont(style.Text);
+            float x = SvgUnits.ToUser(use.X, viewport.Width, style.FontSize, useUnits, 0F);
+            float y = SvgUnits.ToUser(use.Y, viewport.Height, style.FontSize, useUnits, 0F);
             shapeTransform = Matrix3x2.CreateTranslation(x, y);
             if (this.TryGetLocalTransform(shape, in shapeStyle, viewport, out Matrix3x2 shapeLocal))
             {
@@ -424,7 +430,7 @@ internal sealed partial class SvgResolver
         {
             RectangleF fillBox = TransformBounds(path.Bounds, shapeTransform);
             RectangleF? strokeBox = UsesStrokeBox(clipShape.Box) && !isText
-                ? TransformBounds(GetStrokeBounds(path, in shapeStyle, GetStrokeWidth(in shapeStyle, viewport)), shapeTransform)
+                ? TransformBounds(GetStrokeBounds(path, in shapeStyle, this.GetStrokeWidth(in shapeStyle, viewport)), shapeTransform)
                 : fillBox;
             shapeBox = SelectClipShapeBox(clipShape.Box, fillBox, strokeBox, viewport);
         }
@@ -447,6 +453,7 @@ internal sealed partial class SvgResolver
             Shape = clipShape,
             ShapeBox = shapeBox,
             FontSize = style.FontSize,
+            Text = style.Text,
             Target = new SvgClipTarget(user, viewport, TransformBounds(path.Bounds, shapeTransform), target.Depth + 1),
         };
 
@@ -511,6 +518,11 @@ internal sealed partial class SvgResolver
         /// Gets or sets the computed font size of the child, for font-relative lengths of <see cref="Shape"/>.
         /// </summary>
         public float FontSize { readonly get; set; }
+
+        /// <summary>
+        /// Gets or sets the computed text style of the child, whose font <c>ch</c> lengths of <see cref="Shape"/> refer to.
+        /// </summary>
+        public SvgTextStyle Text { readonly get; set; }
 
         /// <summary>
         /// Gets or sets the child as the target of its own clip: its user space and its bounding box.

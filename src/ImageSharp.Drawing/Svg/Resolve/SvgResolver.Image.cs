@@ -27,11 +27,6 @@ internal sealed partial class SvgResolver
     internal const int MaxDecompressedSvgBytes = 64 * 1024 * 1024;
 
     /// <summary>
-    /// The font collection of nested SVG documents: a collection without fonts, so their text draws nothing.
-    /// </summary>
-    private static readonly SixLabors.Fonts.FontCollection NestedDocumentFonts = new();
-
-    /// <summary>
     /// The loaded resources by <c>href</c>, so each distinct source decodes once. A failed or refused load is kept as
     /// <see langword="null"/>. Created on first use, so documents without the feature allocate nothing for it.
     /// </summary>
@@ -337,9 +332,9 @@ internal sealed partial class SvgResolver
     /// Loads and resolves an SVG document inside an <c>image</c> element.
     /// </summary>
     /// <remarks>
-    /// The nested document takes the load options of this document with three changes: it reads no file, its limits are
-    /// what remains of the element, node, and image pixel limits of this document, and it is one level deeper, up to
-    /// <see cref="MaxImageNesting"/>.
+    /// The nested document takes the load options of this document, its fonts included, with three changes: it reads no
+    /// file, its limits are what remains of the element, node, image pixel, and text character limits of this document,
+    /// and it is one level deeper, up to <see cref="MaxImageNesting"/>.
     /// </remarks>
     /// <param name="stream">The document.</param>
     /// <returns>The image, or <see langword="null"/> when the document is invalid or exceeds a limit.</returns>
@@ -366,9 +361,11 @@ internal sealed partial class SvgResolver
             MaxTextCharacters = (int)Math.Max(1, limits.MaxTextCharacters - this.TextCharacters),
         };
 
-        // Text in a nested document draws nothing: the nested document gets a font collection without fonts. This keeps
-        // the behavior of resvg and of the reference image of the resvg suite (structure/image/embedded-svg-with-text);
-        // Chromium draws such text with the system fonts. See the phase 3 hand-back report.
+        // Text in a nested document draws with the font settings of this document, as Chromium draws it with the fonts
+        // of the page. The document reads no file, so only fonts of the font collection serve it; @font-face rules are
+        // skipped in every document, so a font that the nested document embeds as a data URL is not used, and its text
+        // takes the font that matching gives without that rule. Its characters count against the text limit of this
+        // document: the nested limit is what remains, and the nested count is added below.
         SvgLoadOptions options = new()
         {
             Dpi = this.loadOptions.Dpi,
@@ -377,7 +374,10 @@ internal sealed partial class SvgResolver
             Languages = this.loadOptions.Languages,
             UserStyleSheet = this.loadOptions.UserStyleSheet,
             ResourceBaseDirectory = null,
-            FontCollection = NestedDocumentFonts,
+            FontCollection = this.loadOptions.FontCollection,
+            GenericFontFamilies = this.loadOptions.GenericFontFamilies,
+            DefaultFontFamily = this.loadOptions.DefaultFontFamily,
+            FallbackFontFamilies = this.loadOptions.FallbackFontFamilies,
         };
 
         try

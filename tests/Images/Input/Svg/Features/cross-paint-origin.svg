@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+  <!-- A mixed calc() with a percentage in transform-origin of patterns and gradients. -->
+  <defs>
+    <pattern id="p1" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)" style="transform-origin: calc(50% + 0px) calc(50% + 0px)">
+      <rect width="10" height="20" fill="green"/>
+    </pattern>
+    <pattern id="p2" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)" style="transform-origin: 50% 50%">
+      <rect width="10" height="20" fill="green"/>
+    </pattern>
+    <linearGradient id="g1" gradientTransform="scale(0.5)" style="transform-origin: calc(50% + 10px) 0">
+      <stop offset="0" stop-color="green"/><stop offset="1" stop-color="navy"/>
+    </linearGradient>
+    <linearGradient id="g2" gradientTransform="scale(0.5)" style="transform-origin: 60% 0">
+      <stop offset="0" stop-color="green"/><stop offset="1" stop-color="navy"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="40" height="40" fill="url(#p1)"/>
+  <rect x="55" y="5" width="40" height="40" fill="url(#p2)"/>
+  <rect x="105" y="5" width="40" height="40" fill="url(#g1)"/>
+  <rect x="155" y="5" width="40" height="40" fill="url(#g2)"/>
+</svg>

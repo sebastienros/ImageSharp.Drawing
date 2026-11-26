@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100" font-family="Open Sans">
+  <!-- textPath on paths with transforms: a CSS transform with a percentage of the fill box (200% of 10px), and an
+       attribute transform. -->
+  <path id="p1" d="M 10 30 H 190 V 40" style="transform-box: fill-box; transform: translate(0, 200%)" fill="none" stroke="#ccc"/>
+  <path id="p2" d="M 10 60 H 190" transform="translate(0 20)" fill="none" stroke="#ccc"/>
+  <text font-size="16" fill="green"><textPath href="#p1">Relative units</textPath></text>
+  <text font-size="16" fill="navy"><textPath href="#p2">Attribute</textPath></text>
+</svg>

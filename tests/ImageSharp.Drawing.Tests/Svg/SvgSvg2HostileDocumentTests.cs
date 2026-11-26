@@ -113,7 +113,7 @@ public class SvgSvg2HostileDocumentTests
         image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new PointF(0, 0))));
     }
 
-    private static string PolygonDocument(string rule, int count)
+    internal static string PolygonDocument(string rule, int count)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect width=\"200\" height=\"200\" fill=\"green\" style=\"clip-path: polygon(").Append(rule);
@@ -128,7 +128,7 @@ public class SvgSvg2HostileDocumentTests
         return builder.Append(")\"/></svg>").ToString();
     }
 
-    private static string PathDocument(int count)
+    internal static string PathDocument(int count)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<rect width=\"200\" height=\"200\" fill=\"green\" style=\"clip-path: path(evenodd, 'M 0 0");
@@ -140,7 +140,7 @@ public class SvgSvg2HostileDocumentTests
         return builder.Append(" Z')\"/></svg>").ToString();
     }
 
-    private static string NestedStrokeBoxDocument(int depth, int leaves)
+    internal static string NestedStrokeBoxDocument(int depth, int leaves)
     {
         StringBuilder builder = new(SvgOpen);
         for (int i = 0; i < depth; i++)
@@ -161,10 +161,10 @@ public class SvgSvg2HostileDocumentTests
         return builder.Append("</svg>").ToString();
     }
 
-    private static string DashDocument(string pathLength)
+    internal static string DashDocument(string pathLength)
         => SvgOpen + $"<path d=\"M 10 100 H 190\" stroke=\"green\" stroke-width=\"4\" pathLength=\"{pathLength}\" stroke-dasharray=\"1 1\"/></svg>";
 
-    private static string FeatureDocument(int count)
+    internal static string FeatureDocument(int count)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<text x=\"10\" y=\"50\" font-family=\"Inter\" style=\"font-feature-settings: ");
@@ -181,7 +181,7 @@ public class SvgSvg2HostileDocumentTests
         return builder.Append("</svg>").ToString();
     }
 
-    private static string LangDocument(int ranges)
+    internal static string LangDocument(int ranges)
     {
         StringBuilder builder = new(SvgOpen);
         builder.Append("<style>rect:lang(");

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" font-family="Open Sans">
+  <defs>
+    <marker id="m" markerWidth="8" markerHeight="8" refX="4" refY="4" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 z" fill="blue"/>
+    </marker>
+  </defs>
+  <!-- pathLength with a CSS d: dashes and the dash offset scale by the length of the CSS path. -->
+  <path d="M 0 0 H 1" style="d: path('M 10 15 H 190')" pathLength="18" stroke="green" stroke-width="6" stroke-dasharray="1 1" fill="none"/>
+  <path d="M 0 0 H 1" style="d: path('M 10 30 H 190')" pathLength="9" stroke="green" stroke-width="6" stroke-dasharray="1" stroke-dashoffset="0.5" fill="none"/>
+  <!-- Markers on a CSS d. -->
+  <path d="M 0 0" style="d: path('M 10 50 H 90 V 90 L 140 60')" stroke="green" stroke-width="2" fill="none" marker-start="url(#m)" marker-mid="url(#m)" marker-end="url(#m)"/>
+  <!-- The attribute has a marker vertex that the CSS d does not have. -->
+  <path d="M 150 50 L 170 70 L 190 50" style="d: path('M 150 90 L 190 90')" stroke="green" stroke-width="2" fill="none" marker-mid="url(#m)" marker-end="url(#m)"/>
+  <!-- textPath on a path whose geometry comes from CSS d, with pathLength scaling startOffset. -->
+  <path id="tp" d="M 10 190 H 190" style="d: path('M 10 140 Q 100 90 190 140')" pathLength="100" fill="none" stroke="#ccc"/>
+  <text font-size="16" fill="green"><textPath href="#tp" startOffset="20">CSS d text</textPath></text>
+  <path id="tp2" d="M 10 190 H 190" style="d: path('M 10 180 H 190')" fill="none" stroke="#ccc"/>
+  <text font-size="16" fill="navy"><textPath href="#tp2">Second</textPath></text>
+  <!-- var() in d with pathLength and a dash array from var(). -->
+  <path d="M 0 0" style="--d: path('M 10 110 H 190'); --da: 2 1; d: var(--d); stroke-dasharray: var(--da)" pathLength="30" stroke="green" stroke-width="4" fill="none"/>
+</svg>
