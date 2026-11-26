@@ -17,6 +17,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 /// stops the work. Each case compares the time of two input sizes (<see cref="SvgGrowth"/>), so the tests hold on a
 /// machine under load; the test output prints the measured times.
 /// </summary>
+[Collection(SvgSequentialCollection.Name)]
 public class SvgTextHostileDocumentTests
 {
     private const string SvgOpen =

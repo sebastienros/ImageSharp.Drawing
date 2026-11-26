@@ -9,6 +9,11 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </summary>
 public sealed class SvgLimits
 {
+    /// <summary>
+    /// The default of <see cref="MaxLayerPixels"/>.
+    /// </summary>
+    internal const long DefaultMaxLayerPixels = 16L * 4096 * 4096;
+
     private int maxElements = 1_000_000;
     private int maxNodes = 1_000_000;
     private int maxNestingDepth = 512;
@@ -17,6 +22,7 @@ public sealed class SvgLimits
     private int maxPatternTilePixels = 4096 * 4096;
     private int maxTextCharacters = 1_000_000;
     private int maxFilterPixels = 4096 * 4096;
+    private long maxLayerPixels = DefaultMaxLayerPixels;
 
     /// <summary>
     /// Gets or sets the largest number of elements the document can contain. The default is 1,000,000.
@@ -139,6 +145,32 @@ public sealed class SvgLimits
         {
             Guard.MustBeGreaterThan(value, 0, nameof(this.MaxFilterPixels));
             this.maxFilterPixels = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the largest total number of pixels of the layers that one draw of the document keeps open at the same
+    /// time. Masks, blend modes, group opacity, and clips that need coverage each draw their content into a layer of the
+    /// size of that content on the canvas, and nested layers are all open at once, so their memory adds up. A draw that
+    /// would exceed the limit throws <see cref="InvalidImageContentException"/> before it changes the canvas. The default
+    /// is 268,435,456 (16 times 4096 × 4096). The canvas keeps every pixel of a layer in the pixel format of the canvas.
+    /// </summary>
+    /// <remarks>
+    /// The total depends on the size of the draw: the same document needs more layer pixels at a larger size. The layers
+    /// of a nested SVG image count with the layers of the document that shows it. The content of a filter or of a pattern
+    /// tile draws on a canvas of its own, whose layers are not open at the same time as the layers of the outer draw; such
+    /// a draw is checked against the limit on its own, when it runs, and its canvas is no larger than
+    /// <see cref="MaxFilterPixels"/> or <see cref="MaxPatternTilePixels"/> allow. The working images of a filter count
+    /// against <see cref="MaxFilterPixels"/>, not against this limit.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
+    public long MaxLayerPixels
+    {
+        get => this.maxLayerPixels;
+        set
+        {
+            Guard.MustBeGreaterThan(value, 0, nameof(this.MaxLayerPixels));
+            this.maxLayerPixels = value;
         }
     }
 }

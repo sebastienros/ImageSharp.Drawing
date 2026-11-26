@@ -143,6 +143,9 @@ internal static class SvgNames
     /// <summary>The local name of the <c>xml:space</c> attribute.</summary>
     public const string Space = "space";
 
+    /// <summary>The <c>lang</c> attribute name, and the local name of the <c>xml:lang</c> attribute.</summary>
+    public const string Lang = "lang";
+
     /// <summary>
     /// Gets the map from atomized SVG element name to element kind.
     /// </summary>
@@ -314,6 +317,8 @@ internal static class SvgNames
         ["seed"] = SvgAttributeId.Seed,
         ["stitchTiles"] = SvgAttributeId.StitchTiles,
         ["radius"] = SvgAttributeId.Radius,
+        ["pathLength"] = SvgAttributeId.PathLength,
+        [Lang] = SvgAttributeId.Lang,
     };
 
     /// <summary>
@@ -336,6 +341,10 @@ internal static class SvgNames
             // attribute (Compositing and Blending Level 1), so only style sheets and the style attribute set them.
             // font-kerning and the text-decoration longhands are CSS properties that the SVG 2 list of presentation
             // attributes leaves out; the text-decoration shorthand is a presentation attribute and the reader handles it.
+            // The properties from 64 on have no presentation attribute: the attributes named like the geometry
+            // properties stay in the attribute records (SvgAttributeId), and Chromium ignores attributes named
+            // transform-box, font-feature-settings, font-variant-caps and the other font-variant longhands, and
+            // white-space-collapse.
             _ = SvgPropertyParser.TryGetProperty(name, out SvgPropertyId property);
             if (property is not SvgPropertyId.Transform
                 and not SvgPropertyId.MixBlendMode
@@ -343,7 +352,8 @@ internal static class SvgNames
                 and not SvgPropertyId.FontKerning
                 and not SvgPropertyId.TextDecorationLine
                 and not SvgPropertyId.TextDecorationStyle
-                and not SvgPropertyId.TextDecorationColor)
+                and not SvgPropertyId.TextDecorationColor
+                and < SvgPropertyId.X)
             {
                 map[name] = property;
             }

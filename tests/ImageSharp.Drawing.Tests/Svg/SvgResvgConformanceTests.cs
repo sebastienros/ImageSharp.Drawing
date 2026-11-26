@@ -34,7 +34,7 @@ public class SvgResvgConformanceTests
     /// <summary>
     /// The suite directory, relative to the repository root.
     /// </summary>
-    private const string SuiteRelativePath = "tests/Images/External/resvg-test-suite";
+    internal const string SuiteRelativePath = "tests/Images/External/resvg-test-suite";
 
     /// <summary>
     /// The expected results file, relative to the repository root.
@@ -454,6 +454,24 @@ public class SvgResvgConformanceTests
         };
 
     /// <summary>
+    /// Creates the load options of one test of the suite.
+    /// </summary>
+    /// <remarks>
+    /// Image files load from the directory of the test, as a caller that trusts that directory would set it. References
+    /// that leave it, such as ../../../resources, are refused by the security rules of the option. Text uses the fonts of
+    /// the suite with the generic families of the resvg test harness.
+    /// </remarks>
+    /// <param name="svgPath">The full path of the test SVG.</param>
+    /// <returns>The options.</returns>
+    internal static SvgLoadOptions CreateSuiteOptions(string svgPath)
+        => new()
+        {
+            ResourceBaseDirectory = IOPath.GetDirectoryName(svgPath),
+            FontCollection = SuiteFonts.Value,
+            GenericFontFamilies = CreateSuiteGenericFamilies(),
+        };
+
+    /// <summary>
     /// Loads a test SVG and draws it into the whole image.
     /// </summary>
     /// <param name="svgPath">The full path of the test SVG.</param>
@@ -463,17 +481,7 @@ public class SvgResvgConformanceTests
     {
         try
         {
-            // Image files load from the directory of the test, as a caller that trusts that directory would set it.
-            // References that leave it, such as ../../../resources, are refused by the security rules of the option.
-            // Text uses the fonts of the suite with the generic families of the resvg test harness.
-            SvgLoadOptions options = new()
-            {
-                ResourceBaseDirectory = IOPath.GetDirectoryName(svgPath),
-                FontCollection = SuiteFonts.Value,
-                GenericFontFamilies = CreateSuiteGenericFamilies(),
-            };
-
-            SvgDocument document = SvgDocument.Load(svgPath, options);
+            SvgDocument document = SvgDocument.Load(svgPath, CreateSuiteOptions(svgPath));
             image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, image.Width, image.Height))));
             return null;
         }

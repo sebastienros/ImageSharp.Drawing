@@ -61,6 +61,8 @@ internal sealed class SvgElementTree
     private readonly SvgTextTables? text;
     private readonly SvgFilterTables? filters;
     private readonly Dictionary<int, SvgConditionalAttributes>? conditions;
+    private readonly Dictionary<int, float>? pathLengths;
+    private readonly Dictionary<int, string>? languages;
     private readonly Dictionary<string, int> ids;
     private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> idLookup;
 
@@ -94,6 +96,8 @@ internal sealed class SvgElementTree
         this.text = tables.Text;
         this.filters = tables.Filters;
         this.conditions = tables.Conditions;
+        this.pathLengths = tables.PathLengths;
+        this.languages = tables.Languages;
         this.ids = tables.Ids;
         this.idLookup = this.ids.GetAlternateLookup<ReadOnlySpan<char>>();
         this.StyleRuleCount = styleRuleCount;
@@ -138,6 +142,57 @@ internal sealed class SvgElementTree
     {
         ref readonly SvgElement element = ref this[index];
         return element.Parent >= 0 && element.SubtreeEnd < this[element.Parent].SubtreeEnd ? element.SubtreeEnd : -1;
+    }
+
+    /// <summary>
+    /// Returns the <c>pathLength</c> attribute of an element. Only <c>path</c> and the basic shapes keep it.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <param name="length">
+    /// When this method returns <see langword="true"/>, contains the number as written, which can be zero or negative; SVG 2
+    /// says how those apply.
+    /// </param>
+    /// <returns><see langword="true"/> if the element has a <c>pathLength</c> that is a number; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetPathLength(int index, out float length)
+    {
+        if (this.pathLengths is not null)
+        {
+            return this.pathLengths.TryGetValue(index, out length);
+        }
+
+        length = 0F;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the language of an element: the <c>xml:lang</c> attribute of the element or of its nearest ancestor that
+    /// has a language attribute, else its <c>lang</c> attribute, as the <c>:lang()</c> selector of Chromium reads them.
+    /// On each element, <c>xml:lang</c> wins over <c>lang</c>. An empty value is a language too: it means unknown.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The language tag as written, or <see langword="null"/> when no element on the ancestor chain has one.</returns>
+    public string? GetLanguage(int index)
+        => this.languages is null ? null : GetLanguage(this.languages, CollectionsMarshal.AsSpan(this.elements), index);
+
+    /// <summary>
+    /// Returns the language of an element from the language table of the reader, walking the ancestors. See
+    /// <see cref="GetLanguage(int)"/>.
+    /// </summary>
+    /// <param name="languages">The languages by element index.</param>
+    /// <param name="elements">The elements.</param>
+    /// <param name="index">The element index.</param>
+    /// <returns>The language tag as written, or <see langword="null"/>.</returns>
+    internal static string? GetLanguage(Dictionary<int, string> languages, ReadOnlySpan<SvgElement> elements, int index)
+    {
+        for (int i = index; i >= 0; i = elements[i].Parent)
+        {
+            if (languages.TryGetValue(i, out string? language))
+            {
+                return language;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

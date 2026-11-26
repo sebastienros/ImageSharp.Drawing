@@ -1,13 +1,12 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
-using System.Numerics;
-
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The values of the text properties, from <see cref="SvgPropertyId.FontFamily"/> to
-/// <see cref="SvgPropertyId.GlyphOrientationHorizontal"/>. The same type holds specified values, in
+/// The values of the text properties: from <see cref="SvgPropertyId.FontFamily"/> to
+/// <see cref="SvgPropertyId.GlyphOrientationHorizontal"/>, and from <see cref="SvgPropertyId.FontFeatureSettings"/> to
+/// <see cref="SvgPropertyId.WhiteSpaceCollapse"/>. The same type holds specified values, in
 /// <see cref="SvgExtendedStyle.Text"/>, and computed values, in <see cref="SvgComputedStyle.Text"/>.
 /// </summary>
 /// <remarks>
@@ -46,14 +45,9 @@ internal sealed class SvgTextStyle
     public const float None = float.NaN;
 
     /// <summary>
-    /// The mask of the text properties.
-    /// </summary>
-    public const ulong Properties = ((1UL << ((int)SvgPropertyId.GlyphOrientationHorizontal + 1)) - 1) & ~((1UL << (int)SvgPropertyId.FontFamily) - 1);
-
-    /// <summary>
     /// The mask of the text properties that do not inherit.
     /// </summary>
-    public const ulong NonInheritedProperties =
+    private const ulong NonInheritedLowProperties =
         (1UL << (int)SvgPropertyId.TextDecorationLine)
         | (1UL << (int)SvgPropertyId.TextDecorationStyle)
         | (1UL << (int)SvgPropertyId.TextDecorationColor)
@@ -65,6 +59,18 @@ internal sealed class SvgTextStyle
     /// The cache of <see cref="GetChildStyle"/>.
     /// </summary>
     private SvgTextStyle? childStyle;
+
+    /// <summary>
+    /// Gets the mask of the text properties.
+    /// </summary>
+    public static SvgPropertySet Properties { get; } =
+        SvgPropertySet.Range(SvgPropertyId.FontFamily, SvgPropertyId.GlyphOrientationHorizontal)
+        | SvgPropertySet.Range(SvgPropertyId.FontFeatureSettings, SvgPropertyId.WhiteSpaceCollapse);
+
+    /// <summary>
+    /// Gets the mask of the text properties that do not inherit. Every text property from 64 on inherits.
+    /// </summary>
+    public static SvgPropertySet NonInheritedProperties { get; } = new(NonInheritedLowProperties, 0);
 
     /// <summary>
     /// Gets the style with the initial value of every text property. It is shared and never changes.
@@ -182,9 +188,49 @@ internal sealed class SvgTextStyle
     public SvgUnicodeBidi UnicodeBidi { get; set; }
 
     /// <summary>
-    /// Gets or sets <c>white-space</c>.
+    /// Gets or sets <c>white-space</c> as the text layout reads it today: the six keywords of CSS Text Level 3. The
+    /// shorthand forms of CSS Text Level 4, such as <c>preserve nowrap</c>, leave it unspecified and set only
+    /// <see cref="WhiteSpaceCollapse"/>.
     /// </summary>
     public SvgWhiteSpace WhiteSpace { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>white-space-collapse</c>, which both <c>white-space-collapse</c> and the <c>white-space</c>
+    /// shorthand set, so it holds the collapse mode of whichever declaration won the cascade.
+    /// </summary>
+    public SvgWhiteSpaceCollapse WhiteSpaceCollapse { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>font-feature-settings</c>: the entries in order, later entries for the same tag winning. Empty, the
+    /// initial value, means <c>normal</c>.
+    /// </summary>
+    public SvgFontFeatureSetting[] FontFeatureSettings { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets <c>font-variant-ligatures</c>.
+    /// </summary>
+    public SvgFontVariantLigatures FontVariantLigatures { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>font-variant-caps</c>. The <c>font-variant</c> shorthand sets it as well as <see cref="FontVariant"/>,
+    /// which the text layout reads today; <c>font-variant-caps</c> sets only this value.
+    /// </summary>
+    public SvgFontVariant FontVariantCaps { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>font-variant-numeric</c>.
+    /// </summary>
+    public SvgFontVariantNumeric FontVariantNumeric { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>font-variant-east-asian</c>.
+    /// </summary>
+    public SvgFontVariantEastAsian FontVariantEastAsian { get; set; }
+
+    /// <summary>
+    /// Gets or sets <c>font-variant-position</c>.
+    /// </summary>
+    public SvgFontVariantPosition FontVariantPosition { get; set; }
 
     /// <summary>
     /// Gets or sets <c>text-rendering</c>.
@@ -225,7 +271,7 @@ internal sealed class SvgTextStyle
     /// </summary>
     /// <param name="property">The property.</param>
     /// <returns><see langword="true"/> if the value of the property lives in this type; otherwise, <see langword="false"/>.</returns>
-    public static bool IsTextProperty(SvgPropertyId property) => (Properties & (1UL << (int)property)) != 0;
+    public static bool IsTextProperty(SvgPropertyId property) => Properties.Contains(property);
 
     /// <summary>
     /// Returns a copy that the caller may change before it shares it.
@@ -270,7 +316,7 @@ internal sealed class SvgTextStyle
     /// <param name="source">The values of higher precedence.</param>
     /// <param name="properties">The mask of the text properties that <paramref name="source"/> specifies.</param>
     /// <returns>The merged style.</returns>
-    public static SvgTextStyle Merge(SvgTextStyle? target, SvgTextStyle source, ulong properties)
+    public static SvgTextStyle Merge(SvgTextStyle? target, SvgTextStyle source, SvgPropertySet properties)
     {
         SvgTextStyle result = target is null ? new SvgTextStyle() : target.Clone();
         result.CopyProperties(properties, source);
@@ -282,14 +328,12 @@ internal sealed class SvgTextStyle
     /// </summary>
     /// <param name="properties">The mask; bits of other properties are ignored.</param>
     /// <param name="source">The style to copy from.</param>
-    public void CopyProperties(ulong properties, SvgTextStyle source)
+    public void CopyProperties(SvgPropertySet properties, SvgTextStyle source)
     {
-        ulong bits = properties & Properties;
-        while (bits != 0)
+        SvgPropertySet bits = properties & Properties;
+        while (!bits.IsEmpty)
         {
-            SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
-            bits &= bits - 1;
-            this.CopyProperty(property, source);
+            this.CopyProperty(SvgPropertySet.TakeFirst(ref bits), source);
         }
     }
 
@@ -374,6 +418,27 @@ internal sealed class SvgTextStyle
                 break;
             case SvgPropertyId.GlyphOrientationHorizontal:
                 this.GlyphOrientationHorizontal = source.GlyphOrientationHorizontal;
+                break;
+            case SvgPropertyId.FontFeatureSettings:
+                this.FontFeatureSettings = source.FontFeatureSettings;
+                break;
+            case SvgPropertyId.FontVariantLigatures:
+                this.FontVariantLigatures = source.FontVariantLigatures;
+                break;
+            case SvgPropertyId.FontVariantCaps:
+                this.FontVariantCaps = source.FontVariantCaps;
+                break;
+            case SvgPropertyId.FontVariantNumeric:
+                this.FontVariantNumeric = source.FontVariantNumeric;
+                break;
+            case SvgPropertyId.FontVariantEastAsian:
+                this.FontVariantEastAsian = source.FontVariantEastAsian;
+                break;
+            case SvgPropertyId.FontVariantPosition:
+                this.FontVariantPosition = source.FontVariantPosition;
+                break;
+            case SvgPropertyId.WhiteSpaceCollapse:
+                this.WhiteSpaceCollapse = source.WhiteSpaceCollapse;
                 break;
         }
     }

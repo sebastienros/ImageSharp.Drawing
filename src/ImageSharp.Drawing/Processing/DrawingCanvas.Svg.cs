@@ -20,6 +20,10 @@ public abstract partial class DrawingCanvas
     /// <param name="document">The document to draw.</param>
     /// <param name="origin">The top left corner of the viewport, in local canvas coordinates.</param>
     /// <exception cref="ArgumentNullException"><paramref name="document"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidImageContentException">
+    /// Drawing the document needs more layer pixels at the same time than <see cref="SvgLimits.MaxLayerPixels"/> of its
+    /// load options allows. The canvas is not changed.
+    /// </exception>
     public void DrawSvg(SvgDocument document, PointF origin)
     {
         Guard.NotNull(document, nameof(document));
@@ -39,6 +43,10 @@ public abstract partial class DrawingCanvas
     /// <param name="document">The document to draw.</param>
     /// <param name="destination">The destination rectangle, in local canvas coordinates.</param>
     /// <exception cref="ArgumentNullException"><paramref name="document"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidImageContentException">
+    /// Drawing the document at this size needs more layer pixels at the same time than
+    /// <see cref="SvgLimits.MaxLayerPixels"/> of its load options allows. The canvas is not changed.
+    /// </exception>
     public void DrawSvg(SvgDocument document, RectangleF destination)
     {
         Guard.NotNull(document, nameof(document));

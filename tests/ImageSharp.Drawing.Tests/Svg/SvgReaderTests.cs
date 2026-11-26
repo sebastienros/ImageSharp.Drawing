@@ -687,7 +687,7 @@ public class SvgReaderTests
         Assert.Equal(SvgImageRendering.Pixelated, style.ImageRendering);
         Assert.Equal(SvgShapeRendering.CrispEdges, style.ShapeRendering);
         Assert.Equal(SvgColorInterpolation.LinearRgb, style.ColorInterpolation);
-        Assert.Equal(new SvgLength(50, SvgLengthUnit.Percent), style.TransformOriginX);
+        Assert.Equal(new SvgLength(50, SvgLengthUnit.Percent), style.Geometry!.TransformOriginX);
         Assert.Equal(SvgMaskType.Alpha, tree.GetStyle(Index(tree, "k")).Extended!.MaskType);
     }
 

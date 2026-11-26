@@ -361,6 +361,7 @@ internal sealed partial class SvgResolver
             MaxImagePixels = Math.Max(1, this.MaxImagePixels - this.decodedImagePixels),
             MaxPatternTilePixels = limits.MaxPatternTilePixels,
             MaxFilterPixels = limits.MaxFilterPixels,
+            MaxLayerPixels = limits.MaxLayerPixels,
             MaxTextCharacters = (int)Math.Max(1, limits.MaxTextCharacters - this.TextCharacters),
         };
 
