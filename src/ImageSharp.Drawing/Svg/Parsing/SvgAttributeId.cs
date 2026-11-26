@@ -281,5 +281,240 @@ internal enum SvgAttributeId : byte
     /// <summary>
     /// <c>path</c>, path data, on <c>textPath</c> (SVG 2).
     /// </summary>
-    PathData
+    PathData,
+
+    /// <summary>
+    /// <c>filterUnits</c>, on <c>filter</c>.
+    /// </summary>
+    FilterUnits,
+
+    /// <summary>
+    /// <c>primitiveUnits</c>, on <c>filter</c>.
+    /// </summary>
+    PrimitiveUnits,
+
+    /// <summary>
+    /// <c>filterRes</c>, on <c>filter</c>. Removed by Filter Effects; it is recognized and has no effect.
+    /// </summary>
+    FilterRes,
+
+    /// <summary>
+    /// <c>in</c>, the first input of a filter primitive, also on <c>feMergeNode</c>.
+    /// </summary>
+    In,
+
+    /// <summary>
+    /// <c>in2</c>, the second input of a filter primitive.
+    /// </summary>
+    In2,
+
+    /// <summary>
+    /// <c>result</c>, the name of the result of a filter primitive.
+    /// </summary>
+    Result,
+
+    /// <summary>
+    /// <c>mode</c>, on <c>feBlend</c>.
+    /// </summary>
+    Mode,
+
+    /// <summary>
+    /// <c>values</c>, on <c>feColorMatrix</c>.
+    /// </summary>
+    Values,
+
+    /// <summary>
+    /// <c>operator</c>, on <c>feComposite</c> and <c>feMorphology</c>.
+    /// </summary>
+    Operator,
+
+    /// <summary>
+    /// <c>k1</c>, on <c>feComposite</c>.
+    /// </summary>
+    K1,
+
+    /// <summary>
+    /// <c>k2</c>, on <c>feComposite</c>.
+    /// </summary>
+    K2,
+
+    /// <summary>
+    /// <c>k3</c>, on <c>feComposite</c>.
+    /// </summary>
+    K3,
+
+    /// <summary>
+    /// <c>k4</c>, on <c>feComposite</c>.
+    /// </summary>
+    K4,
+
+    /// <summary>
+    /// <c>stdDeviation</c>, on <c>feGaussianBlur</c> and <c>feDropShadow</c>.
+    /// </summary>
+    StdDeviation,
+
+    /// <summary>
+    /// <c>edgeMode</c>, on <c>feGaussianBlur</c> and <c>feConvolveMatrix</c>.
+    /// </summary>
+    EdgeMode,
+
+    /// <summary>
+    /// <c>tableValues</c>, on the transfer functions.
+    /// </summary>
+    TableValues,
+
+    /// <summary>
+    /// <c>slope</c>, on the transfer functions.
+    /// </summary>
+    Slope,
+
+    /// <summary>
+    /// <c>intercept</c>, on the transfer functions.
+    /// </summary>
+    Intercept,
+
+    /// <summary>
+    /// <c>amplitude</c>, on the transfer functions.
+    /// </summary>
+    Amplitude,
+
+    /// <summary>
+    /// <c>exponent</c>, on the transfer functions.
+    /// </summary>
+    Exponent,
+
+    /// <summary>
+    /// <c>order</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    Order,
+
+    /// <summary>
+    /// <c>kernelMatrix</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    KernelMatrix,
+
+    /// <summary>
+    /// <c>divisor</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    Divisor,
+
+    /// <summary>
+    /// <c>bias</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    Bias,
+
+    /// <summary>
+    /// <c>targetX</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    TargetX,
+
+    /// <summary>
+    /// <c>targetY</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    TargetY,
+
+    /// <summary>
+    /// <c>kernelUnitLength</c>, on <c>feConvolveMatrix</c> and the lighting primitives.
+    /// </summary>
+    KernelUnitLength,
+
+    /// <summary>
+    /// <c>preserveAlpha</c>, on <c>feConvolveMatrix</c>.
+    /// </summary>
+    PreserveAlpha,
+
+    /// <summary>
+    /// <c>surfaceScale</c>, on the lighting primitives.
+    /// </summary>
+    SurfaceScale,
+
+    /// <summary>
+    /// <c>diffuseConstant</c>, on <c>feDiffuseLighting</c>.
+    /// </summary>
+    DiffuseConstant,
+
+    /// <summary>
+    /// <c>specularConstant</c>, on <c>feSpecularLighting</c>.
+    /// </summary>
+    SpecularConstant,
+
+    /// <summary>
+    /// <c>specularExponent</c>, on <c>feSpecularLighting</c> and <c>feSpotLight</c>.
+    /// </summary>
+    SpecularExponent,
+
+    /// <summary>
+    /// <c>limitingConeAngle</c>, on <c>feSpotLight</c>.
+    /// </summary>
+    LimitingConeAngle,
+
+    /// <summary>
+    /// <c>azimuth</c>, on <c>feDistantLight</c>.
+    /// </summary>
+    Azimuth,
+
+    /// <summary>
+    /// <c>elevation</c>, on <c>feDistantLight</c>.
+    /// </summary>
+    Elevation,
+
+    /// <summary>
+    /// <c>z</c>, on <c>fePointLight</c> and <c>feSpotLight</c>.
+    /// </summary>
+    Z,
+
+    /// <summary>
+    /// <c>pointsAtX</c>, on <c>feSpotLight</c>.
+    /// </summary>
+    PointsAtX,
+
+    /// <summary>
+    /// <c>pointsAtY</c>, on <c>feSpotLight</c>.
+    /// </summary>
+    PointsAtY,
+
+    /// <summary>
+    /// <c>pointsAtZ</c>, on <c>feSpotLight</c>.
+    /// </summary>
+    PointsAtZ,
+
+    /// <summary>
+    /// <c>scale</c>, on <c>feDisplacementMap</c>.
+    /// </summary>
+    Scale,
+
+    /// <summary>
+    /// <c>xChannelSelector</c>, on <c>feDisplacementMap</c>.
+    /// </summary>
+    XChannelSelector,
+
+    /// <summary>
+    /// <c>yChannelSelector</c>, on <c>feDisplacementMap</c>.
+    /// </summary>
+    YChannelSelector,
+
+    /// <summary>
+    /// <c>baseFrequency</c>, on <c>feTurbulence</c>.
+    /// </summary>
+    BaseFrequency,
+
+    /// <summary>
+    /// <c>numOctaves</c>, on <c>feTurbulence</c>.
+    /// </summary>
+    NumOctaves,
+
+    /// <summary>
+    /// <c>seed</c>, on <c>feTurbulence</c>.
+    /// </summary>
+    Seed,
+
+    /// <summary>
+    /// <c>stitchTiles</c>, on <c>feTurbulence</c>.
+    /// </summary>
+    StitchTiles,
+
+    /// <summary>
+    /// <c>radius</c>, on <c>feMorphology</c>.
+    /// </summary>
+    Radius
 }

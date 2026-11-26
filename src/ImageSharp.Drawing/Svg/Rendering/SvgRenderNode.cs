@@ -39,6 +39,17 @@ internal struct SvgRenderNode
     public int End { readonly get; set; }
 
     /// <summary>
+    /// Gets or sets, for a <see cref="SvgRenderNodeKind.Filter"/> node, the index of its filter in
+    /// <see cref="SvgDocument.Filters"/>. A filter node is not a begin node, so the index shares the storage of
+    /// <see cref="End"/> and the node keeps its size.
+    /// </summary>
+    public int FilterIndex
+    {
+        readonly get => this.End;
+        set => this.End = value;
+    }
+
+    /// <summary>
     /// Gets or sets the path of a draw node, in the user space of <see cref="TransformIndex"/>.
     /// </summary>
     public IPath? Path { readonly get; set; }
@@ -60,7 +71,8 @@ internal struct SvgRenderNode
     public IPath[]? Clip { readonly get; set; }
 
     /// <summary>
-    /// Gets or sets the opacity that a layer node composites its group with.
+    /// Gets or sets the opacity that a layer node composites its group with, or that multiplies the result of a filter
+    /// node.
     /// </summary>
     public float Opacity { readonly get; set; }
 

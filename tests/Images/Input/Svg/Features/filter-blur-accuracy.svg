@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
+  <!-- Each column blurs a hard edge (top) and a one-pixel point (bottom) with one standard deviation: 0.5, 1, 1.5, 2, 3,
+       5, 8, and 12 pixels. The regions are large enough not to clip the blur. -->
+  <defs>
+    <filter id="s05" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="0.5"/></filter>
+    <filter id="s1" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="1"/></filter>
+    <filter id="s15" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="1.5"/></filter>
+    <filter id="s2" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="s3" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="s5" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="s8" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="s12" filterUnits="userSpaceOnUse" x="0" y="0" width="400" height="200"><feGaussianBlur stdDeviation="12"/></filter>
+  </defs>
+  <g fill="#000" color-interpolation-filters="sRGB">
+    <rect x="10" y="20" width="20" height="60" filter="url(#s05)"/>
+    <rect x="60" y="20" width="20" height="60" filter="url(#s1)"/>
+    <rect x="110" y="20" width="20" height="60" filter="url(#s15)"/>
+    <rect x="160" y="20" width="20" height="60" filter="url(#s2)"/>
+    <rect x="210" y="20" width="20" height="60" filter="url(#s3)"/>
+    <rect x="260" y="20" width="20" height="60" filter="url(#s5)"/>
+    <rect x="310" y="20" width="20" height="60" filter="url(#s8)"/>
+    <rect x="360" y="20" width="20" height="60" filter="url(#s12)"/>
+    <rect x="25" y="150" width="1" height="1" filter="url(#s05)"/>
+    <rect x="75" y="150" width="1" height="1" filter="url(#s1)"/>
+    <rect x="125" y="150" width="1" height="1" filter="url(#s15)"/>
+    <rect x="175" y="150" width="1" height="1" filter="url(#s2)"/>
+    <rect x="225" y="150" width="1" height="1" filter="url(#s3)"/>
+    <rect x="275" y="150" width="1" height="1" filter="url(#s5)"/>
+    <rect x="325" y="150" width="1" height="1" filter="url(#s8)"/>
+    <rect x="375" y="150" width="1" height="1" filter="url(#s12)"/>
+  </g>
+</svg>

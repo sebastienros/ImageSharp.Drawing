@@ -848,8 +848,14 @@ internal sealed class SvgReader
                                 href = value;
                                 break;
                             case SvgAttributeId.Type:
-                                // A style element applies only for an absent or empty type, or text/css.
+                                // A style element applies only for an absent or empty type, or text/css. Filter
+                                // primitives and transfer functions have a type attribute of their own.
                                 isCss = value.Length == 0 || value.Equals("text/css", StringComparison.OrdinalIgnoreCase);
+                                if (SvgFilterTables.IsPrimitiveRecord(kind))
+                                {
+                                    this.tables.SetGeometry(kind, element.DataIndex, attribute, value);
+                                }
+
                                 break;
                             case SvgAttributeId.SystemLanguage:
                             case SvgAttributeId.RequiredExtensions:
@@ -1128,6 +1134,11 @@ internal sealed class SvgReader
         public SvgTextTables? Text { get; private set; }
 
         /// <summary>
+        /// Gets the tables of filter elements, or <see langword="null"/> while the document has none.
+        /// </summary>
+        public SvgFilterTables? Filters { get; private set; }
+
+        /// <summary>
         /// Gets the conditional processing attributes by element index, or <see langword="null"/> when no element has
         /// one. Few documents use them, so the map is created on first use.
         /// </summary>
@@ -1192,6 +1203,9 @@ internal sealed class SvgReader
                     return AddDefault(this.GetOrCreateText().TextAttributes);
                 case SvgElementKind.TextPath:
                     return AddDefault(this.GetOrCreateText().TextPaths);
+                case SvgElementKind.Filter:
+                case >= SvgElementKind.FeBlend:
+                    return (this.Filters ??= new SvgFilterTables()).Add(kind);
                 default:
                     return -1;
             }
@@ -1235,6 +1249,10 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.Tref:
                     this.Text!.TrefReferences[dataIndex] = id;
+                    break;
+                case SvgElementKind.Filter:
+                case SvgElementKind.FeImage:
+                    this.Filters!.SetHref(kind, dataIndex, value);
                     break;
             }
         }
@@ -1353,6 +1371,10 @@ internal sealed class SvgReader
                     break;
                 case SvgElementKind.TextPath:
                     SetTextPath(ref CollectionsMarshal.AsSpan(this.Text!.TextPaths)[dataIndex], attribute, value);
+                    break;
+                case SvgElementKind.Filter:
+                case >= SvgElementKind.FeBlend:
+                    this.Filters!.Set(kind, dataIndex, attribute, value);
                     break;
             }
         }

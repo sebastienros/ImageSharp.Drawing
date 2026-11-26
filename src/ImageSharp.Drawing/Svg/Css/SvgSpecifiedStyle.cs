@@ -56,6 +56,7 @@ internal struct SvgSpecifiedStyle
         | (1UL << (int)SvgPropertyId.ImageRendering)
         | (1UL << (int)SvgPropertyId.ShapeRendering)
         | (1UL << (int)SvgPropertyId.ColorInterpolation)
+        | (1UL << (int)SvgPropertyId.ColorInterpolationFilters)
         | (SvgTextStyle.Properties & ~SvgTextStyle.NonInheritedProperties);
 
     /// <summary>

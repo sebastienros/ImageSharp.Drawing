@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <!-- A is a blue square at the top left of the region, B an orange square at the bottom right, overlapping. -->
+    <filter id="over" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="over"/>
+    </filter>
+    <filter id="in" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="in"/>
+    </filter>
+    <filter id="out" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="out"/>
+    </filter>
+    <filter id="atop" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="atop"/>
+    </filter>
+    <filter id="xor" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="xor"/>
+    </filter>
+    <filter id="lighter" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="lighter"/>
+    </filter>
+    <filter id="arithmetic" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#ff7f0e" flood-opacity="0.8" x="20%" y="20%" width="80%" height="80%" result="b"/>
+      <feFlood flood-color="#1f77b4" flood-opacity="0.7" x="0%" y="0%" width="70%" height="70%" result="a"/>
+      <feComposite in="a" in2="b" operator="arithmetic" k1="0.5" k2="0.5" k3="0.5" k4="0.1"/>
+    </filter>
+    <filter id="source" x="0" y="0" width="1" height="1">
+      <feFlood flood-color="#2ca02c" result="b"/>
+      <feComposite in="SourceGraphic" in2="b" operator="arithmetic" k2="1" k3="-0.5"/>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="55" height="55" filter="url(#over)"/>
+  <rect x="72" y="5" width="55" height="55" filter="url(#in)"/>
+  <rect x="140" y="5" width="55" height="55" filter="url(#out)"/>
+  <rect x="5" y="72" width="55" height="55" filter="url(#atop)"/>
+  <rect x="72" y="72" width="55" height="55" filter="url(#xor)"/>
+  <rect x="140" y="72" width="55" height="55" filter="url(#lighter)"/>
+  <rect x="5" y="140" width="55" height="55" filter="url(#arithmetic)"/>
+  <circle cx="100" cy="167" r="25" fill="#d62728" filter="url(#source)"/>
+</svg>

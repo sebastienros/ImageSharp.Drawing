@@ -22,7 +22,7 @@ internal static partial class SvgEmitter
     /// </summary>
     /// <param name="mode">The blend mode. It is not <see cref="SvgBlendMode.Normal"/>.</param>
     /// <returns>The color blending mode.</returns>
-    private static PixelColorBlendingMode ToColorBlendingMode(SvgBlendMode mode)
+    internal static PixelColorBlendingMode ToColorBlendingMode(SvgBlendMode mode)
         => mode switch
         {
             SvgBlendMode.Multiply => PixelColorBlendingMode.Multiply,

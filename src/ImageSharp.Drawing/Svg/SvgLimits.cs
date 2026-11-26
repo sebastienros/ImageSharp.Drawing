@@ -16,6 +16,7 @@ public sealed class SvgLimits
     private long maxImagePixels = 64L * 1024 * 1024;
     private int maxPatternTilePixels = 4096 * 4096;
     private int maxTextCharacters = 1_000_000;
+    private int maxFilterPixels = 4096 * 4096;
 
     /// <summary>
     /// Gets or sets the largest number of elements the document can contain. The default is 1,000,000.
@@ -121,6 +122,23 @@ public sealed class SvgLimits
         {
             Guard.MustBeGreaterThan(value, 0, nameof(this.MaxTextCharacters));
             this.maxTextCharacters = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the largest number of pixels of one intermediate image of a filter. A filter whose images would be
+    /// larger runs at a lower resolution and its result is drawn scaled up. The default is 16,777,216 (4096 × 4096). One
+    /// image takes 4 bytes per pixel, and a filter keeps a few images alive at a time: the element itself, the results
+    /// that later filter primitives still read, and the result being computed.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not greater than zero.</exception>
+    public int MaxFilterPixels
+    {
+        get => this.maxFilterPixels;
+        set
+        {
+            Guard.MustBeGreaterThan(value, 0, nameof(this.MaxFilterPixels));
+            this.maxFilterPixels = value;
         }
     }
 }

@@ -153,7 +153,8 @@ internal enum SvgElementKind : byte
     TextPath,
 
     /// <summary>
-    /// <c>filter</c>. Recognized for later phases.
+    /// <c>filter</c>. The reader parses its attributes and those of the filter primitives from <see cref="FeBlend"/> on;
+    /// it renders through the <c>filter</c> property.
     /// </summary>
     Filter,
 
@@ -181,5 +182,130 @@ internal enum SvgElementKind : byte
     /// <c>tref</c> (SVG 1.1, removed in SVG 2). A text content child that references the character data of another
     /// element.
     /// </summary>
-    Tref
+    Tref,
+
+    /// <summary>
+    /// <c>feBlend</c>, a filter primitive.
+    /// </summary>
+    FeBlend,
+
+    /// <summary>
+    /// <c>feColorMatrix</c>, a filter primitive.
+    /// </summary>
+    FeColorMatrix,
+
+    /// <summary>
+    /// <c>feComponentTransfer</c>, a filter primitive.
+    /// </summary>
+    FeComponentTransfer,
+
+    /// <summary>
+    /// <c>feComposite</c>, a filter primitive.
+    /// </summary>
+    FeComposite,
+
+    /// <summary>
+    /// <c>feConvolveMatrix</c>, a filter primitive.
+    /// </summary>
+    FeConvolveMatrix,
+
+    /// <summary>
+    /// <c>feDiffuseLighting</c>, a filter primitive.
+    /// </summary>
+    FeDiffuseLighting,
+
+    /// <summary>
+    /// <c>feDisplacementMap</c>, a filter primitive.
+    /// </summary>
+    FeDisplacementMap,
+
+    /// <summary>
+    /// <c>feDropShadow</c>, a filter primitive.
+    /// </summary>
+    FeDropShadow,
+
+    /// <summary>
+    /// <c>feFlood</c>, a filter primitive.
+    /// </summary>
+    FeFlood,
+
+    /// <summary>
+    /// <c>feGaussianBlur</c>, a filter primitive.
+    /// </summary>
+    FeGaussianBlur,
+
+    /// <summary>
+    /// <c>feImage</c>, a filter primitive.
+    /// </summary>
+    FeImage,
+
+    /// <summary>
+    /// <c>feMerge</c>, a filter primitive.
+    /// </summary>
+    FeMerge,
+
+    /// <summary>
+    /// <c>feMorphology</c>, a filter primitive.
+    /// </summary>
+    FeMorphology,
+
+    /// <summary>
+    /// <c>feOffset</c>, a filter primitive.
+    /// </summary>
+    FeOffset,
+
+    /// <summary>
+    /// <c>feSpecularLighting</c>, a filter primitive.
+    /// </summary>
+    FeSpecularLighting,
+
+    /// <summary>
+    /// <c>feTile</c>, a filter primitive.
+    /// </summary>
+    FeTile,
+
+    /// <summary>
+    /// <c>feTurbulence</c>, a filter primitive.
+    /// </summary>
+    FeTurbulence,
+
+    /// <summary>
+    /// <c>feMergeNode</c>, a child of <c>feMerge</c>.
+    /// </summary>
+    FeMergeNode,
+
+    /// <summary>
+    /// <c>feFuncR</c>, a child of <c>feComponentTransfer</c>.
+    /// </summary>
+    FeFuncR,
+
+    /// <summary>
+    /// <c>feFuncG</c>, a child of <c>feComponentTransfer</c>.
+    /// </summary>
+    FeFuncG,
+
+    /// <summary>
+    /// <c>feFuncB</c>, a child of <c>feComponentTransfer</c>.
+    /// </summary>
+    FeFuncB,
+
+    /// <summary>
+    /// <c>feFuncA</c>, a child of <c>feComponentTransfer</c>.
+    /// </summary>
+    FeFuncA,
+
+    /// <summary>
+    /// <c>feDistantLight</c>, a light source of the lighting primitives.
+    /// </summary>
+    FeDistantLight,
+
+    /// <summary>
+    /// <c>fePointLight</c>, a light source of the lighting primitives.
+    /// </summary>
+    FePointLight,
+
+    /// <summary>
+    /// <c>feSpotLight</c>, a light source of the lighting primitives.
+    /// </summary>
+    FeSpotLight
 }

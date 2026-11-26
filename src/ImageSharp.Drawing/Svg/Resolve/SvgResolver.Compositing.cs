@@ -208,8 +208,9 @@ internal sealed partial class SvgResolver
         bool blends = false;
         for (int i = contentStart; i < nodes.Length; i++)
         {
+            // A filter node paints its filter region, which can be larger than the geometry of the element.
             ref SvgRenderNode node = ref nodes[i];
-            if (node.Kind == SvgRenderNodeKind.Draw)
+            if (node.Kind is SvgRenderNodeKind.Draw or SvgRenderNodeKind.Filter)
             {
                 bounds = found ? RectangleF.Union(bounds, node.Bounds) : node.Bounds;
                 found = true;
@@ -337,7 +338,7 @@ internal sealed partial class SvgResolver
         bool found = false;
         for (int i = start; i < nodes.Length; i++)
         {
-            if (nodes[i].Kind == SvgRenderNodeKind.Draw)
+            if (nodes[i].Kind is SvgRenderNodeKind.Draw or SvgRenderNodeKind.Filter)
             {
                 bounds = found ? RectangleF.Union(bounds, nodes[i].Bounds) : nodes[i].Bounds;
                 found = true;
