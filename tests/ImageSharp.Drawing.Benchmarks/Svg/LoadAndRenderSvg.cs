@@ -34,6 +34,11 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// ImageSharp.Drawing loads on one thread and rasterizes on every processor; <see cref="ImageSharp_SingleThreaded"/>
 /// uses a configuration with <see cref="Configuration.MaxDegreeOfParallelism"/> 1.
 /// </para>
+/// <para>
+/// Svg.Skia loads a new picture in every operation, so no draw reuses a filter result that Skia cached for an earlier
+/// picture. <see cref="Setup"/> runs the Svg.Skia and ImageSharp.Drawing methods until the runtime has compiled their
+/// code at the final tier (<see cref="SvgBenchmarkWarmup"/>); the loading code of Svg.Skia is managed code too.
+/// </para>
 /// </remarks>
 [MemoryDiagnoser]
 public class LoadAndRenderSvg
@@ -81,6 +86,9 @@ public class LoadAndRenderSvg
 
         SvgImageSharpRenderer.WarmThreadPool();
         this.singleThreadedConfiguration = SvgImageSharpRenderer.CreateSingleThreadedConfiguration();
+
+        // The libvips methods are native code and take up to a minute per operation, so they are not warmed up here.
+        SvgBenchmarkWarmup.Run(this.SvgSkia, this.ImageSharp, this.ImageSharp_SingleThreaded);
     }
 
     /// <summary>

@@ -77,6 +77,16 @@ public class Program
             return;
         }
 
+        if (args.Length > 0 && args[0] == "--curve")
+        {
+            // Usage: --curve <corpus entry or file> <longEdge> [draws]
+            string entry = args.Length > 1 ? args[1] : "Tiger";
+            int longEdge = args.Length > 2 && int.TryParse(args[2], out int parsedLongEdge) ? parsedLongEdge : 1000;
+            int draws = args.Length > 3 && int.TryParse(args[3], out int parsedDraws) ? parsedDraws : 100;
+            Svg.SvgInvocationCurve.Run(entry, longEdge, draws);
+            return;
+        }
+
         if (args.Length > 0 && args[0] == "--profile")
         {
             string target = args.Length > 1 ? args[1] : string.Empty;

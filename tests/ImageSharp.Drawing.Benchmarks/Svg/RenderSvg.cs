@@ -26,6 +26,21 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// NetVips does not take part: libvips cannot render a loaded document again without loading it.
 /// </para>
 /// <para>
+/// Skia keeps the results of image filters between draws of the same picture. A replay of a document with filters
+/// then costs a fraction of its first draw (the Filter Chain document at 1000 pixels: 2.3 ms against 57 ms; see
+/// <see cref="SvgInvocationCurve"/>), and the output is the same. So the Svg.Skia methods come in two forms, each with
+/// its ImageSharp.Drawing counterpart. <see cref="SvgSkia"/> draws with the caches as the earlier draws left them: it is
+/// the repeated draw of one document, and its counterpart is <see cref="ImageSharpRetainedScene"/>, whose scene also
+/// holds the filter results. <see cref="SvgSkia_ColdCaches"/> empties the Skia caches before every draw: it is the first
+/// draw of a loaded document, and its counterpart is <see cref="ImageSharp"/>, which computes every filter again. For
+/// documents without filters the two Svg.Skia methods cost the same.
+/// </para>
+/// <para>
+/// <see cref="Setup"/> runs every method until the runtime has compiled its code at the final tier
+/// (<see cref="SvgBenchmarkWarmup"/>), so that a job with few warmup iterations does not measure code that is still
+/// being optimized.
+/// </para>
+/// <para>
 /// ImageSharp.Drawing draws into one <see cref="Image{TPixel}"/> target. Both targets are allocated in
 /// <see cref="Setup"/>, outside the measured time. <see cref="ImageSharp"/> opens a new canvas per operation, records
 /// the clears and the <see cref="DrawingCanvas.DrawSvg(SvgDocument, RectangleF)"/> commands, and renders them when the
@@ -126,6 +141,13 @@ public class RenderSvg
         using DrawingCanvas canvas = this.image.Frames.RootFrame.CreateCanvas(this.image.Configuration, new DrawingOptions());
         this.DrawImageSharp(canvas);
         this.imageSharpRetainedScene = canvas.CreateScene();
+
+        SvgBenchmarkWarmup.Run(
+            this.SvgSkia,
+            this.ImageSharp,
+            this.ImageSharp_SingleThreaded,
+            this.ImageSharpRetainedScene,
+            this.ImageSharpRetainedScene_SingleThreaded);
     }
 
     /// <summary>
@@ -146,7 +168,7 @@ public class RenderSvg
     }
 
     /// <summary>
-    /// Draws every document of the entry with Svg.Skia.
+    /// Draws every document of the entry with Svg.Skia, with the Skia caches as the earlier draws left them.
     /// </summary>
     [Benchmark(Baseline = true)]
     public void SvgSkia()
@@ -162,6 +184,21 @@ public class RenderSvg
         }
 
         canvas.Flush();
+    }
+
+    /// <summary>
+    /// Draws every document of the entry with Svg.Skia after emptying the Skia caches, so that no draw reuses a filter
+    /// result of an earlier draw.
+    /// </summary>
+    /// <remarks>
+    /// The purge is inside the measured time. It costs less than the noise of the measurement: for documents without
+    /// filters this method and <see cref="SvgSkia"/> give the same time.
+    /// </remarks>
+    [Benchmark]
+    public void SvgSkia_ColdCaches()
+    {
+        SKGraphics.PurgeAllCaches();
+        this.SvgSkia();
     }
 
     /// <summary>
