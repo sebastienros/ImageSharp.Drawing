@@ -38,6 +38,24 @@ internal static class SvgBenchmarkCorpus
     private const string SizesVariable = "SVG_BENCHMARK_SIZES";
 
     /// <summary>
+    /// A synthetic dashboard of four charts as a charting library exports it: grid lines, axes, ticks, about 110 text
+    /// labels in Open Sans, line series of 365 points, an area, bars, point markers, and legends.
+    /// </summary>
+    private const string ChartDashboard = "Svg/Charts/chart-dashboard-synthetic.svg";
+
+    /// <summary>
+    /// A synthetic city map as map renderers export it: water and park polygons, 600 buildings, and 1,792 roads, each
+    /// drawn as a casing stroke and a fill stroke with round caps and joins, plus dashed railways (about 3,600 strokes).
+    /// </summary>
+    private const string StreetMap = "Svg/Maps/street-map-synthetic.svg";
+
+    /// <summary>
+    /// A synthetic icon sprite: the 40 Feather and Bootstrap icons of the corpus (MIT license) as <c>symbol</c>
+    /// elements of one document, drawn 400 times through <c>use</c> in a grid with <c>currentColor</c>.
+    /// </summary>
+    private const string IconSheet = "Svg/Icons/icon-sheet-synthetic.svg";
+
+    /// <summary>
     /// Gets the entry names, in the order that the benchmark tables show them, limited by
     /// <c>SVG_BENCHMARK_CORPUS</c> when it is set.
     /// </summary>
@@ -66,7 +84,10 @@ internal static class SvgBenchmarkCorpus
         "FilterShadows",
         "FilterBlur",
         "FilterChain",
-        "CssFeatures"
+        "CssFeatures",
+        "Chart",
+        "StreetMap",
+        "IconSheet"
     ];
 
     /// <summary>
@@ -109,6 +130,9 @@ internal static class SvgBenchmarkCorpus
         "FilterBlur" => [TestImages.Svg.FilterBlur],
         "FilterChain" => [TestImages.Svg.FilterChain],
         "CssFeatures" => [TestImages.Svg.CssFeatures],
+        "Chart" => [ChartDashboard],
+        "StreetMap" => [StreetMap],
+        "IconSheet" => [IconSheet],
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown SVG corpus entry.")
     };
 
@@ -146,4 +170,16 @@ internal static class SvgBenchmarkCorpus
 
         return documents;
     }
+
+    /// <summary>
+    /// Reads the documents of a corpus entry, or the one document of an SVG file when <paramref name="nameOrPath"/> is
+    /// not an entry name but the path of a file. The profile and peak memory runs accept files, so that a document outside
+    /// the corpus can be measured with the same code.
+    /// </summary>
+    /// <param name="nameOrPath">The entry name, or the path of an SVG file.</param>
+    /// <returns>One byte array per document.</returns>
+    public static byte[][] ReadEntryOrFile(string nameOrPath)
+        => Array.IndexOf(AllNames, nameOrPath) < 0 && File.Exists(nameOrPath)
+            ? [File.ReadAllBytes(nameOrPath)]
+            : ReadDocuments(nameOrPath);
 }
