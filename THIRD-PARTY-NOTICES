@@ -130,6 +130,29 @@ license text is available in the RichTextKit repository LICENSE file.
 
 ================================================================================
 
+W3C specifications (https://www.w3.org/TR/filter-effects-1/, https://www.w3.org/TR/SVG11/)
+License: W3C Software and Document License
+
+The feTurbulence filter primitive follows the reference code that the W3C
+specifications give for it: the random number generator, the lattice setup,
+the noise function, and the turbulence function of "Filter Effects Module
+Level 1" (section feTurbulence), with the gradient normalization of
+"Scalable Vector Graphics (SVG) 1.1 (Second Edition)" (chapter Filter
+Effects). The code was translated to C# and changed to compute four channels
+at a time.
+See also: src/ImageSharp.Drawing/Svg/Filters/SvgFeTurbulence.cs
+
+This software includes material copied from or derived from Filter Effects
+Module Level 1 (https://www.w3.org/TR/filter-effects-1/) and Scalable Vector
+Graphics (SVG) 1.1 (Second Edition) (https://www.w3.org/TR/SVG11/).
+Copyright (c) 2018 and 2011 World Wide Web Consortium.
+https://www.w3.org/copyright/software-license-2023/
+
+The full license text is available at
+https://www.w3.org/copyright/software-license-2023/.
+
+================================================================================
+
 Jint (https://github.com/sebastienros/jint)
 License: BSD-2-Clause
 
