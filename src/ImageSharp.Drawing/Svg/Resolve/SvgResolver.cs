@@ -173,10 +173,16 @@ internal sealed partial class SvgResolver
             SvgResolveContext context = new(in style, this.GetRootTransform(in style, mappedBox), mappedBox.Size, 1);
             if (this.TryBeginComposite(0, in style, ref context, out SvgCompositeScope composite))
             {
-                float opacity = context.Style.Opacity;
-                int group = this.BeginGroup(opacity);
-                this.ResolveChildren(0, in context);
-                this.EndGroup(group, opacity);
+                SvgFilterScope filter = default;
+                if (style.Filter is null || this.TryBeginFilter(0, ref context, out filter))
+                {
+                    float opacity = context.Style.Opacity;
+                    int group = this.BeginGroup(opacity);
+                    this.ResolveChildren(0, in context);
+                    this.EndGroup(group, opacity);
+                    this.EndFilter(in filter);
+                }
+
                 this.EndComposite(in composite);
             }
         }
@@ -189,7 +195,8 @@ internal sealed partial class SvgResolver
             viewBox,
             mappedBox,
             root.PreserveAspectRatio,
-            maxScopeDepth);
+            maxScopeDepth,
+            this.TakeFilters(nodes));
     }
 
     /// <summary>
@@ -328,6 +335,15 @@ internal sealed partial class SvgResolver
             return;
         }
 
+        // The filter applies before the clip, the mask, and the opacity, so it sits inside the composite and its content
+        // resolves in the user space of the element.
+        SvgFilterScope filter = default;
+        if (style.Filter is not null && !this.TryBeginFilter(index, ref context, out filter))
+        {
+            this.EndComposite(in composite);
+            return;
+        }
+
         switch (kind)
         {
             case SvgElementKind.G:
@@ -367,6 +383,7 @@ internal sealed partial class SvgResolver
                 break;
         }
 
+        this.EndFilter(in filter);
         this.EndComposite(in composite);
     }
 
@@ -1296,8 +1313,9 @@ internal sealed partial class SvgResolver
 
         for (int i = first; i < end; i++)
         {
+            // A filter node paints its filter region, so it counts as a draw with those bounds.
             ref SvgRenderNode node = ref nodes[i];
-            if (node.Kind == SvgRenderNodeKind.Draw)
+            if (node.Kind is SvgRenderNodeKind.Draw or SvgRenderNodeKind.Filter)
             {
                 bounds = drawCount == 0 ? node.Bounds : RectangleF.Union(bounds, node.Bounds);
                 drawCount++;
@@ -1307,6 +1325,14 @@ internal sealed partial class SvgResolver
             {
                 hasLayer = true;
             }
+        }
+
+        // A filter result is one image, so a group opacity multiplies it as it multiplies the paint of one path.
+        if (!hasLayer && drawCount == 1 && nodes[drawIndex].Kind == SvgRenderNodeKind.Filter)
+        {
+            nodes[drawIndex].Opacity *= opacity;
+            this.hasEmptyNodes = true;
+            return;
         }
 
         if (!hasLayer && drawCount == 1 && (nodes[drawIndex].Fill is null || nodes[drawIndex].Stroke is null))

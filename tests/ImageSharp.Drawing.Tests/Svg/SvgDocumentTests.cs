@@ -335,6 +335,7 @@ public class SvgDocumentTests
         Assert.Null(options.ResourceBaseDirectory);
         Assert.Equal(64L * 1024 * 1024, limits.MaxImagePixels);
         Assert.Equal(4096 * 4096, limits.MaxPatternTilePixels);
+        Assert.Equal(4096 * 4096, limits.MaxFilterPixels);
     }
 
     [Fact]
@@ -350,6 +351,7 @@ public class SvgDocumentTests
         Assert.Throws<ArgumentException>(() => options.ResourceBaseDirectory = "  ");
         Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxImagePixels = 0);
         Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxPatternTilePixels = -1);
+        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxFilterPixels = 0);
 
         // A failed set keeps the previous value.
         Assert.Equal<string>(["en"], options.Languages);

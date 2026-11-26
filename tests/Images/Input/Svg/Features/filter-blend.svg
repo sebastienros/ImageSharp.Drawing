@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Each tile blends a gradient with partial alpha (in) over a translucent blue flood (in2), one mode per tile. -->
+  <style>
+    rect { fill: url(#source); }
+  </style>
+  <defs>
+    <linearGradient id="source" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff2000" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#20ff40"/>
+      <stop offset="1" stop-color="#8000ff" stop-opacity="0.4"/>
+    </linearGradient>
+    <filter id="f-normal" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="normal"/></filter>
+    <filter id="f-multiply" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="multiply"/></filter>
+    <filter id="f-screen" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="screen"/></filter>
+    <filter id="f-overlay" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="overlay"/></filter>
+    <filter id="f-darken" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="darken"/></filter>
+    <filter id="f-lighten" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="lighten"/></filter>
+    <filter id="f-color-dodge" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="color-dodge"/></filter>
+    <filter id="f-color-burn" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="color-burn"/></filter>
+    <filter id="f-hard-light" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="hard-light"/></filter>
+    <filter id="f-soft-light" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="soft-light"/></filter>
+    <filter id="f-difference" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="difference"/></filter>
+    <filter id="f-exclusion" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="exclusion"/></filter>
+    <filter id="f-hue" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="hue"/></filter>
+    <filter id="f-saturation" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="saturation"/></filter>
+    <filter id="f-color" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="color"/></filter>
+    <filter id="f-luminosity" x="0" y="0" width="1" height="1"><feFlood flood-color="#00a0ff" flood-opacity="0.7" result="b"/><feBlend in="SourceGraphic" in2="b" mode="luminosity"/></filter>
+  </defs>
+  <rect x="4" y="4" width="44" height="44" filter="url(#f-normal)"/>
+  <rect x="53" y="4" width="44" height="44" filter="url(#f-multiply)"/>
+  <rect x="102" y="4" width="44" height="44" filter="url(#f-screen)"/>
+  <rect x="151" y="4" width="44" height="44" filter="url(#f-overlay)"/>
+  <rect x="4" y="53" width="44" height="44" filter="url(#f-darken)"/>
+  <rect x="53" y="53" width="44" height="44" filter="url(#f-lighten)"/>
+  <rect x="102" y="53" width="44" height="44" filter="url(#f-color-dodge)"/>
+  <rect x="151" y="53" width="44" height="44" filter="url(#f-color-burn)"/>
+  <rect x="4" y="102" width="44" height="44" filter="url(#f-hard-light)"/>
+  <rect x="53" y="102" width="44" height="44" filter="url(#f-soft-light)"/>
+  <rect x="102" y="102" width="44" height="44" filter="url(#f-difference)"/>
+  <rect x="151" y="102" width="44" height="44" filter="url(#f-exclusion)"/>
+  <rect x="4" y="151" width="44" height="44" filter="url(#f-hue)"/>
+  <rect x="53" y="151" width="44" height="44" filter="url(#f-saturation)"/>
+  <rect x="102" y="151" width="44" height="44" filter="url(#f-color)"/>
+  <rect x="151" y="151" width="44" height="44" filter="url(#f-luminosity)"/>
+</svg>

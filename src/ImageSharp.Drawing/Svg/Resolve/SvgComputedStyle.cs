@@ -220,6 +220,30 @@ internal struct SvgComputedStyle
     public SvgTextStyle Text { readonly get; set; }
 
     /// <summary>
+    /// Gets or sets the computed values of the filter properties: <c>filter</c>, <c>color-interpolation-filters</c>
+    /// (inherited), <c>flood-color</c>, <c>flood-opacity</c>, and <c>lighting-color</c>. Never <see langword="null"/> in a
+    /// computed style. The instance is shared and never changes: elements that specify none of these properties share
+    /// the initial values for the color space they inherit (<see cref="SvgFilterStyle.GetChildStyle"/>), so only elements
+    /// that specify one allocate. <c>currentColor</c> stays a keyword, as for <see cref="StopColor"/>.
+    /// </summary>
+    public SvgFilterStyle Filters { readonly get; set; }
+
+    /// <summary>
+    /// Gets <c>filter</c>, or <see langword="null"/> for <c>none</c>. Not inherited.
+    /// </summary>
+    public readonly SvgFilterList? Filter => this.Filters.Filter;
+
+    /// <summary>
+    /// Gets <c>color-interpolation-filters</c>. Inherited.
+    /// </summary>
+    public readonly SvgColorInterpolation ColorInterpolationFilters => this.Filters.ColorInterpolationFilters;
+
+    /// <summary>
+    /// Gets the values of <c>flood-color</c>, <c>flood-opacity</c>, and <c>lighting-color</c>, which are not inherited.
+    /// </summary>
+    public readonly SvgFilterStyle FilterColors => this.Filters;
+
+    /// <summary>
     /// Creates the style that holds the initial value of every property. It is the parent style of the root element.
     /// </summary>
     /// <param name="currentColor">The initial value of <c>color</c>.</param>
@@ -266,6 +290,7 @@ internal struct SvgComputedStyle
             TransformOriginX = new SvgLength(0F, SvgLengthUnit.Px),
             TransformOriginY = new SvgLength(0F, SvgLengthUnit.Px),
             Text = SvgTextStyle.Initial,
+            Filters = SvgFilterStyle.Initial,
         };
 
     /// <summary>
@@ -300,6 +325,7 @@ internal struct SvgComputedStyle
         style.TransformOriginX = initial.TransformOriginX;
         style.TransformOriginY = initial.TransformOriginY;
         style.Text = parent.Text.GetChildStyle();
+        style.Filters = parent.Filters.GetChildStyle();
 
         // SVG 2 user agent style sheet: svg:not(:root), symbol, image, marker, pattern { overflow: hidden }. It has the
         // lowest precedence, so any specified value, including inherit and initial, replaces it below.
@@ -542,7 +568,28 @@ internal struct SvgComputedStyle
                 style.TransformOriginX = ToComputedLength(extended.TransformOriginX, style.FontSize, units);
                 style.TransformOriginY = ToComputedLength(extended.TransformOriginY, style.FontSize, units);
                 break;
+            case SvgPropertyId.Filter:
+            case SvgPropertyId.ColorInterpolationFilters:
+            case SvgPropertyId.FloodColor:
+            case SvgPropertyId.FloodOpacity:
+            case SvgPropertyId.LightingColor:
+                CopyFilterProperty(property, extended.Filters!, ref style);
+                break;
         }
+    }
+
+    /// <summary>
+    /// Sets one filter property from another set of values. The computed values are shared, so the style gets a changed
+    /// copy.
+    /// </summary>
+    /// <param name="property">A property for which <see cref="SvgFilterStyle.IsFilterProperty(SvgPropertyId)"/> is true.</param>
+    /// <param name="source">The values to copy from.</param>
+    /// <param name="style">The style to change.</param>
+    private static void CopyFilterProperty(SvgPropertyId property, SvgFilterStyle source, ref SvgComputedStyle style)
+    {
+        SvgFilterStyle filters = style.Filters.Clone();
+        filters.CopyFrom(source, 1UL << (int)property);
+        style.Filters = filters;
     }
 
     /// <summary>
@@ -795,6 +842,13 @@ internal struct SvgComputedStyle
             case SvgPropertyId.TransformOrigin:
                 style.TransformOriginX = source.TransformOriginX;
                 style.TransformOriginY = source.TransformOriginY;
+                break;
+            case SvgPropertyId.Filter:
+            case SvgPropertyId.ColorInterpolationFilters:
+            case SvgPropertyId.FloodColor:
+            case SvgPropertyId.FloodOpacity:
+            case SvgPropertyId.LightingColor:
+                CopyFilterProperty(property, source.Filters, ref style);
                 break;
         }
     }

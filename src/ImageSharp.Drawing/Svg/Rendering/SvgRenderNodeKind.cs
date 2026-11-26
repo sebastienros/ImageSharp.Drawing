@@ -50,5 +50,14 @@ internal enum SvgRenderNodeKind : byte
     /// <summary>
     /// Closes the mask layer of the matching <see cref="BeginMask"/>.
     /// </summary>
-    EndMask
+    EndMask,
+
+    /// <summary>
+    /// Draws an element through a filter: the emitter renders the content of the element off-screen, runs the filter
+    /// graph, and draws the result as an image. <see cref="SvgRenderNode.FilterIndex"/> selects the filter in
+    /// <see cref="SvgDocument.Filters"/>; <see cref="SvgRenderNode.TransformIndex"/> maps the user space of the filtered
+    /// element to document user space; <see cref="SvgRenderNode.Opacity"/> multiplies the result;
+    /// <see cref="SvgRenderNode.Bounds"/> is the filter region in document user space.
+    /// </summary>
+    Filter
 }

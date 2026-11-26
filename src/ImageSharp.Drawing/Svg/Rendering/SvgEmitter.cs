@@ -11,9 +11,11 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The emitter keeps all per-render state on the stack of <see cref="Draw"/> and in arrays it allocates for the call, so
-/// one document can render on several canvases at the same time. For the common case it allocates no SVG objects:
-/// paths, brushes, and pens come from the document.
+/// The emitter keeps all per-render state on the stack of
+/// <see cref="Draw(DrawingCanvas, SvgDocument, Matrix3x2, RectangleF)"/> and in arrays it allocates for the call, so one
+/// document can render on several canvases at the same time. For the common case it allocates no SVG objects: paths,
+/// brushes, and pens come from the document. A filter node allocates the buffers and the result texture of its filter
+/// for each render.
 /// </para>
 /// <para>
 /// Canvas state follows a fixed pattern. Each open scope (the root clip, a layer, a mask layer, a viewport or clip-path
@@ -58,14 +60,33 @@ internal static partial class SvgEmitter
     /// <param name="destination">The destination rectangle, in local canvas coordinates.</param>
     public static void Draw(DrawingCanvas canvas, SvgDocument document, RectangleF destination)
     {
-        ReadOnlySpan<SvgRenderNode> nodes = document.Nodes;
-        if (nodes.IsEmpty || !(destination.Width > 0F) || !(destination.Height > 0F))
+        if (document.Nodes.IsEmpty || !(destination.Width > 0F) || !(destination.Height > 0F))
         {
             return;
         }
 
-        // The viewport transform only scales and translates, which keeps the bounds tests below exact and cheap.
-        Matrix3x2 viewport = document.CreateViewportTransform(destination);
+        Draw(canvas, document, document.CreateViewportTransform(destination), destination);
+    }
+
+    /// <summary>
+    /// Draws a document with a given viewport transform, clipped to a destination rectangle. The filter engine draws the
+    /// content of a filtered element this way, in filter space.
+    /// </summary>
+    /// <param name="canvas">The canvas to record into.</param>
+    /// <param name="document">The document.</param>
+    /// <param name="viewport">
+    /// The transform from document user space to local canvas coordinates. It must only scale by positive factors and
+    /// translate, which keeps the bounds tests exact and cheap.
+    /// </param>
+    /// <param name="destination">The rectangle that clips the document, in local canvas coordinates. Its width and height are greater than zero.</param>
+    public static void Draw(DrawingCanvas canvas, SvgDocument document, Matrix3x2 viewport, RectangleF destination)
+    {
+        ReadOnlySpan<SvgRenderNode> nodes = document.Nodes;
+        if (nodes.IsEmpty)
+        {
+            return;
+        }
+
         EmitState state = new(canvas, document.Transforms, viewport);
 
         int scopeDepth = document.MaxScopeDepth;
@@ -94,6 +115,15 @@ internal static partial class SvgEmitter
                     if (Intersects(MapBounds(node.Bounds, viewport), destination))
                     {
                         state.DrawNode(in node);
+                    }
+
+                    break;
+
+                case SvgRenderNodeKind.Filter:
+                    // The bounds of a filter node are its filter region, which bounds what the filter can paint.
+                    if (Intersects(MapBounds(node.Bounds, viewport), destination))
+                    {
+                        state.DrawFilter(in node, document.Filters[node.FilterIndex], destination);
                     }
 
                     break;

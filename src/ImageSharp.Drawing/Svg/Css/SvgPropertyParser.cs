@@ -68,7 +68,7 @@ internal sealed partial class SvgPropertyParser
     /// <summary>
     /// The <c>mix-blend-mode</c> keywords in <see cref="SvgBlendMode"/> order.
     /// </summary>
-    private static readonly string[] BlendModeKeywords =
+    internal static readonly string[] BlendModeKeywords =
     [
         "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light",
         "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"
@@ -317,6 +317,8 @@ internal sealed partial class SvgPropertyParser
             default:
                 bool valid = SvgTextStyle.IsTextProperty(property)
                     ? this.TryParseText(property, source, ref style)
+                    : SvgFilterStyle.IsFilterProperty(property)
+                    ? this.TryParseFilter(property, source, ref style)
                     : TryParseExtended(property, source, ref style);
 
                 if (!valid)
@@ -896,5 +898,10 @@ internal sealed partial class SvgPropertyParser
             ["kerning"] = SvgPropertyId.Kerning,
             ["glyph-orientation-vertical"] = SvgPropertyId.GlyphOrientationVertical,
             ["glyph-orientation-horizontal"] = SvgPropertyId.GlyphOrientationHorizontal,
+            ["filter"] = SvgPropertyId.Filter,
+            ["color-interpolation-filters"] = SvgPropertyId.ColorInterpolationFilters,
+            ["flood-color"] = SvgPropertyId.FloodColor,
+            ["flood-opacity"] = SvgPropertyId.FloodOpacity,
+            ["lighting-color"] = SvgPropertyId.LightingColor,
         };
 }

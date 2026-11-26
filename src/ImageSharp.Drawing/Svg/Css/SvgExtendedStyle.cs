@@ -124,11 +124,24 @@ internal sealed class SvgExtendedStyle
     public SvgTextStyle? Text { get; set; }
 
     /// <summary>
+    /// Gets or sets the specified values of the filter properties, or <see langword="null"/> when the style specifies none
+    /// of them with a value. The ownership rules of this type apply to it as well.
+    /// </summary>
+    public SvgFilterStyle? Filters { get; set; }
+
+    /// <summary>
     /// Returns the text values, creating them when the extension has none. Only the property parser calls this, while it
     /// fills a style that is not yet stored in a table.
     /// </summary>
     /// <returns>The text values, which the caller may change.</returns>
     public SvgTextStyle GetOrCreateText() => this.Text ??= new SvgTextStyle();
+
+    /// <summary>
+    /// Returns the filter values, creating them when the extension has none. Only the property parser calls this, while
+    /// it fills a style that is not yet stored in a table.
+    /// </summary>
+    /// <returns>The filter values, which the caller may change.</returns>
+    public SvgFilterStyle GetOrCreateFilters() => this.Filters ??= new SvgFilterStyle();
 
     /// <summary>
     /// Returns a new extension that holds the values of <paramref name="target"/> with the values of the properties in
@@ -149,7 +162,14 @@ internal sealed class SvgExtendedStyle
             result.Text = SvgTextStyle.Merge(result.Text, source.Text, text);
         }
 
-        ulong bits = properties & ~SvgTextStyle.Properties;
+        // The filter values are one shared object too.
+        ulong filters = properties & SvgFilterStyle.Properties;
+        if (filters != 0 && source.Filters is not null)
+        {
+            result.Filters = SvgFilterStyle.Merge(result.Filters, source.Filters, filters);
+        }
+
+        ulong bits = properties & ~(SvgTextStyle.Properties | SvgFilterStyle.Properties);
         while (bits != 0)
         {
             SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);

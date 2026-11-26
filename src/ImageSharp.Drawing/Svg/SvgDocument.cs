@@ -36,6 +36,7 @@ public sealed class SvgDocument
     /// <param name="mappedBox">The rectangle of document user space that maps into the destination of a render.</param>
     /// <param name="preserveAspectRatio">The <c>preserveAspectRatio</c> of the root element.</param>
     /// <param name="maxScopeDepth">The deepest nesting of layer and clip scopes in the nodes.</param>
+    /// <param name="filters">The filters that the filter nodes index, or <see langword="null"/> for none.</param>
     internal SvgDocument(
         SvgRenderNode[] nodes,
         Matrix3x2[] transforms,
@@ -43,8 +44,10 @@ public sealed class SvgDocument
         RectangleF? viewBox,
         RectangleF mappedBox,
         SvgPreserveAspectRatio preserveAspectRatio,
-        int maxScopeDepth)
+        int maxScopeDepth,
+        SvgFilterNode[]? filters = null)
     {
+        this.Filters = filters ?? [];
         this.nodes = nodes;
         this.transforms = transforms;
         this.Size = size;
@@ -91,6 +94,11 @@ public sealed class SvgDocument
     /// Gets the deepest nesting of layer and clip scopes in <see cref="Nodes"/>, so a render can size its scope stack.
     /// </summary>
     internal int MaxScopeDepth { get; }
+
+    /// <summary>
+    /// Gets the filters that the <see cref="SvgRenderNodeKind.Filter"/> nodes of this document index.
+    /// </summary>
+    internal SvgFilterNode[] Filters { get; }
 
     /// <summary>
     /// Loads a document from a stream with the default options. The encoding comes from the XML declaration or the byte

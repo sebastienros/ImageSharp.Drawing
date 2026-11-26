@@ -5,8 +5,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// The style properties that the parser reads. The value of each member is its bit index in the masks of
-/// <see cref="SvgSpecifiedStyle"/>, so the list can grow to 64 properties without a change of representation. Later
-/// phases add members such as <c>filter</c> at the end.
+/// <see cref="SvgSpecifiedStyle"/>, so the list holds at most 64 properties without a change of representation. It holds
+/// 64: a further property needs wider masks.
 /// </summary>
 internal enum SvgPropertyId : byte
 {
@@ -314,5 +314,32 @@ internal enum SvgPropertyId : byte
     /// <summary>
     /// <c>glyph-orientation-horizontal</c> (SVG 1.1). Inherited. Initial <c>0deg</c>. The last text property.
     /// </summary>
-    GlyphOrientationHorizontal
+    GlyphOrientationHorizontal,
+
+    /// <summary>
+    /// <c>filter</c>. Not inherited. Initial <c>none</c>. The first filter property; the values of the filter properties
+    /// live in <see cref="SvgFilterStyle"/>.
+    /// </summary>
+    Filter,
+
+    /// <summary>
+    /// <c>color-interpolation-filters</c>. Inherited. Initial <c>linearRGB</c>.
+    /// </summary>
+    ColorInterpolationFilters,
+
+    /// <summary>
+    /// <c>flood-color</c>. Not inherited. Initial <c>black</c>.
+    /// </summary>
+    FloodColor,
+
+    /// <summary>
+    /// <c>flood-opacity</c>. Not inherited. Initial <c>1</c>.
+    /// </summary>
+    FloodOpacity,
+
+    /// <summary>
+    /// <c>lighting-color</c>. Not inherited. Initial <c>white</c>. The 64th property: the masks of
+    /// <see cref="SvgSpecifiedStyle"/> are full.
+    /// </summary>
+    LightingColor
 }

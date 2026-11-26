@@ -21,7 +21,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="SvgElementKind.Polyline"/> and <see cref="SvgElementKind.Polygon"/>, <see cref="GetPath(int)"/>,
 /// <see cref="GetUse(int)"/>, <see cref="GetGradient(int)"/> for both gradient kinds, <see cref="GetStopOffset(int)"/>,
 /// <see cref="GetClipPathUnits(int)"/>, <see cref="GetMask(int)"/>, <see cref="GetPattern(int)"/>,
-/// <see cref="GetMarker(int)"/>, and <see cref="GetImage(int)"/>. Calling an accessor for another kind is a caller error.
+/// <see cref="GetMarker(int)"/>, <see cref="GetImage(int)"/>, <see cref="GetFilter(int)"/>, and
+/// <see cref="GetFilterPrimitive(int)"/> for the filter primitives and their children. Calling an accessor for another kind is a caller error.
 /// <see cref="TryGetConditionalAttributes(int, out SvgConditionalAttributes)"/> works for every element.
 /// </para>
 /// <para>
@@ -58,6 +59,7 @@ internal sealed class SvgElementTree
     private readonly List<SvgMarkerAttributes> markers;
     private readonly List<SvgImageAttributes> images;
     private readonly SvgTextTables? text;
+    private readonly SvgFilterTables? filters;
     private readonly Dictionary<int, SvgConditionalAttributes>? conditions;
     private readonly Dictionary<string, int> ids;
     private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> idLookup;
@@ -90,6 +92,7 @@ internal sealed class SvgElementTree
         this.markers = tables.Markers;
         this.images = tables.Images;
         this.text = tables.Text;
+        this.filters = tables.Filters;
         this.conditions = tables.Conditions;
         this.ids = tables.Ids;
         this.idLookup = this.ids.GetAlternateLookup<ReadOnlySpan<char>>();
@@ -362,6 +365,55 @@ internal sealed class SvgElementTree
     /// <param name="node">The node.</param>
     /// <returns>The characters.</returns>
     public ReadOnlySpan<char> GetCharacters(in SvgTextNode node) => this.text!.Characters.AsSpan(node.Start, node.Length);
+
+    /// <summary>
+    /// Gets the attributes of a <c>filter</c> element.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgFilterAttributes GetFilter(int index) => ref CollectionsMarshal.AsSpan(this.filters!.Filters)[this[index].DataIndex];
+
+    /// <summary>
+    /// Gets the typed attributes of a filter primitive or of a child of one (<c>feMergeNode</c>, a transfer function, or
+    /// a light source).
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <returns>The attributes.</returns>
+    public ref readonly SvgFilterPrimitiveAttributes GetFilterPrimitive(int index)
+        => ref CollectionsMarshal.AsSpan(this.filters!.Primitives)[this[index].DataIndex];
+
+    /// <summary>
+    /// Finds an attribute of a filter primitive or of a child of one that has no typed field in
+    /// <see cref="SvgFilterPrimitiveAttributes"/>.
+    /// </summary>
+    /// <param name="index">The element index.</param>
+    /// <param name="attribute">The attribute.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the value.</param>
+    /// <returns><see langword="true"/> if the element specifies the attribute; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetFilterValue(int index, SvgAttributeId attribute, out SvgFilterAttributeValue value)
+    {
+        ref readonly SvgFilterPrimitiveAttributes primitive = ref this.GetFilterPrimitive(index);
+        ReadOnlySpan<SvgFilterAttributeValue> values = CollectionsMarshal.AsSpan(this.filters!.Values).Slice(primitive.ValueStart, primitive.ValueCount);
+        foreach (SvgFilterAttributeValue candidate in values)
+        {
+            if (candidate.Attribute == attribute)
+            {
+                value = candidate;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the numbers of a filter attribute value.
+    /// </summary>
+    /// <param name="value">A value from <see cref="TryGetFilterValue(int, SvgAttributeId, out SvgFilterAttributeValue)"/>.</param>
+    /// <returns>The numbers; empty when the value is not a list of numbers.</returns>
+    public ReadOnlySpan<float> GetFilterNumbers(in SvgFilterAttributeValue value)
+        => value.NumberCount == 0 ? default : CollectionsMarshal.AsSpan(this.filters!.Numbers).Slice(value.NumberStart, value.NumberCount);
 
     /// <summary>
     /// Gets the conditional processing attributes of an element: <c>systemLanguage</c>, <c>requiredExtensions</c>, and

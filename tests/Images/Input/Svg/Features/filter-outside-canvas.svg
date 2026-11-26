@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="20 20 160 160">
+  <defs>
+    <filter id="blur" x="-0.5" y="-0.5" width="2" height="2"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="offset" x="-1" y="-1" width="3" height="3"><feOffset dx="40" dy="0"/></filter>
+  </defs>
+  <!-- The view box starts at (20, 20): parts of these shapes lie outside the canvas, and the blur near the edge reads
+       them. -->
+  <rect x="0" y="40" width="40" height="60" fill="#1f77b4" filter="url(#blur)"/>
+  <rect x="120" y="0" width="80" height="35" fill="#ff7f0e" filter="url(#blur)"/>
+  <!-- Entirely outside the canvas; the offset moves it in. -->
+  <rect x="-20" y="120" width="30" height="40" fill="#2ca02c" filter="url(#offset)"/>
+  <!-- Entirely outside; its blur and region do not reach the canvas, so it costs no pixels. -->
+  <rect x="-500" y="-500" width="40" height="40" fill="#d62728" filter="url(#blur)"/>
+</svg>

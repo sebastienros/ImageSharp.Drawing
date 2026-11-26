@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="spectrum">
+      <stop offset="0" stop-color="#ff0000"/>
+      <stop offset="0.33" stop-color="#00ff00"/>
+      <stop offset="0.67" stop-color="#0000ff"/>
+      <stop offset="1" stop-color="#ffff00" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="matrix">
+      <feColorMatrix values="0 0 1 0 0  1 0 0 0 0  0 1 0 0 0  0 0 0 0.8 0.1"/>
+    </filter>
+    <filter id="saturate"><feColorMatrix type="saturate" values="0.2"/></filter>
+    <filter id="hue"><feColorMatrix type="hueRotate" values="120"/></filter>
+    <filter id="luminance"><feColorMatrix type="luminanceToAlpha"/></filter>
+    <filter id="srgb" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0.2"/></filter>
+  </defs>
+  <rect x="10" y="5" width="180" height="30" fill="url(#spectrum)"/>
+  <rect x="10" y="40" width="180" height="26" fill="url(#spectrum)" filter="url(#matrix)"/>
+  <rect x="10" y="71" width="180" height="26" fill="url(#spectrum)" filter="url(#saturate)"/>
+  <rect x="10" y="102" width="180" height="26" fill="url(#spectrum)" filter="url(#srgb)"/>
+  <rect x="10" y="133" width="180" height="26" fill="url(#spectrum)" filter="url(#hue)"/>
+  <rect x="10" y="164" width="180" height="26" fill="url(#spectrum)" filter="url(#luminance)"/>
+</svg>
