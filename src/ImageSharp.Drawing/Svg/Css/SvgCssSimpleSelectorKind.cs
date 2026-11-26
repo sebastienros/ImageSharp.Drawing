@@ -113,5 +113,13 @@ internal enum SvgCssSimpleSelectorKind : byte
     /// A valid selector that never matches in a static document: a pseudo-element, or a pseudo-class that needs
     /// interaction, link, or form state, such as <c>:hover</c> or <c>:visited</c>.
     /// </summary>
-    Never
+    Never,
+
+    /// <summary>
+    /// <c>:lang(L)</c> (Selectors Level 4): the language of the element, from <see cref="SvgElementTree.GetLanguage(int)"/>,
+    /// matches one of the language ranges of the argument. The selector parser does not produce it yet: it rejects
+    /// <c>:lang()</c>, so a rule with it is dropped, as before. The member exists so that support for the selector needs
+    /// no change of this list.
+    /// </summary>
+    Lang
 }

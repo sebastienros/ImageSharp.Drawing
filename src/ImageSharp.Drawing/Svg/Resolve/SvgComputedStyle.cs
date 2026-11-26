@@ -24,11 +24,19 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Every property of <see cref="SvgPropertyId"/> has a member here except <see cref="SvgPropertyId.Transform"/>, which
-/// the reader folds into the transform table of the element, and the text properties, whose values live together in
-/// <see cref="Text"/>.
+/// the reader folds into the transform table of the element, the text properties, whose values live together in
+/// <see cref="Text"/>, and the geometry properties and <c>transform-box</c>, whose values live together in
+/// <see cref="Geometry"/>.
+/// </para>
+/// <para>
+/// Declarations with <c>var()</c> are not substituted yet: a property whose winning declaration has <c>var()</c>
+/// computes from the declaration of next lower precedence, as if the <c>var()</c> declaration were invalid at parse time.
+/// The pending declarations stay in the specified style (<see cref="SvgSpecifiedStyle.Pending"/>), the computed custom
+/// properties are in <see cref="CustomProperties"/>, and <see cref="SubstituteVariables"/> is where the substitution
+/// joins the computation.
 /// </para>
 /// </remarks>
-internal struct SvgComputedStyle
+internal partial struct SvgComputedStyle
 {
     /// <summary>
     /// Gets or sets <c>color</c>.
@@ -200,17 +208,17 @@ internal struct SvgComputedStyle
     public SvgColorInterpolation ColorInterpolation { readonly get; set; }
 
     /// <summary>
-    /// Gets or sets the horizontal component of <c>transform-origin</c>, in <see cref="SvgLengthUnit.Px"/> or
+    /// Gets the horizontal component of <c>transform-origin</c>, in <see cref="SvgLengthUnit.Px"/> or
     /// <see cref="SvgLengthUnit.Percent"/>. Not inherited. A percentage refers to the width of the reference box; see
-    /// <see cref="GetTransformOrigin(SizeF)"/>.
+    /// <see cref="GetTransformOrigin(SizeF)"/>. The value lives in <see cref="Geometry"/>.
     /// </summary>
-    public SvgLength TransformOriginX { readonly get; set; }
+    public readonly SvgLength TransformOriginX => this.Geometry.TransformOriginX;
 
     /// <summary>
-    /// Gets or sets the vertical component of <c>transform-origin</c>, with the same rules as
-    /// <see cref="TransformOriginX"/> for the height.
+    /// Gets the vertical component of <c>transform-origin</c>, with the same rules as <see cref="TransformOriginX"/> for
+    /// the height.
     /// </summary>
-    public SvgLength TransformOriginY { readonly get; set; }
+    public readonly SvgLength TransformOriginY => this.Geometry.TransformOriginY;
 
     /// <summary>
     /// Gets or sets the computed values of the text properties. Never <see langword="null"/> in a computed style. The
@@ -227,6 +235,21 @@ internal struct SvgComputedStyle
     /// that specify one allocate. <c>currentColor</c> stays a keyword, as for <see cref="StopColor"/>.
     /// </summary>
     public SvgFilterStyle Filters { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the computed values of the geometry properties (<c>x</c>, <c>y</c>, <c>width</c>, <c>height</c>,
+    /// <c>cx</c>, <c>cy</c>, <c>r</c>, <c>rx</c>, <c>ry</c>, <c>d</c>), of <c>transform-box</c>, and of
+    /// <c>transform-origin</c>. None of them inherits. Never <see langword="null"/> in a computed style: an element that specifies none of them has
+    /// <see cref="SvgGeometryStyle.Initial"/>. A geometry value counts only for the properties in
+    /// <see cref="SvgGeometryStyle.FromStyle"/>; the element uses its attribute for the others.
+    /// </summary>
+    public SvgGeometryStyle Geometry { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the computed custom properties (<c>--name</c>), which inherit, or <see langword="null"/> when neither
+    /// the element nor an ancestor declares one. Elements that declare none share the instance of their parent.
+    /// </summary>
+    public SvgCustomProperties? CustomProperties { readonly get; set; }
 
     /// <summary>
     /// Gets <c>filter</c>, or <see langword="null"/> for <c>none</c>. Not inherited.
@@ -284,13 +307,10 @@ internal struct SvgComputedStyle
             ImageRendering = SvgImageRendering.Auto,
             ShapeRendering = SvgShapeRendering.Auto,
             ColorInterpolation = SvgColorInterpolation.SRgb,
-
-            // CSS Transforms 1: the initial value is 50% 50%, but the used value for SVG elements without a CSS layout box
-            // is 0 0, as if the user agent style sheet set it.
-            TransformOriginX = new SvgLength(0F, SvgLengthUnit.Px),
-            TransformOriginY = new SvgLength(0F, SvgLengthUnit.Px),
             Text = SvgTextStyle.Initial,
             Filters = SvgFilterStyle.Initial,
+            Geometry = SvgGeometryStyle.Initial,
+            CustomProperties = null,
         };
 
     /// <summary>
@@ -322,10 +342,9 @@ internal struct SvgComputedStyle
         style.MixBlendMode = initial.MixBlendMode;
         style.Isolation = initial.Isolation;
         style.VectorEffect = initial.VectorEffect;
-        style.TransformOriginX = initial.TransformOriginX;
-        style.TransformOriginY = initial.TransformOriginY;
         style.Text = parent.Text.GetChildStyle();
         style.Filters = parent.Filters.GetChildStyle();
+        style.Geometry = initial.Geometry;
 
         // SVG 2 user agent style sheet: svg:not(:root), symbol, image, marker, pattern { overflow: hidden }. It has the
         // lowest precedence, so any specified value, including inherit and initial, replaces it below.
@@ -344,17 +363,31 @@ internal struct SvgComputedStyle
             style.FontSize = ComputeFontSize(in specified, in parent, in initial, units);
         }
 
-        // The text properties share one object, which changes as a whole.
-        ulong textBits = specified.Specified & SvgTextStyle.Properties;
-        if (textBits != 0)
+        // The text properties share one object, which changes as a whole, and so do the geometry properties.
+        SvgPropertySet specifiedSet = specified.Specified;
+        SvgPropertySet textBits = specifiedSet & SvgTextStyle.Properties;
+        if (!textBits.IsEmpty)
         {
             style.Text = ComputeText(in specified, textBits, style.Text, parent.Text, initial.Text, style.FontSize, units);
         }
 
-        // Visit only the specified properties. The inherit keyword takes the parent value for any property, and the
-        // initial keyword takes the initial value.
-        ulong bits = specified.Specified & ~SvgTextStyle.Properties;
         SvgExtendedStyle? extended = specified.Extended;
+        SvgPropertySet geometryBits = specifiedSet & SvgGeometryStyle.Properties;
+        if (!geometryBits.IsEmpty)
+        {
+            style.Geometry = ComputeGeometry(in specified, geometryBits, parent.Geometry, initial.Geometry, style.FontSize, units);
+        }
+
+        // Custom properties inherit; an element without declarations keeps the map of its parent.
+        if (extended?.Variables?.CustomProperties is IReadOnlyDictionary<string, SvgCustomPropertyValue> custom)
+        {
+            style.CustomProperties = SvgCustomProperties.Compute(parent.CustomProperties, custom);
+        }
+
+        // Visit only the specified inline and extended properties below 64. The inherit keyword takes the parent value
+        // for any property, and the initial keyword takes the initial value. Every property from 64 on is a text or a
+        // geometry property, computed above.
+        ulong bits = specifiedSet.Low & ~(SvgTextStyle.Properties.Low | SvgGeometryStyle.Properties.Low);
         while (bits != 0)
         {
             SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
@@ -430,14 +463,16 @@ internal struct SvgComputedStyle
                 case SvgPropertyId.StopOpacity:
                     style.StopOpacity = specified.StopOpacity;
                     break;
-                case SvgPropertyId.Transform:
-                    // The reader has folded the property into the transform table of the element.
-                    break;
                 default:
                     // A value bit of an extended property means the parser stored its value in the extension.
                     ComputeExtended(property, extended!, ref style, units);
                     break;
             }
+        }
+
+        if (extended?.Variables is not null)
+        {
+            SubstituteVariables(in specified, in parent, in initial, units, kind, ref style);
         }
 
         return style;
@@ -464,6 +499,33 @@ internal struct SvgComputedStyle
 
         return style;
     }
+
+    /// <summary>
+    /// Computes the properties whose winning declaration contains <c>var()</c>, after the rest of
+    /// <see cref="Compute"/> has set the other properties and <see cref="CustomProperties"/>. Called only for elements
+    /// whose specified style has custom properties or pending declarations (<see cref="SvgSpecifiedStyle.Pending"/>).
+    /// </summary>
+    /// <remarks>
+    /// This partial method has no implementation yet, so the compiler removes the call: pending declarations do not change
+    /// the computed style, and each such property keeps the value of its declaration of next lower precedence. An
+    /// implementation substitutes the custom properties into the text of each pending declaration
+    /// (<see cref="SvgVariableStyle.TryGetPending(SvgPropertyId, out SvgPendingValue)"/>), parses the result with
+    /// <see cref="SvgPropertyParser"/> into a specified style, and computes the property from it; a result that does not
+    /// parse makes the property behave as <c>unset</c> (invalid at computed-value time).
+    /// </remarks>
+    /// <param name="specified">The cascaded specified style of the element.</param>
+    /// <param name="parent">The computed style of the parent.</param>
+    /// <param name="initial">The initial style.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    /// <param name="kind">The kind of the element.</param>
+    /// <param name="style">The computed style, which the implementation changes.</param>
+    static partial void SubstituteVariables(
+        in SvgSpecifiedStyle specified,
+        in SvgComputedStyle parent,
+        in SvgComputedStyle initial,
+        SvgUnitBasis units,
+        SvgElementKind kind,
+        ref SvgComputedStyle style);
 
     /// <summary>
     /// Returns the transform origin in user units for a reference box.
@@ -511,7 +573,7 @@ internal struct SvgComputedStyle
     /// <summary>
     /// Stores the computed value of an extended property from its specified value.
     /// </summary>
-    /// <param name="property">A property from <see cref="SvgPropertyId.ClipPath"/> on, other than <see cref="SvgPropertyId.Transform"/>.</param>
+    /// <param name="property">A property from <see cref="SvgPropertyId.ClipPath"/> to <see cref="SvgPropertyId.LightingColor"/> that is not a text or a geometry property.</param>
     /// <param name="extended">The extension of the specified style, which holds the value.</param>
     /// <param name="style">The style to change.</param>
     /// <param name="units">The document values that length units refer to.</param>
@@ -564,10 +626,6 @@ internal struct SvgComputedStyle
             case SvgPropertyId.ColorInterpolation:
                 style.ColorInterpolation = extended.ColorInterpolation;
                 break;
-            case SvgPropertyId.TransformOrigin:
-                style.TransformOriginX = ToComputedLength(extended.TransformOriginX, style.FontSize, units);
-                style.TransformOriginY = ToComputedLength(extended.TransformOriginY, style.FontSize, units);
-                break;
             case SvgPropertyId.Filter:
             case SvgPropertyId.ColorInterpolationFilters:
             case SvgPropertyId.FloodColor:
@@ -588,7 +646,7 @@ internal struct SvgComputedStyle
     private static void CopyFilterProperty(SvgPropertyId property, SvgFilterStyle source, ref SvgComputedStyle style)
     {
         SvgFilterStyle filters = style.Filters.Clone();
-        filters.CopyFrom(source, 1UL << (int)property);
+        filters.CopyFrom(source, SvgPropertySet.Of(property));
         style.Filters = filters;
     }
 
@@ -611,7 +669,7 @@ internal struct SvgComputedStyle
     /// <returns>The new computed text style.</returns>
     private static SvgTextStyle ComputeText(
         in SvgSpecifiedStyle specified,
-        ulong bits,
+        SvgPropertySet bits,
         SvgTextStyle start,
         SvgTextStyle parent,
         SvgTextStyle initial,
@@ -620,10 +678,9 @@ internal struct SvgComputedStyle
     {
         SvgTextStyle text = start.Clone();
         SvgTextStyle? values = specified.Extended?.Text;
-        while (bits != 0)
+        while (!bits.IsEmpty)
         {
-            SvgPropertyId property = (SvgPropertyId)BitOperations.TrailingZeroCount(bits);
-            bits &= bits - 1;
+            SvgPropertyId property = SvgPropertySet.TakeFirst(ref bits);
 
             if (specified.IsInherit(property))
             {
@@ -660,6 +717,81 @@ internal struct SvgComputedStyle
         }
 
         return text;
+    }
+
+    /// <summary>
+    /// Computes the geometry properties and <c>transform-box</c> that an element specifies, on a copy of the initial
+    /// values: none of them inherits.
+    /// </summary>
+    /// <remarks>
+    /// A length computes as for the other properties: pixels at this element, or a percentage that resolves later
+    /// against the viewport; <c>auto</c> stays unspecified. <c>inherit</c> copies the parent value when it came from a
+    /// declaration, and otherwise records that the value is the attribute of the parent
+    /// (<see cref="SvgGeometryStyle.FromParentAttribute"/>).
+    /// </remarks>
+    /// <param name="specified">The cascaded specified style of the element.</param>
+    /// <param name="bits">The mask of the specified geometry properties.</param>
+    /// <param name="parent">The computed geometry values of the parent.</param>
+    /// <param name="initial">The initial geometry values.</param>
+    /// <param name="fontSize">The computed font size of the element.</param>
+    /// <param name="units">The document values that length units refer to.</param>
+    /// <returns>The new computed geometry values.</returns>
+    private static SvgGeometryStyle ComputeGeometry(
+        in SvgSpecifiedStyle specified,
+        SvgPropertySet bits,
+        SvgGeometryStyle parent,
+        SvgGeometryStyle initial,
+        float fontSize,
+        SvgUnitBasis units)
+    {
+        SvgGeometryStyle geometry = initial.Clone();
+        SvgGeometryStyle? values = specified.Extended?.Geometry;
+        SvgPropertySet fromStyle = default;
+        SvgPropertySet fromParentAttribute = default;
+        while (!bits.IsEmpty)
+        {
+            SvgPropertyId property = SvgPropertySet.TakeFirst(ref bits);
+
+            // Only the geometry properties have attributes of the same name; transform-box and transform-origin are
+            // ordinary properties, whose computed value always counts. The CSS transform is folded by the reader.
+            bool hasAttribute = property is >= SvgPropertyId.X and <= SvgPropertyId.D;
+            SvgPropertySet bit = hasAttribute ? SvgPropertySet.Of(property) : default;
+            if (property == SvgPropertyId.Transform)
+            {
+                continue;
+            }
+
+            if (specified.IsInherit(property))
+            {
+                geometry.CopyProperty(property, parent);
+                bool parentHasValue = parent.FromStyle.Overlaps(bit);
+                fromStyle |= parentHasValue ? bit : default;
+                fromParentAttribute |= parentHasValue ? parent.FromParentAttribute & bit : bit;
+                continue;
+            }
+
+            fromStyle |= bit;
+            if (specified.IsInitial(property))
+            {
+                continue;
+            }
+
+            // A value bit means the parser stored the value in the geometry values of the extension.
+            geometry.CopyProperty(property, values!);
+            if (property is >= SvgPropertyId.X and < SvgPropertyId.D)
+            {
+                geometry.SetLength(property, ToComputedOptionalLength(values!.GetLength(property), fontSize, units));
+            }
+            else if (property == SvgPropertyId.TransformOrigin)
+            {
+                geometry.TransformOriginX = ToComputedLength(values!.TransformOriginX, fontSize, units);
+                geometry.TransformOriginY = ToComputedLength(values.TransformOriginY, fontSize, units);
+            }
+        }
+
+        geometry.FromStyle = fromStyle;
+        geometry.FromParentAttribute = fromParentAttribute;
+        return geometry;
     }
 
     /// <summary>
@@ -838,10 +970,6 @@ internal struct SvgComputedStyle
                 break;
             case SvgPropertyId.ColorInterpolation:
                 style.ColorInterpolation = source.ColorInterpolation;
-                break;
-            case SvgPropertyId.TransformOrigin:
-                style.TransformOriginX = source.TransformOriginX;
-                style.TransformOriginY = source.TransformOriginY;
                 break;
             case SvgPropertyId.Filter:
             case SvgPropertyId.ColorInterpolationFilters:

@@ -36,6 +36,7 @@ public sealed class SvgDocument
     /// <param name="mappedBox">The rectangle of document user space that maps into the destination of a render.</param>
     /// <param name="preserveAspectRatio">The <c>preserveAspectRatio</c> of the root element.</param>
     /// <param name="maxScopeDepth">The deepest nesting of layer and clip scopes in the nodes.</param>
+    /// <param name="maxLayerPixels">The largest total number of pixels of the layers that one draw may keep open, from <see cref="SvgLimits.MaxLayerPixels"/>.</param>
     /// <param name="filters">The filters that the filter nodes index, or <see langword="null"/> for none.</param>
     internal SvgDocument(
         SvgRenderNode[] nodes,
@@ -45,9 +46,11 @@ public sealed class SvgDocument
         RectangleF mappedBox,
         SvgPreserveAspectRatio preserveAspectRatio,
         int maxScopeDepth,
+        long maxLayerPixels,
         SvgFilterNode[]? filters = null)
     {
         this.Filters = filters ?? [];
+        this.MaxLayerPixels = maxLayerPixels;
         this.nodes = nodes;
         this.transforms = transforms;
         this.Size = size;
@@ -94,6 +97,12 @@ public sealed class SvgDocument
     /// Gets the deepest nesting of layer and clip scopes in <see cref="Nodes"/>, so a render can size its scope stack.
     /// </summary>
     internal int MaxScopeDepth { get; }
+
+    /// <summary>
+    /// Gets the largest total number of pixels of the layers that one draw of this document may keep open at the same
+    /// time: <see cref="SvgLimits.MaxLayerPixels"/> of the load options.
+    /// </summary>
+    internal long MaxLayerPixels { get; }
 
     /// <summary>
     /// Gets the filters that the <see cref="SvgRenderNodeKind.Filter"/> nodes of this document index.

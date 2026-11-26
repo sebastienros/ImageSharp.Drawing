@@ -136,6 +136,11 @@ internal sealed partial class SvgPropertyParser
     /// Parses a property value and stores it in <paramref name="style"/>. An invalid value leaves the style unchanged, as
     /// CSS drops an invalid declaration and SVG treats an invalid presentation attribute as unspecified.
     /// </summary>
+    /// <remarks>
+    /// A value with <c>var()</c> is valid until substitution: it is stored as a pending declaration
+    /// (<see cref="SvgSpecifiedStyle.MarkPending(SvgPropertyId, string, SvgShorthand?)"/>). Chromium accepts
+    /// <c>var()</c> in presentation attributes as well, which also go through this method.
+    /// </remarks>
     /// <param name="property">The property.</param>
     /// <param name="source">The value characters, without <c>!important</c>.</param>
     /// <param name="style">The style that receives the value.</param>
@@ -145,28 +150,30 @@ internal sealed partial class SvgPropertyParser
         source = SvgNumberParser.Trim(source);
         this.HasTransformDeclarations |= property == SvgPropertyId.Transform;
 
-        // The CSS-wide keywords apply to every property.
-        if (source.Equals("inherit", StringComparison.OrdinalIgnoreCase))
+        if (ContainsVar(source))
         {
-            style.MarkInherit(property);
+            MarkPending(property, source, ref style);
             return true;
         }
 
-        if (source.Equals("initial", StringComparison.OrdinalIgnoreCase))
+        // The CSS-wide keywords apply to every property, and to the longhands that a declaration of font-variant or
+        // white-space also sets.
+        bool inherit = source.Equals("inherit", StringComparison.OrdinalIgnoreCase);
+        bool initial = !inherit && source.Equals("initial", StringComparison.OrdinalIgnoreCase);
+        bool unset = !inherit && !initial && source.Equals("unset", StringComparison.OrdinalIgnoreCase);
+        if (inherit || initial || unset)
         {
-            style.MarkInitial(property);
-            return true;
-        }
-
-        if (source.Equals("unset", StringComparison.OrdinalIgnoreCase))
-        {
-            if (SvgSpecifiedStyle.IsInherited(property))
+            MarkKeyword(property, inherit, unset, ref style);
+            if (property == SvgPropertyId.FontVariant)
             {
-                style.MarkInherit(property);
+                foreach (SvgPropertyId longhand in FontVariantLonghands)
+                {
+                    MarkKeyword(longhand, inherit, unset, ref style);
+                }
             }
-            else
+            else if (property == SvgPropertyId.WhiteSpace)
             {
-                style.MarkInitial(property);
+                MarkKeyword(SvgPropertyId.WhiteSpaceCollapse, inherit, unset, ref style);
             }
 
             return true;
@@ -174,6 +181,11 @@ internal sealed partial class SvgPropertyParser
 
         switch (property)
         {
+            case SvgPropertyId.FontVariant:
+                // These declarations mark the properties they set themselves.
+                return TryParseFontVariantDeclaration(source, ref style);
+            case SvgPropertyId.WhiteSpace:
+                return TryParseWhiteSpaceDeclaration(source, ref style);
             case SvgPropertyId.Color:
                 // CSS Color Level 4: currentColor as the value of color is treated as inherit.
                 if (source.Equals("currentColor", StringComparison.OrdinalIgnoreCase))
@@ -319,6 +331,8 @@ internal sealed partial class SvgPropertyParser
                     ? this.TryParseText(property, source, ref style)
                     : SvgFilterStyle.IsFilterProperty(property)
                     ? this.TryParseFilter(property, source, ref style)
+                    : SvgGeometryStyle.IsGeometryProperty(property)
+                    ? TryParseGeometry(property, source, ref style)
                     : TryParseExtended(property, source, ref style);
 
                 if (!valid)
@@ -331,6 +345,26 @@ internal sealed partial class SvgPropertyParser
 
         style.MarkValue(property);
         return true;
+    }
+
+    /// <summary>
+    /// Marks a property with a CSS-wide keyword: <c>inherit</c>, <c>initial</c>, or <c>unset</c>, which acts as
+    /// <c>inherit</c> on an inherited property and as <c>initial</c> otherwise.
+    /// </summary>
+    /// <param name="property">The property.</param>
+    /// <param name="inherit">Whether the keyword is <c>inherit</c>.</param>
+    /// <param name="unset">Whether the keyword is <c>unset</c>.</param>
+    /// <param name="style">The style that receives the keyword.</param>
+    private static void MarkKeyword(SvgPropertyId property, bool inherit, bool unset, ref SvgSpecifiedStyle style)
+    {
+        if (inherit || (unset && SvgSpecifiedStyle.IsInherited(property)))
+        {
+            style.MarkInherit(property);
+        }
+        else
+        {
+            style.MarkInitial(property);
+        }
     }
 
     /// <summary>
@@ -383,7 +417,13 @@ internal sealed partial class SvgPropertyParser
             case SvgPropertyId.MarkerStart:
             case SvgPropertyId.MarkerMid:
             case SvgPropertyId.MarkerEnd:
-                if (!SvgReference.TryParse(source, out SvgReference reference))
+                // clip-path also takes a CSS basic shape with a geometry box, which Chromium accepts as an attribute too.
+                SvgReference reference;
+                if (property == SvgPropertyId.ClipPath && TryParseClipShape(source, out SvgClipShape? shape))
+                {
+                    reference = SvgReference.FromShape(shape!);
+                }
+                else if (!SvgReference.TryParse(source, out reference))
                 {
                     return false;
                 }
@@ -476,9 +516,9 @@ internal sealed partial class SvgPropertyParser
                     return false;
                 }
 
-                SvgExtendedStyle extended = style.GetOrCreateExtended();
-                extended.TransformOriginX = originX;
-                extended.TransformOriginY = originY;
+                SvgGeometryStyle geometry = style.GetOrCreateExtended().GetOrCreateGeometry();
+                geometry.TransformOriginX = originX;
+                geometry.TransformOriginY = originY;
                 return true;
             case SvgPropertyId.Transform:
                 if (!SvgTransformParser.TryParseCss(source, out System.Numerics.Matrix3x2 transform))
@@ -486,7 +526,7 @@ internal sealed partial class SvgPropertyParser
                     return false;
                 }
 
-                style.GetOrCreateExtended().Transform = transform;
+                style.GetOrCreateExtended().GetOrCreateGeometry().Transform = transform;
                 return true;
             default:
                 return false;
@@ -903,5 +943,23 @@ internal sealed partial class SvgPropertyParser
             ["flood-color"] = SvgPropertyId.FloodColor,
             ["flood-opacity"] = SvgPropertyId.FloodOpacity,
             ["lighting-color"] = SvgPropertyId.LightingColor,
+            ["x"] = SvgPropertyId.X,
+            ["y"] = SvgPropertyId.Y,
+            ["width"] = SvgPropertyId.Width,
+            ["height"] = SvgPropertyId.Height,
+            ["cx"] = SvgPropertyId.Cx,
+            ["cy"] = SvgPropertyId.Cy,
+            ["r"] = SvgPropertyId.R,
+            ["rx"] = SvgPropertyId.Rx,
+            ["ry"] = SvgPropertyId.Ry,
+            ["d"] = SvgPropertyId.D,
+            ["transform-box"] = SvgPropertyId.TransformBox,
+            ["font-feature-settings"] = SvgPropertyId.FontFeatureSettings,
+            ["font-variant-ligatures"] = SvgPropertyId.FontVariantLigatures,
+            ["font-variant-caps"] = SvgPropertyId.FontVariantCaps,
+            ["font-variant-numeric"] = SvgPropertyId.FontVariantNumeric,
+            ["font-variant-east-asian"] = SvgPropertyId.FontVariantEastAsian,
+            ["font-variant-position"] = SvgPropertyId.FontVariantPosition,
+            ["white-space-collapse"] = SvgPropertyId.WhiteSpaceCollapse,
         };
 }

@@ -334,6 +334,7 @@ internal sealed partial class SvgResolver
             mappedBox,
             new SvgPreserveAspectRatio(SvgAlign.None, false),
             maxScopeDepth,
+            this.loadOptions.Limits.MaxLayerPixels,
             this.TakeFilters(nodes));
     }
 

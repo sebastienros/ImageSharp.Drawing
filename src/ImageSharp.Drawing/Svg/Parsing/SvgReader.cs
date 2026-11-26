@@ -413,10 +413,10 @@ internal sealed class SvgReader
             {
                 element.TransformIndex = element.Parent >= 0 ? elements[element.Parent].TransformIndex : -1;
             }
-            else if (style.HasValue(SvgPropertyId.Transform) && !style.Extended!.Transform.IsIdentity)
+            else if (style.HasValue(SvgPropertyId.Transform) && !style.Extended!.Geometry!.Transform.IsIdentity)
             {
                 element.TransformIndex = this.tables.Transforms.Count;
-                this.tables.Transforms.Add(style.Extended.Transform);
+                this.tables.Transforms.Add(style.Extended.Geometry.Transform);
             }
             else
             {
@@ -794,6 +794,8 @@ internal sealed class SvgReader
         string? href = null;
         string? xlinkHref = null;
         string? xmlSpace = null;
+        string? lang = null;
+        string? xmlLang = null;
         bool isCss = true;
         string? media = null;
         ref SvgElement element = ref CollectionsMarshal.AsSpan(this.tables.Elements)[index];
@@ -863,7 +865,21 @@ internal sealed class SvgReader
                                 this.tables.SetConditional(index, attribute, value);
                                 element.HasConditionalAttributes = true;
                                 break;
+                            case SvgAttributeId.PathLength:
+                                this.tables.SetPathLength(index, kind, value);
+                                break;
+                            case SvgAttributeId.Lang:
+                                lang = value;
+                                break;
                             default:
+                                // Chromium accepts var() in the attributes that are presentation attributes of the
+                                // geometry properties. Such a value is no valid attribute value, so the attribute stays
+                                // unspecified, and the declaration is kept at presentation attribute precedence.
+                                if (TryGetGeometryProperty(kind, attribute, out SvgPropertyId geometry) && SvgPropertyParser.ContainsVar(value))
+                                {
+                                    presentation.MarkPending(geometry, SvgNumberParser.Trim(value).ToString(), null);
+                                }
+
                                 this.tables.SetGeometry(kind, element.DataIndex, attribute, value);
                                 break;
                         }
@@ -894,6 +910,10 @@ internal sealed class SvgReader
                 {
                     xmlSpace = xml.Value;
                 }
+                else if (ReferenceEquals(ns, SvgNames.XmlNamespace) && ReferenceEquals(name, SvgNames.Lang))
+                {
+                    xmlLang = xml.Value;
+                }
             }
             while (xml.MoveToNextAttribute());
 
@@ -906,6 +926,13 @@ internal sealed class SvgReader
         if (xmlSpace is not null && !presentation.IsSpecified(SvgPropertyId.WhiteSpace))
         {
             _ = this.properties.TryParse(SvgPropertyId.WhiteSpace, xmlSpace == "preserve" ? "pre" : "nowrap", ref presentation);
+        }
+
+        // xml:lang wins over lang when both are present, as Chromium matches :lang().
+        string? language = xmlLang ?? lang;
+        if (language is not null)
+        {
+            this.tables.SetLanguage(index, language);
         }
 
         // href wins over xlink:href when both are present.
@@ -929,6 +956,37 @@ internal sealed class SvgReader
             this.AddStyle(in presentation),
             this.AddStyle(in inline),
             this.AddStyle(in inlineImportant)));
+    }
+
+    /// <summary>
+    /// Returns the geometry property whose presentation attribute an attribute of an element is (SVG 2, "Geometry
+    /// Properties"): <c>x</c> and <c>y</c> on the elements that have them as positions, <c>width</c> and
+    /// <c>height</c> on the sized elements, <c>cx</c>, <c>cy</c>, and <c>r</c> on circles and ellipses, and <c>rx</c> and
+    /// <c>ry</c> on rectangles and ellipses. <c>d</c> is left out: Chromium does not accept <c>var()</c> in it.
+    /// </summary>
+    /// <param name="kind">The element kind.</param>
+    /// <param name="attribute">The attribute.</param>
+    /// <param name="property">When this method returns <see langword="true"/>, contains the property.</param>
+    /// <returns><see langword="true"/> if the attribute is a geometry presentation attribute on the kind; otherwise, <see langword="false"/>.</returns>
+    private static bool TryGetGeometryProperty(SvgElementKind kind, SvgAttributeId attribute, out SvgPropertyId property)
+    {
+        bool sized = kind is SvgElementKind.Rect or SvgElementKind.Image or SvgElementKind.Svg or SvgElementKind.Symbol
+            or SvgElementKind.Use or SvgElementKind.ForeignObject;
+        property = attribute switch
+        {
+            SvgAttributeId.X when sized => SvgPropertyId.X,
+            SvgAttributeId.Y when sized => SvgPropertyId.Y,
+            SvgAttributeId.Width when sized => SvgPropertyId.Width,
+            SvgAttributeId.Height when sized => SvgPropertyId.Height,
+            SvgAttributeId.Cx when kind is SvgElementKind.Circle or SvgElementKind.Ellipse => SvgPropertyId.Cx,
+            SvgAttributeId.Cy when kind is SvgElementKind.Circle or SvgElementKind.Ellipse => SvgPropertyId.Cy,
+            SvgAttributeId.R when kind is SvgElementKind.Circle => SvgPropertyId.R,
+            SvgAttributeId.Rx when kind is SvgElementKind.Rect or SvgElementKind.Ellipse => SvgPropertyId.Rx,
+            SvgAttributeId.Ry when kind is SvgElementKind.Rect or SvgElementKind.Ellipse => SvgPropertyId.Ry,
+            _ => SvgPropertyId.Color
+        };
+
+        return property != SvgPropertyId.Color;
     }
 
     /// <summary>
@@ -1148,6 +1206,42 @@ internal sealed class SvgReader
         /// Gets the map from id to the first element with that id.
         /// </summary>
         public Dictionary<string, int> Ids { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Gets the valid <c>pathLength</c> values by element index, or <see langword="null"/> when no element has one.
+        /// </summary>
+        public Dictionary<int, float>? PathLengths { get; private set; }
+
+        /// <summary>
+        /// Gets the language of each element that has an <c>xml:lang</c> or a <c>lang</c> attribute, by element index,
+        /// as written; or <see langword="null"/> when no element has one.
+        /// </summary>
+        public Dictionary<int, string>? Languages { get; private set; }
+
+        /// <summary>
+        /// Stores the <c>pathLength</c> attribute of a <c>path</c> or a basic shape. A value that is not a number leaves the
+        /// attribute unspecified; zero and negative numbers are kept for the resolve stage, which applies the rules of
+        /// SVG 2 to them.
+        /// </summary>
+        /// <param name="index">The element index.</param>
+        /// <param name="kind">The element kind.</param>
+        /// <param name="value">The attribute value.</param>
+        public void SetPathLength(int index, SvgElementKind kind, string value)
+        {
+            if (kind is SvgElementKind.Path or SvgElementKind.Rect or SvgElementKind.Circle or SvgElementKind.Ellipse
+                    or SvgElementKind.Line or SvgElementKind.Polyline or SvgElementKind.Polygon
+                && SvgNumberParser.TryParseNumber(value, out float length))
+            {
+                (this.PathLengths ??= [])[index] = length;
+            }
+        }
+
+        /// <summary>
+        /// Stores the language attribute of an element.
+        /// </summary>
+        /// <param name="index">The element index.</param>
+        /// <param name="language">The value of <c>xml:lang</c>, or of <c>lang</c> when the element has no <c>xml:lang</c>.</param>
+        public void SetLanguage(int index, string language) => (this.Languages ??= [])[index] = language;
 
         /// <summary>
         /// Returns the tables of text content elements, creating them on first use.

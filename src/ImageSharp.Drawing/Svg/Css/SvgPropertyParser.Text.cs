@@ -113,6 +113,49 @@ internal sealed partial class SvgPropertyParser
     private static readonly string[] WhiteSpaceKeywords = ["normal", "pre", "nowrap", "pre-wrap", "break-spaces", "pre-line"];
 
     /// <summary>
+    /// The <c>white-space-collapse</c> value of each <c>white-space</c> keyword, in <see cref="WhiteSpaceKeywords"/> order.
+    /// </summary>
+    private static readonly SvgWhiteSpaceCollapse[] WhiteSpaceKeywordCollapse =
+    [
+        SvgWhiteSpaceCollapse.Collapse, SvgWhiteSpaceCollapse.Preserve, SvgWhiteSpaceCollapse.Collapse,
+        SvgWhiteSpaceCollapse.Preserve, SvgWhiteSpaceCollapse.BreakSpaces, SvgWhiteSpaceCollapse.PreserveBreaks
+    ];
+
+    /// <summary>
+    /// The <c>white-space-collapse</c> keywords that Chromium accepts, in <see cref="SvgWhiteSpaceCollapse"/> order.
+    /// </summary>
+    private static readonly string[] WhiteSpaceCollapseKeywords = ["collapse", "preserve", "preserve-breaks", "break-spaces"];
+
+    /// <summary>
+    /// The <c>font-variant-position</c> keywords in <see cref="SvgFontVariantPosition"/> order.
+    /// </summary>
+    private static readonly string[] FontVariantPositionKeywords = ["normal", "sub", "super"];
+
+    /// <summary>
+    /// The keywords of <c>font-variant-ligatures</c> other than <c>normal</c> and <c>none</c>, in the bit order of
+    /// <see cref="SvgFontVariantLigatures"/> from bit 1: pairs of a value and its negation.
+    /// </summary>
+    private static readonly string[] LigatureKeywords =
+    [
+        "common-ligatures", "no-common-ligatures", "discretionary-ligatures", "no-discretionary-ligatures",
+        "historical-ligatures", "no-historical-ligatures", "contextual", "no-contextual"
+    ];
+
+    /// <summary>
+    /// The keywords of <c>font-variant-numeric</c> other than <c>normal</c>, in the bit order of
+    /// <see cref="SvgFontVariantNumeric"/>.
+    /// </summary>
+    private static readonly string[] NumericKeywords =
+        ["lining-nums", "oldstyle-nums", "proportional-nums", "tabular-nums", "diagonal-fractions", "stacked-fractions", "ordinal", "slashed-zero"];
+
+    /// <summary>
+    /// The keywords of <c>font-variant-east-asian</c> other than <c>normal</c>, in the bit order of
+    /// <see cref="SvgFontVariantEastAsian"/>.
+    /// </summary>
+    private static readonly string[] EastAsianKeywords =
+        ["jis78", "jis83", "jis90", "jis04", "simplified", "traditional", "full-width", "proportional-width", "ruby"];
+
+    /// <summary>
     /// The <c>text-rendering</c> keywords in <see cref="SvgTextRendering"/> order.
     /// </summary>
     private static readonly string[] TextRenderingKeywords = ["auto", "optimizeSpeed", "optimizeLegibility", "geometricPrecision"];
@@ -128,8 +171,16 @@ internal sealed partial class SvgPropertyParser
     private static ReadOnlySpan<SvgPropertyId> FontShorthandLonghands =>
     [
         SvgPropertyId.FontStyle, SvgPropertyId.FontVariant, SvgPropertyId.FontWeight, SvgPropertyId.FontStretch,
-        SvgPropertyId.FontSize, SvgPropertyId.FontFamily, SvgPropertyId.FontSizeAdjust, SvgPropertyId.FontKerning
+        SvgPropertyId.FontSize, SvgPropertyId.FontFamily, SvgPropertyId.FontSizeAdjust, SvgPropertyId.FontKerning,
+        SvgPropertyId.FontFeatureSettings, SvgPropertyId.FontVariantLigatures, SvgPropertyId.FontVariantCaps,
+        SvgPropertyId.FontVariantNumeric, SvgPropertyId.FontVariantEastAsian, SvgPropertyId.FontVariantPosition
     ];
+
+    /// <summary>
+    /// Gets the longhands of the <c>marker</c> shorthand.
+    /// </summary>
+    private static ReadOnlySpan<SvgPropertyId> MarkerShorthandLonghands =>
+        [SvgPropertyId.MarkerStart, SvgPropertyId.MarkerMid, SvgPropertyId.MarkerEnd];
 
     /// <summary>
     /// Gets the longhands of the <c>text-decoration</c> shorthand.
@@ -175,12 +226,30 @@ internal sealed partial class SvgPropertyParser
     /// <param name="style">The style that receives the values.</param>
     /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
     public bool TryParseShorthand(SvgShorthand shorthand, ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
-        => shorthand switch
+    {
+        switch (shorthand)
+        {
+            case SvgShorthand.FontVariant:
+                return this.TryParse(SvgPropertyId.FontVariant, source, ref style);
+            case SvgShorthand.WhiteSpace:
+                return this.TryParse(SvgPropertyId.WhiteSpace, source, ref style);
+        }
+
+        // A value with var() is valid until substitution; every longhand keeps the text of the shorthand.
+        ReadOnlySpan<char> trimmed = SvgNumberParser.Trim(source);
+        if (ContainsVar(trimmed))
+        {
+            MarkPendingShorthand(shorthand, trimmed, ref style);
+            return true;
+        }
+
+        return shorthand switch
         {
             SvgShorthand.Marker => this.TryParseMarkerShorthand(source, ref style),
             SvgShorthand.Font => TryParseFontShorthand(source, ref style),
             _ => this.TryParseTextDecorationShorthand(source, ref style),
         };
+    }
 
     /// <summary>
     /// Parses the value of a text property and stores it in the text values of the style. The caller marks the property.
@@ -227,13 +296,61 @@ internal sealed partial class SvgPropertyParser
 
                 GetText(ref style).FontStretch = stretch;
                 return true;
-            case SvgPropertyId.FontVariant:
-                if (!TryParseFontVariant(source, out SvgFontVariant variant))
+            case SvgPropertyId.FontVariantCaps:
+                if (!TryParseKeyword(source, FontVariantCapsKeywords, out keyword))
                 {
                     return false;
                 }
 
-                GetText(ref style).FontVariant = variant;
+                GetText(ref style).FontVariantCaps = (SvgFontVariant)keyword;
+                return true;
+            case SvgPropertyId.FontVariantLigatures:
+                if (!TryParseLigatures(source, out SvgFontVariantLigatures ligatures))
+                {
+                    return false;
+                }
+
+                GetText(ref style).FontVariantLigatures = ligatures;
+                return true;
+            case SvgPropertyId.FontVariantNumeric:
+                if (!TryParseNumeric(source, out SvgFontVariantNumeric numeric))
+                {
+                    return false;
+                }
+
+                GetText(ref style).FontVariantNumeric = numeric;
+                return true;
+            case SvgPropertyId.FontVariantEastAsian:
+                if (!TryParseEastAsian(source, out SvgFontVariantEastAsian eastAsian))
+                {
+                    return false;
+                }
+
+                GetText(ref style).FontVariantEastAsian = eastAsian;
+                return true;
+            case SvgPropertyId.FontVariantPosition:
+                if (!TryParseKeyword(source, FontVariantPositionKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                GetText(ref style).FontVariantPosition = (SvgFontVariantPosition)keyword;
+                return true;
+            case SvgPropertyId.FontFeatureSettings:
+                if (!TryParseFontFeatureSettings(source, out SvgFontFeatureSetting[] settings))
+                {
+                    return false;
+                }
+
+                GetText(ref style).FontFeatureSettings = settings;
+                return true;
+            case SvgPropertyId.WhiteSpaceCollapse:
+                if (!TryParseKeyword(source, WhiteSpaceCollapseKeywords, out keyword))
+                {
+                    return false;
+                }
+
+                GetText(ref style).WhiteSpaceCollapse = (SvgWhiteSpaceCollapse)keyword;
                 return true;
             case SvgPropertyId.FontSizeAdjust:
                 float adjust = SvgTextStyle.None;
@@ -362,14 +479,6 @@ internal sealed partial class SvgPropertyParser
                 }
 
                 GetText(ref style).UnicodeBidi = (SvgUnicodeBidi)keyword;
-                return true;
-            case SvgPropertyId.WhiteSpace:
-                if (!TryParseKeyword(source, WhiteSpaceKeywords, out keyword))
-                {
-                    return false;
-                }
-
-                GetText(ref style).WhiteSpace = (SvgWhiteSpace)keyword;
                 return true;
             case SvgPropertyId.TextRendering:
                 if (!TryParseKeyword(source, TextRenderingKeywords, out keyword))
@@ -528,18 +637,28 @@ internal sealed partial class SvgPropertyParser
         SvgTextStyle text = style.GetOrCreateExtended().GetOrCreateText();
         text.FontStyle = fontStyle;
         text.FontVariant = variant;
+        text.FontVariantCaps = variant;
         text.FontWeight = weight;
         text.FontStretch = stretch;
         text.FontFamily = families;
         style.FontSize = size;
         style.MarkValue(SvgPropertyId.FontStyle);
         style.MarkValue(SvgPropertyId.FontVariant);
+        style.MarkValue(SvgPropertyId.FontVariantCaps);
         style.MarkValue(SvgPropertyId.FontWeight);
         style.MarkValue(SvgPropertyId.FontStretch);
         style.MarkValue(SvgPropertyId.FontFamily);
         style.MarkValue(SvgPropertyId.FontSize);
+
+        // The shorthand resets the longhands it cannot set; Chromium resets font-feature-settings and the font-variant
+        // longhands too.
         style.MarkInitial(SvgPropertyId.FontSizeAdjust);
         style.MarkInitial(SvgPropertyId.FontKerning);
+        style.MarkInitial(SvgPropertyId.FontFeatureSettings);
+        style.MarkInitial(SvgPropertyId.FontVariantLigatures);
+        style.MarkInitial(SvgPropertyId.FontVariantNumeric);
+        style.MarkInitial(SvgPropertyId.FontVariantEastAsian);
+        style.MarkInitial(SvgPropertyId.FontVariantPosition);
         return true;
     }
 
@@ -945,6 +1064,421 @@ internal sealed partial class SvgPropertyParser
         }
 
         value = length.Value;
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-variant</c> declaration and stores it, as the text layout reads it today and as the CSS shorthand
+    /// of the <c>font-variant-*</c> longhands. The caller does not mark anything.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TryParseFontVariant(ReadOnlySpan{char}, out SvgFontVariant)"/> gives the value of
+    /// <see cref="SvgPropertyId.FontVariant"/> as before. When the value also follows the grammar of the shorthand, which
+    /// allows at most one keyword of each group, the longhands are set too: <c>normal</c> resets all of them, and
+    /// <c>none</c> sets <c>font-variant-ligatures: none</c> and resets the others. A value that only the older, more
+    /// lenient rule accepts leaves the longhands as they were.
+    /// </remarks>
+    /// <param name="source">The trimmed value, which is not a CSS-wide keyword.</param>
+    /// <param name="style">The style that receives the values.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseFontVariantDeclaration(ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
+    {
+        if (!TryParseFontVariant(source, out SvgFontVariant variant))
+        {
+            return false;
+        }
+
+        SvgTextStyle text = style.GetOrCreateExtended().GetOrCreateText();
+        text.FontVariant = variant;
+        style.MarkValue(SvgPropertyId.FontVariant);
+        if (!TryParseFontVariantShorthand(
+            source,
+            out SvgFontVariant caps,
+            out SvgFontVariantLigatures ligatures,
+            out SvgFontVariantNumeric numeric,
+            out SvgFontVariantEastAsian eastAsian,
+            out SvgFontVariantPosition position))
+        {
+            return true;
+        }
+
+        text.FontVariantCaps = caps;
+        text.FontVariantLigatures = ligatures;
+        text.FontVariantNumeric = numeric;
+        text.FontVariantEastAsian = eastAsian;
+        text.FontVariantPosition = position;
+        foreach (SvgPropertyId longhand in FontVariantLonghands)
+        {
+            style.MarkValue(longhand);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-variant</c> value with the grammar of the CSS Fonts Level 4 shorthand: <c>normal</c>,
+    /// <c>none</c>, or any of the keywords of <c>font-variant-ligatures</c> (without <c>none</c>), <c>-caps</c>,
+    /// <c>-numeric</c>, <c>-east-asian</c>, and <c>-position</c>, at most one of each group. <c>historical-forms</c>, a
+    /// keyword of <c>font-variant-alternates</c>, is accepted and has no longhand here.
+    /// </summary>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="caps">When this method returns <see langword="true"/>, contains <c>font-variant-caps</c>.</param>
+    /// <param name="ligatures">When this method returns <see langword="true"/>, contains <c>font-variant-ligatures</c>.</param>
+    /// <param name="numeric">When this method returns <see langword="true"/>, contains <c>font-variant-numeric</c>.</param>
+    /// <param name="eastAsian">When this method returns <see langword="true"/>, contains <c>font-variant-east-asian</c>.</param>
+    /// <param name="position">When this method returns <see langword="true"/>, contains <c>font-variant-position</c>.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseFontVariantShorthand(
+        ReadOnlySpan<char> source,
+        out SvgFontVariant caps,
+        out SvgFontVariantLigatures ligatures,
+        out SvgFontVariantNumeric numeric,
+        out SvgFontVariantEastAsian eastAsian,
+        out SvgFontVariantPosition position)
+    {
+        caps = SvgFontVariant.Normal;
+        ligatures = SvgFontVariantLigatures.Normal;
+        numeric = SvgFontVariantNumeric.Normal;
+        eastAsian = SvgFontVariantEastAsian.Normal;
+        position = SvgFontVariantPosition.Normal;
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (source.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            ligatures = SvgFontVariantLigatures.None;
+            return true;
+        }
+
+        bool hasCaps = false;
+        bool hasPosition = false;
+        bool hasAlternates = false;
+        ReadOnlySpan<char> rest = source;
+        while (!rest.IsEmpty)
+        {
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            if (TryParseKeyword(word, FontVariantCapsKeywords, out int capsKeyword) && capsKeyword > 0)
+            {
+                if (hasCaps)
+                {
+                    return false;
+                }
+
+                caps = (SvgFontVariant)capsKeyword;
+                hasCaps = true;
+            }
+            else if (TryParseKeyword(word, FontVariantPositionKeywords, out int positionKeyword) && positionKeyword > 0)
+            {
+                if (hasPosition)
+                {
+                    return false;
+                }
+
+                position = (SvgFontVariantPosition)positionKeyword;
+                hasPosition = true;
+            }
+            else if (word.Equals("historical-forms", StringComparison.OrdinalIgnoreCase))
+            {
+                if (hasAlternates)
+                {
+                    return false;
+                }
+
+                hasAlternates = true;
+            }
+            else if (!TryAddLigatureKeyword(word, ref ligatures)
+                && !TryAddNumericKeyword(word, ref numeric)
+                && !TryAddEastAsianKeyword(word, ref eastAsian))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-variant-ligatures</c> value: <c>normal</c>, <c>none</c>, or a list of keywords with at most one
+    /// of each pair.
+    /// </summary>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the value.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseLigatures(ReadOnlySpan<char> source, out SvgFontVariantLigatures value)
+    {
+        value = SvgFontVariantLigatures.Normal;
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (source.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            value = SvgFontVariantLigatures.None;
+            return true;
+        }
+
+        for (ReadOnlySpan<char> rest = source; !rest.IsEmpty;)
+        {
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            if (!TryAddLigatureKeyword(word, ref value))
+            {
+                return false;
+            }
+        }
+
+        return !source.IsEmpty;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-variant-numeric</c> value: <c>normal</c>, or a list of keywords with at most one of each group.
+    /// </summary>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the value.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseNumeric(ReadOnlySpan<char> source, out SvgFontVariantNumeric value)
+    {
+        value = SvgFontVariantNumeric.Normal;
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        for (ReadOnlySpan<char> rest = source; !rest.IsEmpty;)
+        {
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            if (!TryAddNumericKeyword(word, ref value))
+            {
+                return false;
+            }
+        }
+
+        return !source.IsEmpty;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-variant-east-asian</c> value: <c>normal</c>, or a list of keywords with at most one of each group.
+    /// </summary>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the value.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseEastAsian(ReadOnlySpan<char> source, out SvgFontVariantEastAsian value)
+    {
+        value = SvgFontVariantEastAsian.Normal;
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        for (ReadOnlySpan<char> rest = source; !rest.IsEmpty;)
+        {
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            if (!TryAddEastAsianKeyword(word, ref value))
+            {
+                return false;
+            }
+        }
+
+        return !source.IsEmpty;
+    }
+
+    /// <summary>
+    /// Adds a <c>font-variant-ligatures</c> keyword other than <c>normal</c> and <c>none</c> to a value: each keyword and
+    /// its negation share a pair, which takes one keyword.
+    /// </summary>
+    /// <param name="word">The keyword.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the keyword is valid here; otherwise, <see langword="false"/>.</returns>
+    private static bool TryAddLigatureKeyword(ReadOnlySpan<char> word, ref SvgFontVariantLigatures value)
+    {
+        if (!TryParseKeyword(word, LigatureKeywords, out int index))
+        {
+            return false;
+        }
+
+        // Bits 1 and 2 are the first pair, 3 and 4 the second, and so on.
+        int pair = (int)(3U << (1 + (index & ~1)));
+        if (((int)value & pair) != 0)
+        {
+            return false;
+        }
+
+        value |= (SvgFontVariantLigatures)(1 << (index + 1));
+        return true;
+    }
+
+    /// <summary>
+    /// Adds a <c>font-variant-numeric</c> keyword other than <c>normal</c> to a value: one figure keyword, one spacing
+    /// keyword, one fraction keyword, <c>ordinal</c>, and <c>slashed-zero</c>.
+    /// </summary>
+    /// <param name="word">The keyword.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the keyword is valid here; otherwise, <see langword="false"/>.</returns>
+    private static bool TryAddNumericKeyword(ReadOnlySpan<char> word, ref SvgFontVariantNumeric value)
+    {
+        if (!TryParseKeyword(word, NumericKeywords, out int index))
+        {
+            return false;
+        }
+
+        // The first three groups are the bit pairs 0-1, 2-3, and 4-5; ordinal and slashed-zero stand alone.
+        int group = index < 6 ? 3 << (index & ~1) : 1 << index;
+        if (((int)value & group) != 0)
+        {
+            return false;
+        }
+
+        value |= (SvgFontVariantNumeric)(1 << index);
+        return true;
+    }
+
+    /// <summary>
+    /// Adds a <c>font-variant-east-asian</c> keyword other than <c>normal</c> to a value: one variant keyword, one width
+    /// keyword, and <c>ruby</c>.
+    /// </summary>
+    /// <param name="word">The keyword.</param>
+    /// <param name="value">The value.</param>
+    /// <returns><see langword="true"/> if the keyword is valid here; otherwise, <see langword="false"/>.</returns>
+    private static bool TryAddEastAsianKeyword(ReadOnlySpan<char> word, ref SvgFontVariantEastAsian value)
+    {
+        if (!TryParseKeyword(word, EastAsianKeywords, out int index))
+        {
+            return false;
+        }
+
+        // The variant keywords are bits 0 to 5, the widths bits 6 and 7, and ruby bit 8.
+        int group = index < 6 ? 0x3F : index < 8 ? 0xC0 : 0x100;
+        if (((int)value & group) != 0)
+        {
+            return false;
+        }
+
+        value |= (SvgFontVariantEastAsian)(1 << index);
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>font-feature-settings</c> value: <c>normal</c>, or a comma-separated list of entries
+    /// <c>&lt;string&gt; [&lt;integer [0,∞]&gt; | on | off]?</c>, where the string is four ASCII characters from U+20
+    /// to U+7E.
+    /// </summary>
+    /// <param name="source">The trimmed value.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, contains the entries; empty for <c>normal</c>.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseFontFeatureSettings(ReadOnlySpan<char> source, out SvgFontFeatureSetting[] value)
+    {
+        value = [];
+        if (source.Equals("normal", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        List<SvgFontFeatureSetting> entries = [];
+        ReadOnlySpan<char> rest = source;
+        while (true)
+        {
+            rest = SvgNumberParser.SkipWhitespace(rest);
+            if (rest.Length < 6 || rest[0] is not ('"' or '\'') || rest[5] != rest[0])
+            {
+                return false;
+            }
+
+            ReadOnlySpan<char> tag = rest.Slice(1, 4);
+            foreach (char c in tag)
+            {
+                if (c is < ' ' or > '~')
+                {
+                    return false;
+                }
+            }
+
+            rest = SvgNumberParser.SkipWhitespace(rest[6..]);
+            int end = rest.IndexOf(',');
+            ReadOnlySpan<char> setting = SvgNumberParser.Trim(end < 0 ? rest : rest[..end]);
+            int number = 1;
+            if (setting.Equals("off", StringComparison.OrdinalIgnoreCase))
+            {
+                number = 0;
+            }
+            else if (!setting.IsEmpty
+                && !setting.Equals("on", StringComparison.OrdinalIgnoreCase)
+                && (!int.TryParse(setting, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out number)))
+            {
+                return false;
+            }
+
+            entries.Add(new SvgFontFeatureSetting(SixLabors.Fonts.Tables.AdvancedTypographic.Tag.Parse(tag.ToString()), number));
+            if (end < 0)
+            {
+                break;
+            }
+
+            rest = rest[(end + 1)..];
+        }
+
+        value = [.. entries];
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a <c>white-space</c> declaration and stores it: the six keywords of CSS Text Level 3 set
+    /// <see cref="SvgPropertyId.WhiteSpace"/>, which the text layout reads today, and <c>white-space-collapse</c>; the
+    /// shorthand forms of CSS Text Level 4 (<c>&lt;white-space-collapse&gt; || &lt;text-wrap-mode&gt;</c>, such as
+    /// <c>preserve nowrap</c>) set only <c>white-space-collapse</c>. The caller does not mark anything.
+    /// </summary>
+    /// <param name="source">The trimmed value, which is not a CSS-wide keyword.</param>
+    /// <param name="style">The style that receives the values.</param>
+    /// <returns><see langword="true"/> if the value is valid; otherwise, <see langword="false"/>.</returns>
+    private static bool TryParseWhiteSpaceDeclaration(ReadOnlySpan<char> source, ref SvgSpecifiedStyle style)
+    {
+        if (TryParseKeyword(source, WhiteSpaceKeywords, out int keyword))
+        {
+            SvgTextStyle text = style.GetOrCreateExtended().GetOrCreateText();
+            text.WhiteSpace = (SvgWhiteSpace)keyword;
+            text.WhiteSpaceCollapse = WhiteSpaceKeywordCollapse[keyword];
+            style.MarkValue(SvgPropertyId.WhiteSpace);
+            style.MarkValue(SvgPropertyId.WhiteSpaceCollapse);
+            return true;
+        }
+
+        // At most one collapse keyword and one wrap keyword, in either order; SVG text does not wrap, so the wrap mode is
+        // checked and dropped.
+        SvgWhiteSpaceCollapse collapse = SvgWhiteSpaceCollapse.Collapse;
+        bool hasCollapse = false;
+        bool hasWrap = false;
+        ReadOnlySpan<char> rest = source;
+        while (!rest.IsEmpty)
+        {
+            ReadOnlySpan<char> word = ReadWord(rest, out int length);
+            rest = SvgNumberParser.SkipWhitespace(rest[length..]);
+            if (!hasCollapse && TryParseKeyword(word, WhiteSpaceCollapseKeywords, out int collapseKeyword))
+            {
+                collapse = (SvgWhiteSpaceCollapse)collapseKeyword;
+                hasCollapse = true;
+            }
+            else if (!hasWrap && (word.Equals("wrap", StringComparison.OrdinalIgnoreCase) || word.Equals("nowrap", StringComparison.OrdinalIgnoreCase)))
+            {
+                hasWrap = true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        if (!hasCollapse && !hasWrap)
+        {
+            return false;
+        }
+
+        style.GetOrCreateExtended().GetOrCreateText().WhiteSpaceCollapse = collapse;
+        style.MarkValue(SvgPropertyId.WhiteSpaceCollapse);
         return true;
     }
 

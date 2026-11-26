@@ -296,9 +296,11 @@ internal static class SvgCssParser
         bool known = SvgPropertyParser.TryGetProperty(propertyName, out SvgPropertyId property);
         SvgShorthand shorthand = default;
 
-        // A shorthand (marker, font, text-decoration) is not a property of its own: it sets its longhands.
+        // A shorthand (marker, font, text-decoration) is not a property of its own: it sets its longhands. A custom
+        // property (--name) takes any value, even an empty one.
         bool isShorthand = !known && SvgPropertyParser.TryGetShorthand(propertyName, out shorthand);
-        known |= isShorthand;
+        bool isCustom = !known && !isShorthand && SvgPropertyParser.IsCustomPropertyName(propertyName);
+        known |= isShorthand | isCustom;
 
         SvgCssToken token = tokenizer.Next();
         while (token.Kind == SvgCssTokenKind.Whitespace)
@@ -356,6 +358,14 @@ internal static class SvgCssParser
         if (isImportant)
         {
             valueEnd = beforeLast.Start;
+        }
+
+        if (isCustom)
+        {
+            // The value keeps its tokens as written, comments and escapes included; the substitution tokenizes it again.
+            ReadOnlySpan<char> customValue = valueStart >= 0 && valueEnd > valueStart ? text[valueStart..valueEnd] : [];
+            SvgPropertyParser.SetCustomProperty(propertyName, customValue, ref isImportant ? ref important : ref normal);
+            return;
         }
 
         if (valueStart < 0 || valueEnd <= valueStart)

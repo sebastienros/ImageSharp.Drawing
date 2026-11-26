@@ -538,7 +538,7 @@ public class SvgFilterTests
         SvgRenderNode[] nodes = first.Nodes.ToArray();
         SvgFilterNode node = first.Filters[nodes[0].FilterIndex];
         SvgFilterNode chain = new(node.Content, [node.Graphs[0], second.Filters[0].Graphs[0]], node.MaxPixels);
-        SvgDocument document = new(nodes, first.Transforms.ToArray(), first.Size, first.ViewBox, new RectangleF(0, 0, 20, 20), default, 0, [chain]);
+        SvgDocument document = new(nodes, first.Transforms.ToArray(), first.Size, first.ViewBox, new RectangleF(0, 0, 20, 20), default, 0, SvgLimits.DefaultMaxLayerPixels, [chain]);
 
         using Image<Rgba32> image = new(20, 20);
         image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, 20, 20))));

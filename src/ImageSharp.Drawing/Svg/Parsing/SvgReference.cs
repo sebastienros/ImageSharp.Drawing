@@ -5,25 +5,34 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// A specified <c>none | url(...)</c> value, as used by <c>clip-path</c>, <c>mask</c>, <c>marker-start</c>,
-/// <c>marker-mid</c>, and <c>marker-end</c>. <c>default(SvgReference)</c> is <c>none</c>.
+/// <c>marker-mid</c>, and <c>marker-end</c>, or the CSS basic shape of a <c>clip-path</c> value.
+/// <c>default(SvgReference)</c> is <c>none</c>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The value has one field, so a computed style can hold several references cheaply. A <c>url(...)</c> that is not a
 /// same-document fragment is stored as an empty string: it can never name an element, because the reader adds no empty
 /// id to the id index. Such a reference behaves like a fragment that names no element.
+/// </para>
+/// <para>
+/// A <c>clip-path</c> value with a basic shape or a geometry box holds an <see cref="SvgClipShape"/> in the same field.
+/// It is not <c>none</c> and has no <see cref="Id"/>, so code that reads only <see cref="Id"/> treats it as a reference
+/// that names no element, which applies no clip.
+/// </para>
 /// </remarks>
 internal readonly struct SvgReference
 {
-    private readonly string? value;
+    // null for none, a string for a URL (see the remarks), or an SvgClipShape.
+    private readonly object? value;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgReference"/> struct.
     /// </summary>
     /// <param name="value">
-    /// <see langword="null"/> for <c>none</c>, an empty string for a URL that is not a same-document fragment, otherwise
-    /// the fragment id without the leading <c>#</c>.
+    /// <see langword="null"/> for <c>none</c>, an empty string for a URL that is not a same-document fragment, the
+    /// fragment id without the leading <c>#</c>, or a basic shape.
     /// </param>
-    private SvgReference(string? value) => this.value = value;
+    private SvgReference(object? value) => this.value = value;
 
     /// <summary>
     /// Gets a value indicating whether the value is <c>none</c>.
@@ -31,10 +40,16 @@ internal readonly struct SvgReference
     public bool IsNone => this.value is null;
 
     /// <summary>
-    /// Gets the id of the referenced element without the leading <c>#</c>, or <see langword="null"/> for <c>none</c> and
-    /// for a URL that is not a same-document fragment.
+    /// Gets the id of the referenced element without the leading <c>#</c>, or <see langword="null"/> for <c>none</c>, for
+    /// a URL that is not a same-document fragment, and for a basic shape.
     /// </summary>
-    public string? Id => string.IsNullOrEmpty(this.value) ? null : this.value;
+    public string? Id => this.value is string { Length: > 0 } id ? id : null;
+
+    /// <summary>
+    /// Gets the basic shape and geometry box of a <c>clip-path</c> value, or <see langword="null"/> when the value is
+    /// <c>none</c> or a <c>url()</c> reference.
+    /// </summary>
+    public SvgClipShape? Shape => this.value as SvgClipShape;
 
     /// <summary>
     /// Creates a <c>url(...)</c> reference.
@@ -42,6 +57,13 @@ internal readonly struct SvgReference
     /// <param name="id">The fragment id without the leading <c>#</c>, or <see langword="null"/> when the URL is not a same-document fragment.</param>
     /// <returns>The reference.</returns>
     public static SvgReference FromUrl(string? id) => new(id ?? string.Empty);
+
+    /// <summary>
+    /// Creates the value of a <c>clip-path</c> basic shape.
+    /// </summary>
+    /// <param name="shape">The shape.</param>
+    /// <returns>The value.</returns>
+    public static SvgReference FromShape(SvgClipShape shape) => new(shape);
 
     /// <summary>
     /// Parses <c>none</c> or <c>url(...)</c>. <c>none</c> is ASCII case-insensitive. Nothing may follow the closing

@@ -16,6 +16,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 /// positions follow SVG 2 and, where SVG leaves a choice, the rendered output of Chromium, which the project follows: a
 /// cluster sits on the path at the middle of its advance and turns with the path.
 /// </summary>
+[Collection(SvgSequentialCollection.Name)]
 public class SvgTextPathTests
 {
     private const string SvgOpen = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"200\" font-family=\"Open Sans\" font-size=\"20\">";

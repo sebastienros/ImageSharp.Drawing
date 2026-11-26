@@ -16,6 +16,7 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 /// (<see cref="SvgGrowth"/>): where a limit or the visible area bounds the work, the large input costs about as much as
 /// the small one; otherwise the cost grows linearly. The test output prints the measured times.
 /// </summary>
+[Collection(SvgSequentialCollection.Name)]
 public class SvgFilterHostileDocumentTests
 {
     private const int Size = 1000;

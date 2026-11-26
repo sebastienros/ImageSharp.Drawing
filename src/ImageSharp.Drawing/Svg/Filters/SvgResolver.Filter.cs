@@ -424,7 +424,15 @@ internal sealed partial class SvgResolver
                     }
                 ];
 
-                return new SvgDocument(imageNodes, [Matrix3x2.Identity], source.Size, null, source, new SvgPreserveAspectRatio(SvgAlign.None, false), 0);
+                return new SvgDocument(
+                    imageNodes,
+                    [Matrix3x2.Identity],
+                    source.Size,
+                    null,
+                    source,
+                    new SvgPreserveAspectRatio(SvgAlign.None, false),
+                    0,
+                    this.loadOptions.Limits.MaxLayerPixels);
             }
         }
 

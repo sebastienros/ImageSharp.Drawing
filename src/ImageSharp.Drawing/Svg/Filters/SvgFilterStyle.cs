@@ -23,16 +23,6 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 internal sealed class SvgFilterStyle
 {
     /// <summary>
-    /// The mask of the filter properties.
-    /// </summary>
-    public const ulong Properties =
-        (1UL << (int)SvgPropertyId.Filter)
-        | (1UL << (int)SvgPropertyId.ColorInterpolationFilters)
-        | (1UL << (int)SvgPropertyId.FloodColor)
-        | (1UL << (int)SvgPropertyId.FloodOpacity)
-        | (1UL << (int)SvgPropertyId.LightingColor);
-
-    /// <summary>
     /// The mask of the paint properties that live in <see cref="SvgComputedStyle.FilterColors"/>.
     /// </summary>
     public const ulong ColorProperties =
@@ -53,6 +43,11 @@ internal sealed class SvgFilterStyle
 
     // Whether this is one of the shared initial instances, whose children can share it.
     private bool isInitial;
+
+    /// <summary>
+    /// Gets the mask of the filter properties.
+    /// </summary>
+    public static SvgPropertySet Properties { get; } = SvgPropertySet.Range(SvgPropertyId.Filter, SvgPropertyId.LightingColor);
 
     /// <summary>
     /// Gets the instance that holds the initial values: <c>none</c>, <c>linearRGB</c>, black, 1, and white.
@@ -89,7 +84,7 @@ internal sealed class SvgFilterStyle
     /// </summary>
     /// <param name="property">The property.</param>
     /// <returns><see langword="true"/> if the property is in <see cref="Properties"/>; otherwise, <see langword="false"/>.</returns>
-    public static bool IsFilterProperty(SvgPropertyId property) => (Properties & (1UL << (int)property)) != 0;
+    public static bool IsFilterProperty(SvgPropertyId property) => Properties.Contains(property);
 
     /// <summary>
     /// Returns a new instance that holds the values of <paramref name="target"/> with the values of the properties in
@@ -99,7 +94,7 @@ internal sealed class SvgFilterStyle
     /// <param name="source">The values of higher precedence.</param>
     /// <param name="properties">The mask of the filter properties that <paramref name="source"/> gives a value.</param>
     /// <returns>The merged values.</returns>
-    public static SvgFilterStyle Merge(SvgFilterStyle? target, SvgFilterStyle source, ulong properties)
+    public static SvgFilterStyle Merge(SvgFilterStyle? target, SvgFilterStyle source, SvgPropertySet properties)
     {
         SvgFilterStyle result = target is null ? new SvgFilterStyle() : target.Clone();
         result.CopyFrom(source, properties);
@@ -130,29 +125,29 @@ internal sealed class SvgFilterStyle
     /// </summary>
     /// <param name="source">The instance to copy from.</param>
     /// <param name="properties">The mask of the filter properties to copy.</param>
-    public void CopyFrom(SvgFilterStyle source, ulong properties)
+    public void CopyFrom(SvgFilterStyle source, SvgPropertySet properties)
     {
-        if ((properties & (1UL << (int)SvgPropertyId.Filter)) != 0)
+        if (properties.Contains(SvgPropertyId.Filter))
         {
             this.Filter = source.Filter;
         }
 
-        if ((properties & (1UL << (int)SvgPropertyId.ColorInterpolationFilters)) != 0)
+        if (properties.Contains(SvgPropertyId.ColorInterpolationFilters))
         {
             this.ColorInterpolationFilters = source.ColorInterpolationFilters;
         }
 
-        if ((properties & (1UL << (int)SvgPropertyId.FloodColor)) != 0)
+        if (properties.Contains(SvgPropertyId.FloodColor))
         {
             this.FloodColor = source.FloodColor;
         }
 
-        if ((properties & (1UL << (int)SvgPropertyId.FloodOpacity)) != 0)
+        if (properties.Contains(SvgPropertyId.FloodOpacity))
         {
             this.FloodOpacity = source.FloodOpacity;
         }
 
-        if ((properties & (1UL << (int)SvgPropertyId.LightingColor)) != 0)
+        if (properties.Contains(SvgPropertyId.LightingColor))
         {
             this.LightingColor = source.LightingColor;
         }

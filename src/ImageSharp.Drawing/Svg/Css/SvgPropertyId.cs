@@ -4,10 +4,14 @@
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The style properties that the parser reads. The value of each member is its bit index in the masks of
-/// <see cref="SvgSpecifiedStyle"/>, so the list holds at most 64 properties without a change of representation. It holds
-/// 64: a further property needs wider masks.
+/// The style properties that the parser reads. The value of each member is its bit index in an
+/// <see cref="SvgPropertySet"/>, which holds up to <see cref="SvgPropertySet.Capacity"/> properties.
 /// </summary>
+/// <remarks>
+/// The members below 64 have their mask bits inline in <see cref="SvgSpecifiedStyle"/>. The members from
+/// <see cref="X"/> on have theirs in <see cref="SvgExtendedStyle"/>, with their values, so documents that specify none of
+/// them pay nothing for them. A new property gets the next free id from 64 on.
+/// </remarks>
 internal enum SvgPropertyId : byte
 {
     /// <summary>
@@ -338,8 +342,110 @@ internal enum SvgPropertyId : byte
     FloodOpacity,
 
     /// <summary>
-    /// <c>lighting-color</c>. Not inherited. Initial <c>white</c>. The 64th property: the masks of
-    /// <see cref="SvgSpecifiedStyle"/> are full.
+    /// <c>lighting-color</c>. Not inherited. Initial <c>white</c>. The last property with an inline mask bit.
     /// </summary>
-    LightingColor
+    LightingColor,
+
+    /// <summary>
+    /// The CSS geometry property <c>x</c> (SVG 2). Not inherited. Initial <c>0</c>. The first geometry property: the
+    /// values of the geometry properties live in <see cref="SvgGeometryStyle"/>. A presentation attribute of the same name
+    /// stays in the attribute record of the element; only declarations in <c>style</c> and in style sheets set the
+    /// property. The first property whose mask bits live in <see cref="SvgExtendedStyle"/>.
+    /// </summary>
+    X = 64,
+
+    /// <summary>
+    /// The CSS geometry property <c>y</c>. Not inherited. Initial <c>0</c>.
+    /// </summary>
+    Y,
+
+    /// <summary>
+    /// The CSS geometry property <c>width</c>. Not inherited. Initial <c>auto</c>.
+    /// </summary>
+    Width,
+
+    /// <summary>
+    /// The CSS geometry property <c>height</c>. Not inherited. Initial <c>auto</c>.
+    /// </summary>
+    Height,
+
+    /// <summary>
+    /// The CSS geometry property <c>cx</c>. Not inherited. Initial <c>0</c>.
+    /// </summary>
+    Cx,
+
+    /// <summary>
+    /// The CSS geometry property <c>cy</c>. Not inherited. Initial <c>0</c>.
+    /// </summary>
+    Cy,
+
+    /// <summary>
+    /// The CSS geometry property <c>r</c>. Not inherited. Initial <c>0</c>.
+    /// </summary>
+    R,
+
+    /// <summary>
+    /// The CSS geometry property <c>rx</c>. Not inherited. Initial <c>auto</c>.
+    /// </summary>
+    Rx,
+
+    /// <summary>
+    /// The CSS geometry property <c>ry</c>. Not inherited. Initial <c>auto</c>.
+    /// </summary>
+    Ry,
+
+    /// <summary>
+    /// The CSS property <c>d</c>: <c>none</c> or <c>path(&lt;string&gt;)</c>. Not inherited. Initial <c>none</c>. The
+    /// last geometry property.
+    /// </summary>
+    D,
+
+    /// <summary>
+    /// <c>transform-box</c>. Not inherited. Initial <c>view-box</c>. CSS only: Chromium has no presentation attribute for
+    /// it. Its value lives in <see cref="SvgGeometryStyle"/>.
+    /// </summary>
+    TransformBox,
+
+    /// <summary>
+    /// <c>font-feature-settings</c>. Inherited. Initial <c>normal</c>. CSS only. The first of the text properties with an
+    /// id from 64 on; their values live in <see cref="SvgTextStyle"/>.
+    /// </summary>
+    FontFeatureSettings,
+
+    /// <summary>
+    /// <c>font-variant-ligatures</c>. Inherited. Initial <c>normal</c>. CSS only; the <c>font-variant</c> shorthand sets
+    /// it too.
+    /// </summary>
+    FontVariantLigatures,
+
+    /// <summary>
+    /// <c>font-variant-caps</c>. Inherited. Initial <c>normal</c>. CSS only; the <c>font-variant</c> shorthand and the
+    /// <c>font</c> shorthand set it too.
+    /// </summary>
+    FontVariantCaps,
+
+    /// <summary>
+    /// <c>font-variant-numeric</c>. Inherited. Initial <c>normal</c>. CSS only; the <c>font-variant</c> shorthand sets it
+    /// too.
+    /// </summary>
+    FontVariantNumeric,
+
+    /// <summary>
+    /// <c>font-variant-east-asian</c>. Inherited. Initial <c>normal</c>. CSS only; the <c>font-variant</c> shorthand sets
+    /// it too.
+    /// </summary>
+    FontVariantEastAsian,
+
+    /// <summary>
+    /// <c>font-variant-position</c>. Inherited. Initial <c>normal</c>. CSS only; the <c>font-variant</c> shorthand sets it
+    /// too.
+    /// </summary>
+    FontVariantPosition,
+
+    /// <summary>
+    /// <c>white-space-collapse</c> (CSS Text Level 4). Inherited. Initial <c>collapse</c>. The <c>white-space</c>
+    /// shorthand sets it too, so after the cascade it holds the collapse mode of whichever of the two declarations won.
+    /// The last text property.
+    /// </summary>
+    WhiteSpaceCollapse
 }

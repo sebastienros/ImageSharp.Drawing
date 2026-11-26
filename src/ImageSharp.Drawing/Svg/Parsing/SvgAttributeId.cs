@@ -516,5 +516,16 @@ internal enum SvgAttributeId : byte
     /// <summary>
     /// <c>radius</c>, on <c>feMorphology</c>.
     /// </summary>
-    Radius
+    Radius,
+
+    /// <summary>
+    /// <c>pathLength</c>, on <c>path</c> and the basic shapes; see <see cref="SvgElementTree.TryGetPathLength(int, out float)"/>.
+    /// </summary>
+    PathLength,
+
+    /// <summary>
+    /// <c>lang</c> in no namespace, on any element. <c>xml:lang</c> in the XML namespace wins over it; see
+    /// <see cref="SvgElementTree.GetLanguage(int)"/>.
+    /// </summary>
+    Lang
 }

@@ -79,12 +79,19 @@ internal static partial class SvgEmitter
     /// translate, which keeps the bounds tests exact and cheap.
     /// </param>
     /// <param name="destination">The rectangle that clips the document, in local canvas coordinates. Its width and height are greater than zero.</param>
+    /// <exception cref="InvalidImageContentException">The draw needs more layer pixels than <see cref="SvgLimits.MaxLayerPixels"/> allows.</exception>
     public static void Draw(DrawingCanvas canvas, SvgDocument document, Matrix3x2 viewport, RectangleF destination)
     {
         ReadOnlySpan<SvgRenderNode> nodes = document.Nodes;
         if (nodes.IsEmpty)
         {
             return;
+        }
+
+        // Only documents with scopes can open layers; the check runs before anything is recorded.
+        if (document.MaxScopeDepth > 0)
+        {
+            CheckLayerPixels(canvas, document, viewport, destination);
         }
 
         EmitState state = new(canvas, document.Transforms, viewport);

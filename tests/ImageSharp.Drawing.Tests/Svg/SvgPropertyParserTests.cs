@@ -452,8 +452,8 @@ public class SvgPropertyParserTests
         SvgSpecifiedStyle style = default;
 
         Assert.True(this.parser.TryParse(SvgPropertyId.TransformOrigin, input, ref style));
-        Assert.Equal(new SvgLength(x, (SvgLengthUnit)xUnit), style.Extended!.TransformOriginX);
-        Assert.Equal(new SvgLength(y, (SvgLengthUnit)yUnit), style.Extended.TransformOriginY);
+        Assert.Equal(new SvgLength(x, (SvgLengthUnit)xUnit), style.Extended!.Geometry!.TransformOriginX);
+        Assert.Equal(new SvgLength(y, (SvgLengthUnit)yUnit), style.Extended.Geometry!.TransformOriginY);
     }
 
     [Theory]
@@ -479,7 +479,7 @@ public class SvgPropertyParserTests
         SvgSpecifiedStyle style = default;
 
         Assert.True(this.parser.TryParse(SvgPropertyId.Transform, "scale(2)", ref style));
-        Assert.Equal(System.Numerics.Matrix3x2.CreateScale(2F), style.Extended!.Transform);
+        Assert.Equal(System.Numerics.Matrix3x2.CreateScale(2F), style.Extended!.Geometry!.Transform);
         Assert.True(this.parser.HasTransformDeclarations);
         Assert.False(this.parser.TryParse(SvgPropertyId.Transform, "rotate(45)", ref style));
     }
