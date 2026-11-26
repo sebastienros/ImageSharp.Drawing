@@ -44,7 +44,9 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// this renderer, so a <c>textPath</c> that references anything else draws none of its text. The transform of the
 /// referenced element applies, in the user space of the <c>text</c> element; the transforms of its ancestors do not.
 /// <c>side="right"</c> reverses the path. <c>method</c> and <c>spacing</c> have no effect, as in Chromium; SVG 2
-/// leaves their result to the user agent. <c>pathLength</c> on the referenced element is not supported.
+/// leaves their result to the user agent. <c>pathLength</c> on the referenced <c>path</c> scales a <c>startOffset</c>
+/// that is a length, as SVG 2 defines and the Chromium oracle renders; a percentage refers to the computed length, and the
+/// advances and <c>dx</c> values of the text are not scaled (see <c>SvgResolver.PathLength.cs</c>).
 /// </para>
 /// </remarks>
 internal static partial class SvgTextPaths
@@ -91,7 +93,7 @@ internal static partial class SvgTextPaths
 
             SvgTextSpan pathSpan = spans[content.FindSpan(textPath)];
             ref readonly SvgTextPathAttributes attributes = ref resolver.Tree.GetTextPath(textPath);
-            SvgTextPathMeasure? measure = GetMeasure(layout, resolver, textPath, in attributes, pathSpan.Style.FontSize);
+            SvgTextPathMeasure? measure = GetMeasure(layout, resolver, textPath, in attributes, pathSpan.Style.FontSize, out int source);
             bool reverse = attributes.Side == SvgTextPathSide.Right;
             Vector2 endPoint = default;
             if (measure is null)
@@ -105,6 +107,13 @@ internal static partial class SvgTextPaths
             {
                 float length = measure.Length;
                 float offset = SvgUnits.ToUser(attributes.StartOffset, length, pathSpan.Style.FontSize, resolver.Units, 0F);
+                if (source != textPath
+                    && attributes.StartOffset.Unit != SvgLengthUnit.Percent
+                    && resolver.Tree.TryGetPathLength(source, out float authorLength))
+                {
+                    offset = SvgResolver.ScalePathDistance(offset, SvgResolver.GetPathLengthScale(authorLength, length));
+                }
+
                 _ = measure.GetPoint(reverse ? 0F : length, out endPoint);
 
                 for (int i = start; i < end; i++)
@@ -239,10 +248,18 @@ internal static partial class SvgTextPaths
     /// <param name="textPath">The element index of the <c>textPath</c>.</param>
     /// <param name="attributes">The attributes of the <c>textPath</c>.</param>
     /// <param name="fontSize">The font size of the <c>textPath</c>, which sets the flattening tolerance.</param>
+    /// <param name="source">When this method returns, contains the element that holds the geometry: the <c>textPath</c> itself or the referenced <c>path</c>.</param>
     /// <returns>The measure, or <see langword="null"/> when the <c>textPath</c> has no path.</returns>
-    private static SvgTextPathMeasure? GetMeasure(SvgTextLayout layout, SvgResolver resolver, int textPath, in SvgTextPathAttributes attributes, float fontSize)
+    private static SvgTextPathMeasure? GetMeasure(
+        SvgTextLayout layout,
+        SvgResolver resolver,
+        int textPath,
+        in SvgTextPathAttributes attributes,
+        float fontSize,
+        out int source)
     {
         float tolerance = fontSize * ToleranceOfFontSize;
+        source = textPath;
         if (attributes.Path is IPath own
             && GetMeasure(layout, resolver, textPath, own, Matrix3x2.Identity, tolerance) is SvgTextPathMeasure measure)
         {
@@ -257,6 +274,8 @@ internal static partial class SvgTextPaths
         {
             return null;
         }
+
+        source = target;
 
         // Only the transform of the path element itself applies. Its transform-origin needs the computed style, which
         // costs a walk over the ancestors, so the style is computed only for a path that has a transform.

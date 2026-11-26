@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Numerics;
+
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
@@ -35,6 +37,17 @@ internal struct SvgCompositeScope
     /// Gets or sets the <c>clipPath</c> element that clips the element through an alpha mask, or -1.
     /// </summary>
     public int CoverageClip { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the outline of a CSS basic shape that clips the element through an alpha mask, with the
+    /// <c>evenodd</c> rule, or <see langword="null"/>.
+    /// </summary>
+    public IPath? CoverageShape { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets the transform from the coordinates of <see cref="CoverageShape"/> to document user space.
+    /// </summary>
+    public Matrix3x2 CoverageShapeTransform { readonly get; set; }
 
     /// <summary>
     /// Gets or sets the <c>mask</c> element, or -1.

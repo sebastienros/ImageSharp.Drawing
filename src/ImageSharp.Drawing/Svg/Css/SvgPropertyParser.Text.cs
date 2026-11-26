@@ -1068,8 +1068,8 @@ internal sealed partial class SvgPropertyParser
     }
 
     /// <summary>
-    /// Parses a <c>font-variant</c> declaration and stores it, as the text layout reads it today and as the CSS shorthand
-    /// of the <c>font-variant-*</c> longhands. The caller does not mark anything.
+    /// Parses a <c>font-variant</c> declaration and stores it, as the older <see cref="SvgPropertyId.FontVariant"/> value
+    /// and as the CSS shorthand of the <c>font-variant-*</c> longhands, which the shaper reads. The caller does not mark anything.
     /// </summary>
     /// <remarks>
     /// <see cref="TryParseFontVariant(ReadOnlySpan{char}, out SvgFontVariant)"/> gives the value of
@@ -1428,7 +1428,7 @@ internal sealed partial class SvgPropertyParser
 
     /// <summary>
     /// Parses a <c>white-space</c> declaration and stores it: the six keywords of CSS Text Level 3 set
-    /// <see cref="SvgPropertyId.WhiteSpace"/>, which the text layout reads today, and <c>white-space-collapse</c>; the
+    /// <see cref="SvgPropertyId.WhiteSpace"/> and <c>white-space-collapse</c>, which the text layout reads; the
     /// shorthand forms of CSS Text Level 4 (<c>&lt;white-space-collapse&gt; || &lt;text-wrap-mode&gt;</c>, such as
     /// <c>preserve nowrap</c>) set only <c>white-space-collapse</c>. The caller does not mark anything.
     /// </summary>

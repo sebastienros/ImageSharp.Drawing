@@ -103,6 +103,12 @@ internal sealed class SvgCssMatcher
     }
 
     /// <summary>
+    /// Gets the languages by element index from <c>xml:lang</c> and <c>lang</c>, which <c>:lang()</c> matches, or
+    /// <see langword="null"/> when no element has a language attribute.
+    /// </summary>
+    public Dictionary<int, string>? Languages { get; init; }
+
+    /// <summary>
     /// Collects the ranks of the rules that match an element, in ascending cascade precedence.
     /// </summary>
     /// <param name="element">The index of the element to match.</param>
@@ -646,6 +652,9 @@ internal sealed class SvgCssMatcher
             case SvgCssSimpleSelectorKind.Is:
             case SvgCssSimpleSelectorKind.Where:
                 return this.MatchArguments(elements, index, in this.Functional(simple), element);
+            case SvgCssSimpleSelectorKind.Lang:
+                return this.Languages is not null
+                    && SvgCssLanguageRanges.Matches(SvgElementTree.GetLanguage(this.Languages, elements, element), simple.Name!);
             default:
                 return false;
         }

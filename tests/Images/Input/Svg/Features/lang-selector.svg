@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50" viewBox="0 0 200 50" lang="de">
+  <style>
+    rect { fill: red; }
+    #r0:lang(fr), #r1:lang(fr), #r2:lang(FR), #r3:lang(fr-ca), #r4:lang(de), #r5:lang(zh-Hant), #r6:lang(fr),
+    #r7:lang(i-klingon), #r8:lang(de-x), #r9:lang(fr-CA-x-y) { fill: green; }
+    #n0:lang(en), #n1:lang(fr), #n2:lang(fr), #n3:lang(de-DE-x) { fill: navy; }
+  </style>
+  <!-- Matches: the whole language, or a prefix that ends at a hyphen, ignoring case; inherited; xml:lang over lang. -->
+  <rect id="r0" x="0" y="0" width="18" height="18" lang="fr"/>
+  <rect id="r1" x="20" y="0" width="18" height="18" lang="fr-CA"/>
+  <rect id="r2" x="40" y="0" width="18" height="18" lang="fr"/>
+  <rect id="r3" x="60" y="0" width="18" height="18" lang="fr-CA"/>
+  <rect id="r4" x="80" y="0" width="18" height="18"/>
+  <rect id="r5" x="100" y="0" width="18" height="18" lang="zh-Hant-TW"/>
+  <rect id="r6" x="120" y="0" width="18" height="18" xml:lang="fr" lang="en"/>
+  <rect id="r7" x="140" y="0" width="18" height="18" lang="i-klingon"/>
+  <rect id="r8" x="160" y="0" width="18" height="18" lang="de-x-foo"/>
+  <rect id="r9" x="180" y="0" width="18" height="18" lang="fr-CA-x-y"/>
+  <!-- No match: these stay red. -->
+  <rect id="n0" x="0" y="25" width="18" height="18" xml:lang="fr" lang="en"/>
+  <rect id="n1" x="20" y="25" width="18" height="18" lang="fr_CA"/>
+  <rect id="n2" x="40" y="25" width="18" height="18" lang="  fr"/>
+  <rect id="n3" x="60" y="25" width="18" height="18" lang="de-DE"/>
+</svg>

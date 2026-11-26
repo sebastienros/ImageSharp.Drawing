@@ -28,7 +28,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// through <see cref="ShapedGlyph.StringIndex"/> and
 /// <see cref="ShapedGlyph.GraphemeIndex"/>. A cluster that holds several graphemes (a ligature) is shaped again one
 /// grapheme at a time when a character after its first grapheme has its own position value, when the cluster crosses a
-/// span boundary, or when <c>letter-spacing</c> is not zero, as CSS disables ligatures then.
+/// span boundary, or when the resolved <c>liga</c> feature is off, which includes a non-zero <c>letter-spacing</c>, as
+/// CSS disables ligatures then (<c>SvgTextShaper.Features.cs</c>).
 /// </para>
 /// <para>
 /// A run starts horizontal and left to right, with the default features and kerning on, as Chromium shapes text for
@@ -267,7 +268,7 @@ internal sealed partial class SvgTextShaper
             maxIndex = Math.Max(maxIndex, glyph.StringIndex);
         }
 
-        bool breakLigatures = style.LetterSpacing.IsSpecified && style.LetterSpacing.Value != 0F;
+        bool breakLigatures = BreaksLigatures(style);
         this.KeepCursiveLigatures(start, end, ref breakLigatures);
         for (int c = 0; c < clusterCount; c++)
         {
@@ -312,9 +313,9 @@ internal sealed partial class SvgTextShaper
     partial void ConfigureDirection(TextShapingBuffer buffer, SvgTextStyle style, int start);
 
     /// <summary>
-    /// Sets <see cref="TextShapingBuffer.KerningMode"/> from <c>font-kerning</c> and
-    /// <c>kerning</c>, and adds the OpenType features of <c>font-variant</c>. On entry the kerning mode is
-    /// <see cref="KerningMode.Standard"/> and the list is empty.
+    /// Sets <see cref="TextShapingBuffer.KerningMode"/> from <c>font-kerning</c>, <c>kerning</c>, and
+    /// <c>font-feature-settings</c>, and adds the OpenType features of the font variant and font feature properties. On
+    /// entry the kerning mode is <see cref="KerningMode.Standard"/> and the list is empty.
     /// </summary>
     /// <param name="buffer">The buffer that holds the text of the run.</param>
     /// <param name="style">The computed text style of the run.</param>

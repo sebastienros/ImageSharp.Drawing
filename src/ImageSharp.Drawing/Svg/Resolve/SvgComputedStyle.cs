@@ -352,6 +352,16 @@ internal partial struct SvgComputedStyle
             ? SvgOverflow.Hidden
             : initial.Overflow;
 
+        // A text element starts from the initial white-space-collapse, as in the Chromium oracle, whose user agent style
+        // sheet sets it on text: a value on an ancestor outside the text, such as a g, does not reach the text. Any value
+        // that the text specifies, inherit included, replaces this below.
+        if (kind == SvgElementKind.Text && style.Text.WhiteSpaceCollapse != initial.Text.WhiteSpaceCollapse)
+        {
+            SvgTextStyle text = style.Text.Clone();
+            text.WhiteSpaceCollapse = initial.Text.WhiteSpaceCollapse;
+            style.Text = text;
+        }
+
         if (specified.IsEmpty)
         {
             return style;

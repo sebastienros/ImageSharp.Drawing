@@ -363,7 +363,10 @@ internal sealed class SvgReader
             }
 
             this.attributeValues?.Complete(this.tables.Elements.Count);
-            matcher = new SvgCssMatcher(sheet, this.tables.Elements, this.tables.ClassNames, this.attributeValues, content);
+            matcher = new SvgCssMatcher(sheet, this.tables.Elements, this.tables.ClassNames, this.attributeValues, content)
+            {
+                Languages = this.tables.Languages,
+            };
         }
 
         SvgCascade.Apply(

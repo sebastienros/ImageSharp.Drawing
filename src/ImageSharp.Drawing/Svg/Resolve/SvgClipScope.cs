@@ -29,4 +29,11 @@ internal struct SvgClipScope
     /// <see cref="SvgClipKind.Coverage"/>, the index of the placeholder node that becomes the layer.
     /// </summary>
     public int Value { readonly get; set; }
+
+    /// <summary>
+    /// Gets or sets, for <see cref="SvgClipKind.Coverage"/> of a CSS basic shape, the outline of the shape in the user
+    /// space of <see cref="Target"/>, which fills with the <c>evenodd</c> rule; <see langword="null"/> for a
+    /// <c>clipPath</c>, whose element is <see cref="Clip"/>.
+    /// </summary>
+    public IPath? Shape { readonly get; set; }
 }

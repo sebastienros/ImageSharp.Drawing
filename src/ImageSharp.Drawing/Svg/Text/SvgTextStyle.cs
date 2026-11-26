@@ -188,7 +188,8 @@ internal sealed class SvgTextStyle
     public SvgUnicodeBidi UnicodeBidi { get; set; }
 
     /// <summary>
-    /// Gets or sets <c>white-space</c> as the text layout reads it today: the six keywords of CSS Text Level 3. The
+    /// Gets or sets <c>white-space</c> as the six keywords of CSS Text Level 3; the text layout reads
+    /// <see cref="WhiteSpaceCollapse"/> instead. The
     /// shorthand forms of CSS Text Level 4, such as <c>preserve nowrap</c>, leave it unspecified and set only
     /// <see cref="WhiteSpaceCollapse"/>.
     /// </summary>
@@ -212,8 +213,8 @@ internal sealed class SvgTextStyle
     public SvgFontVariantLigatures FontVariantLigatures { get; set; }
 
     /// <summary>
-    /// Gets or sets <c>font-variant-caps</c>. The <c>font-variant</c> shorthand sets it as well as <see cref="FontVariant"/>,
-    /// which the text layout reads today; <c>font-variant-caps</c> sets only this value.
+    /// Gets or sets <c>font-variant-caps</c>. The <c>font-variant</c> shorthand sets it as well as <see cref="FontVariant"/>;
+    /// <c>font-variant-caps</c> sets only this value. The shaper reads this value.
     /// </summary>
     public SvgFontVariant FontVariantCaps { get; set; }
 

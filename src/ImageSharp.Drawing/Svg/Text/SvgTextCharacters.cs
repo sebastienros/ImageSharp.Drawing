@@ -191,8 +191,10 @@ internal sealed partial class SvgTextCharacters
     /// <param name="spanIndex">The span of the characters.</param>
     private void AddCharacters(ReadOnlySpan<char> source, int spanIndex)
     {
-        SvgWhiteSpace mode = this.spans[spanIndex].Style.Text.WhiteSpace;
-        bool preserve = mode is SvgWhiteSpace.Pre or SvgWhiteSpace.PreWrap or SvgWhiteSpace.BreakSpaces;
+        // white-space-collapse holds the cascade winner of the white-space shorthand and the longhand. SVG text is one
+        // line, so preserve-breaks collapses like collapse and break-spaces preserves like preserve, as in Chromium.
+        SvgWhiteSpaceCollapse mode = this.spans[spanIndex].Style.Text.WhiteSpaceCollapse;
+        bool preserve = mode is SvgWhiteSpaceCollapse.Preserve or SvgWhiteSpaceCollapse.BreakSpaces;
         for (int i = 0; i < source.Length; i++)
         {
             char c = source[i];

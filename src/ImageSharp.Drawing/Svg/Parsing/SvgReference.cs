@@ -16,8 +16,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// A <c>clip-path</c> value with a basic shape or a geometry box holds an <see cref="SvgClipShape"/> in the same field.
-/// It is not <c>none</c> and has no <see cref="Id"/>, so code that reads only <see cref="Id"/> treats it as a reference
-/// that names no element, which applies no clip.
+/// It is not <c>none</c> and has no <see cref="Id"/>; the resolver builds the clip of the shape from
+/// <see cref="Shape"/> (<c>SvgResolver.ClipShape.cs</c>).
 /// </para>
 /// </remarks>
 internal readonly struct SvgReference

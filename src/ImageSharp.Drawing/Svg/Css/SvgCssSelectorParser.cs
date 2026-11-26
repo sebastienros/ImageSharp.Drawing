@@ -15,14 +15,15 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// project (<c>Jint.HtmlParser/Css/Selectors/SelectorCompiler.cs</c>, BSD 2-Clause License, see THIRD-PARTY-NOTICES),
 /// adapted to work on the token ranges of <see cref="SvgCssTokenizer"/> instead of a component value tree, to write flat
 /// tables instead of objects, and to leave out what an SVG document cannot use: namespace declarations, nesting,
-/// <c>:has()</c>, shadow trees, columns, and language and direction pseudo-classes. A selector that uses one of them is
-/// invalid, so its rule is dropped.
+/// <c>:has()</c>, shadow trees, columns, and the direction pseudo-class. A selector that uses one of them is invalid, so
+/// its rule is dropped.
 /// </para>
 /// <para>
 /// Supported: type, universal, id, class, and attribute selectors (all operators, the <c>i</c> and <c>s</c> flags, the
 /// <c>*|</c> and <c>|</c> attribute prefixes); the four combinators; <c>:root</c>, <c>:scope</c>, <c>:empty</c>,
 /// <c>:defined</c>, the child-indexed and typed-child-indexed pseudo-classes including <c>of S</c>; <c>:not()</c>,
-/// <c>:is()</c>, and <c>:where()</c>. Pseudo-elements and the pseudo-classes of interaction, link, and form state parse as
+/// <c>:is()</c>, and <c>:where()</c>; and <c>:lang()</c> with a list of identifiers and strings, which
+/// <see cref="SvgCssLanguageRanges"/> matches. Pseudo-elements and the pseudo-classes of interaction, link, and form state parse as
 /// valid selectors that never match.
 /// </para>
 /// <para>
@@ -825,6 +826,18 @@ internal ref struct SvgCssSelectorParser : IDisposable
                     AddSpecificity(maxSpecificity, ref ids, ref classes, ref types);
                 }
             }
+            else if (IsKeyword(name, "lang"))
+            {
+                // A pseudo-class: one class of specificity, no argument selectors.
+                if (!this.TryParseLanguageRanges(argumentStart, close, out string? ranges))
+                {
+                    return false;
+                }
+
+                scratch.Add(new SvgCssSimpleSelector(SvgCssSimpleSelectorKind.Lang, ranges));
+                classes++;
+                complex = false;
+            }
             else
             {
                 SvgCssSimpleSelectorKind kind;
@@ -846,7 +859,7 @@ internal ref struct SvgCssSelectorParser : IDisposable
                 }
                 else
                 {
-                    // :has(), :lang(), :dir(), :host(), and unknown functions.
+                    // :has(), :dir(), :host(), and unknown functions.
                     return false;
                 }
 
@@ -890,6 +903,53 @@ internal ref struct SvgCssSelectorParser : IDisposable
         {
             this.scratchSelectors.Truncate(listStart);
         }
+    }
+
+    /// <summary>
+    /// Parses the arguments of <c>:lang()</c>: a comma-separated list of identifiers and strings, at least one (Selectors
+    /// Level 4). A wildcard in an identifier must be escaped, as in <c>\*-CH</c>.
+    /// </summary>
+    /// <param name="start">The first token after the opening parenthesis.</param>
+    /// <param name="end">The index of the closing parenthesis.</param>
+    /// <param name="ranges">When this method returns <see langword="true"/>, contains the ranges in the form that <see cref="SvgCssLanguageRanges"/> reads.</param>
+    /// <returns><see langword="true"/> if the list is valid; otherwise, <see langword="false"/>.</returns>
+    private bool TryParseLanguageRanges(int start, int end, out string? ranges)
+    {
+        ranges = null;
+        StringBuilder builder = new();
+        int i = start;
+        while (true)
+        {
+            _ = this.SkipWhitespace(ref i, end);
+            if (i >= end || this.tokens[i].Kind is not (SvgCssTokenKind.Ident or SvgCssTokenKind.String))
+            {
+                return false;
+            }
+
+            string range = this.tokens[i].GetValue(this.source);
+            if (range.Contains(SvgCssLanguageRanges.Separator))
+            {
+                return false;
+            }
+
+            _ = builder.Append(range).Append(SvgCssLanguageRanges.Separator);
+            i++;
+            _ = this.SkipWhitespace(ref i, end);
+            if (i == end)
+            {
+                break;
+            }
+
+            if (this.tokens[i].Kind != SvgCssTokenKind.Comma)
+            {
+                return false;
+            }
+
+            i++;
+        }
+
+        ranges = builder.ToString();
+        return true;
     }
 
     /// <summary>

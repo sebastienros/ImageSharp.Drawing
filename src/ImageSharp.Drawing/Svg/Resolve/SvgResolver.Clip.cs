@@ -86,6 +86,16 @@ internal sealed partial class SvgResolver
                 return SvgClipKind.Empty;
             }
         }
+        else if (clipStyle.ClipPath.Shape is SvgClipShape selfShape)
+        {
+            // A basic shape on the clipPath element refers to the box of the clipped element, as in Chromium.
+            RectangleF? selfBox = SelectClipShapeBox(selfShape.Box, target.Box, target.Box, target.Viewport);
+            self = this.ClassifyClipShape(selfShape, selfBox, clipStyle.FontSize, target.Transform, geometry, out _);
+            if (self == SvgClipKind.Empty)
+            {
+                return SvgClipKind.Empty;
+            }
+        }
 
         int count = 0;
         bool simple = self != SvgClipKind.Coverage;
@@ -103,6 +113,14 @@ internal sealed partial class SvgResolver
             if (entry.Clip >= 0)
             {
                 childClip = this.ClassifyClip(entry.Clip, entry.Target, geometry);
+                if (childClip == SvgClipKind.Empty)
+                {
+                    continue;
+                }
+            }
+            else if (entry.Shape is not null)
+            {
+                childClip = this.ClassifyClipShape(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Target.Transform, geometry, out _);
                 if (childClip == SvgClipKind.Empty)
                 {
                     continue;
@@ -169,7 +187,9 @@ internal sealed partial class SvgResolver
         SvgComputedStyle clipStyle = this.ComputeDocumentStyle(clip);
         if (this.TryGetClipTransform(clip, in clipStyle, in target, out Matrix3x2 content))
         {
-            SvgClipScope self = this.BeginClipScope(this.GetReference(clipStyle.ClipPath, SvgElementKind.ClipPath), in target);
+            SvgClipScope self = clipStyle.ClipPath.Shape is SvgClipShape selfShape
+                ? this.BeginShapeClipScope(selfShape, SelectClipShapeBox(selfShape.Box, target.Box, target.Box, target.Viewport), clipStyle.FontSize, in target)
+                : this.BeginClipScope(this.GetReference(clipStyle.ClipPath, SvgElementKind.ClipPath), in target);
             if (self.Kind != SvgClipKind.Empty)
             {
                 Brush coverage = this.paints.GetSolidBrush(Color.Black);
@@ -180,7 +200,9 @@ internal sealed partial class SvgResolver
                         continue;
                     }
 
-                    SvgClipScope childScope = this.BeginClipScope(entry.Clip, entry.Target);
+                    SvgClipScope childScope = entry.Shape is not null
+                        ? this.BeginShapeClipScope(entry.Shape, entry.ShapeBox, entry.FontSize, entry.Target)
+                        : this.BeginClipScope(entry.Clip, entry.Target);
                     if (childScope.Kind == SvgClipKind.Empty)
                     {
                         continue;
@@ -267,7 +289,15 @@ internal sealed partial class SvgResolver
             RectangleF bounds = this.GetDrawBounds(scope.Value + 1);
             this.nodes[scope.Value] = new SvgRenderNode { Kind = SvgRenderNodeKind.BeginLayer, Opacity = 1F, Bounds = bounds };
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.BeginMask, MaskMode = SvgMaskMode.Alpha, Bounds = bounds });
-            this.AddClipCoverage(scope.Clip, scope.Target);
+            if (scope.Shape is not null)
+            {
+                this.AddClipShapeCoverage(scope.Shape, scope.Target.Transform);
+            }
+            else
+            {
+                this.AddClipCoverage(scope.Clip, scope.Target);
+            }
+
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.EndMask });
             this.nodes.Add(new SvgRenderNode { Kind = SvgRenderNodeKind.EndLayer });
         }
@@ -386,6 +416,19 @@ internal sealed partial class SvgResolver
             return false;
         }
 
+        // A basic shape in the clip-path of the child refers to a box of the child in its user space, before the path is
+        // closed below, which would change the stroke outline of an open path.
+        SvgClipShape? clipShape = style.ClipPath.Shape;
+        RectangleF? shapeBox = null;
+        if (clipShape is not null)
+        {
+            RectangleF fillBox = TransformBounds(path.Bounds, shapeTransform);
+            RectangleF? strokeBox = UsesStrokeBox(clipShape.Box) && !isText
+                ? TransformBounds(GetStrokeBounds(path, in shapeStyle, GetStrokeWidth(in shapeStyle, viewport)), shapeTransform)
+                : fillBox;
+            shapeBox = SelectClipShapeBox(clipShape.Box, fillBox, strokeBox, viewport);
+        }
+
         // The clip region is the fill region, which closes every open subpath. A canvas clip does not close an open path
         // itself, so the geometry clip takes the closed form; the coverage fill closes it too.
         path = path.AsClosedPath();
@@ -401,6 +444,9 @@ internal sealed partial class SvgResolver
             // The outline of a basic shape is one simple contour, which every fill rule fills the same.
             RuleIndependent = !evenOdd || shapeKind is SvgElementKind.Rect or SvgElementKind.Circle or SvgElementKind.Ellipse,
             Clip = this.GetReference(style.ClipPath, SvgElementKind.ClipPath),
+            Shape = clipShape,
+            ShapeBox = shapeBox,
+            FontSize = style.FontSize,
             Target = new SvgClipTarget(user, viewport, TransformBounds(path.Bounds, shapeTransform), target.Depth + 1),
         };
 
@@ -450,6 +496,21 @@ internal sealed partial class SvgResolver
         /// Gets or sets the <c>clipPath</c> that clips the child, or -1.
         /// </summary>
         public int Clip { readonly get; set; }
+
+        /// <summary>
+        /// Gets or sets the CSS basic shape of the <c>clip-path</c> of the child, or <see langword="null"/>.
+        /// </summary>
+        public SvgClipShape? Shape { readonly get; set; }
+
+        /// <summary>
+        /// Gets or sets the reference box of <see cref="Shape"/> in the user space of the child.
+        /// </summary>
+        public RectangleF? ShapeBox { readonly get; set; }
+
+        /// <summary>
+        /// Gets or sets the computed font size of the child, for font-relative lengths of <see cref="Shape"/>.
+        /// </summary>
+        public float FontSize { readonly get; set; }
 
         /// <summary>
         /// Gets or sets the child as the target of its own clip: its user space and its bounding box.
