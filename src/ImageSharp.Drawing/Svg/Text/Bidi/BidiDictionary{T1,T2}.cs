@@ -1,0 +1,47 @@
+// Copyright (c) Six Labors.
+// Licensed under the Six Labors Split License.
+
+namespace SixLabors.ImageSharp.Drawing.Svg;
+
+/// <summary>
+/// A simple bi-directional dictionary.
+/// </summary>
+/// <typeparam name="T1">Key type</typeparam>
+/// <typeparam name="T2">Value type</typeparam>
+/// <remarks>
+/// <para>
+/// Temporary copy of <c>src/SixLabors.Fonts/Unicode/BidiDictionary{T1,T2}.cs</c> of SixLabors.Fonts
+/// (https://github.com/SixLabors/Fonts), tag <c>v3.2.1</c> (commit 50dae68), where the type is internal. SVG text
+/// layout needs the embedding levels of the Unicode bidirectional algorithm, and SixLabors.Fonts does not expose them.
+/// Remove this copy when SixLabors.Fonts exposes the algorithm publicly. The code stays as close to the source as it
+/// compiles, so that it can be compared with upstream. Edits: the namespace and these remarks.
+/// </para>
+/// </remarks>
+internal sealed class BidiDictionary<T1, T2>
+    where T1 : struct
+    where T2 : struct
+{
+    public Dictionary<T1, T2> Forward { get; } = new Dictionary<T1, T2>();
+
+    public Dictionary<T2, T1> Reverse { get; } = new Dictionary<T2, T1>();
+
+    public void Clear()
+    {
+        this.Forward.Clear();
+        this.Reverse.Clear();
+    }
+
+    public void Add(T1 key, T2 value)
+    {
+        this.Forward.Add(key, value);
+        this.Reverse.Add(value, key);
+    }
+
+    public bool TryGetValue(T1 key, out T2 value) => this.Forward.TryGetValue(key, out value);
+
+    public bool TryGetKey(T2 value, out T1 key) => this.Reverse.TryGetValue(value, out key);
+
+    public bool ContainsKey(T1 key) => this.Forward.ContainsKey(key);
+
+    public bool ContainsValue(T2 value) => this.Reverse.ContainsKey(value);
+}

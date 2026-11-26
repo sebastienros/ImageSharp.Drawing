@@ -401,7 +401,7 @@ Text resolves to glyph outlines when the document loads, as in resvg: each glyph
 | `dominant-baseline`, `alignment-baseline`, `baseline-shift` | Yes, across the line in every writing mode; the `BASE` table is not used, as in Chromium |
 | `font-variant` (caps), `font-kerning`, `kerning` | Yes, through OpenType features; no synthesized small capitals |
 | Vertical `writing-mode` (upright and sideways glyphs, `sideways-rl`, `sideways-lr`) | Yes |
-| `direction`, `unicode-bidi`, bidirectional reordering, complex script shaping | Yes, through SixLabors.Fonts |
+| `direction`, `unicode-bidi`, bidirectional reordering, complex script shaping | Yes; the Unicode bidirectional algorithm is a temporary local copy of the SixLabors.Fonts implementation (`Svg/Text/Bidi`), shaping is through SixLabors.Fonts |
 | `tref` | Yes (resvg supports it; Chromium does not) |
 | Text in `clipPath`, `mask`, `pattern`, `marker`, `use`, `switch` | Yes |
 | Colour glyphs (COLR, CBDT) | Monochrome outlines only |
@@ -409,7 +409,7 @@ Text resolves to glyph outlines when the document loads, as in resvg: each glyph
 
 ### 15.2 Conformance
 
-`SvgResvgConformanceTests`, criterion unchanged. Outside the text category, phase 3 changed outcomes only where those tests contain text.
+`SvgResvgConformanceTests`, criterion unchanged. Outside the text category, phase 3 changed outcomes only where those tests contain text. Package T6 (the bidirectional algorithm) changed no outcome and no mismatched-pixel count, and the saved renders of the failing text tests are pixel-identical: the suite has no case that the earlier workaround ordered or mirrored differently.
 
 | Category | Run | Phase 1 | Phase 2 | Phase 3 | resvg | Chrome | librsvg |
 |---|---|---|---|---|---|---|---|
@@ -461,7 +461,7 @@ Where ImageSharp.Drawing is slower: drawing a loaded text document takes 5 to 16
 
 The text pipeline shapes one directional run at a time with `TextShaper.ShapeRun` and a `TextShapingBuffer`. What it would need public or added upstream (each checked against SixLabors.Fonts 3.2.1):
 
-- The bidirectional algorithm and its resolved levels (`SixLabors.Fonts.Unicode.BidiAlgorithm` is internal). The pipeline derives the run directions from the shaped glyph order instead, which misses the mirroring of a lone bracket between runs of the other direction.
+- The bidirectional algorithm and its resolved levels (`SixLabors.Fonts.Unicode.BidiAlgorithm` is internal). Until it is public, `src/ImageSharp.Drawing/Svg/Text/Bidi` holds a copy of `BidiAlgorithm`, `BidiData`, and their helper types from SixLabors.Fonts 3.2.1 (package T6); the copy must be removed when SixLabors.Fonts exposes the levels. The copy changes three places of the source that took quadratic time without changing the results (rule W2, the joining of level runs into isolating run sequences, and the search for the run after an isolate); it gives the levels of all 91,707 cases of the Unicode `BidiCharacterTest.txt`. Each text chunk is one paragraph; its level runs are shaped one at a time, in their direction, and the shaper mirrors the characters of right-to-left runs (rule L4), so a lone bracket at an odd level now draws mirrored.
 - A bidirectional mode (`TextBidiMode` exists for `TextOptions` only) and context characters before and after a run on `TextShapingBuffer`, so that Arabic joins across a `tspan` boundary as in Chromium.
 - A way to turn off default features: `ShapeRun` only turns features on, so ligatures under `letter-spacing` are broken by shaping each grapheme again.
 - `FontMetrics.TryGetBaselineCoordinate` (the `BASE` table) is internal. Chromium does not use the table either, so nothing renders differently today.
@@ -475,7 +475,8 @@ The text pipeline shapes one directional run at a time with `TextShaper.ShapeRun
 - Colour glyphs (COLR, CBDT) draw monochrome; `text-rendering` has no effect; no synthesized small capitals; a `kerning` length adds no spacing.
 - `textPath` references `path` elements only, as Chromium; `method` and `spacing` have no effect. The cross-axis direction of `x` and `dx` for `sideways-lr` text on a path was not checked against Chromium.
 - Text in an SVG file that an `image` element references draws nothing (an open decision).
-- A text with very many bidirectional control characters costs about 30 µs per character (200,000 controls load in about 6 s); the cost is linear.
+- Arabic letters do not join across a `tspan` boundary, and `letter-spacing` does not turn off Arabic ligatures (Chromium does both). These are limits of the public shaping API (section 15.4), not of the bidirectional algorithm; `SvgTextDirectionTests` holds a test of each.
+- Bidirectional text costs time linear in its length: 200,000 bidirectional control characters with 100,000 letters load and draw in about 0.3 s (6 s before package T6, which also removed a quadratic search for the end of a shaping run), and 100,000 matched isolates or 100,000 numbers after an Arabic letter in about 0.3 s to 0.8 s (shared 4-core machine, noisy).
 - WebGPU backend: not verified (no GPU in the test container).
 
 ## Sources

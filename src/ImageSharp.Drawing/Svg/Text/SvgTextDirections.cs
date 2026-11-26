@@ -14,7 +14,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// The flags hold one entry per UTF-16 code unit of <see cref="SvgTextContent.Text"/>. All code units of one grapheme
 /// have the same flags, so a shaping run never splits a grapheme. The visual order is per text chunk: a character's entry
 /// is the visual position of its grapheme among the graphemes of its chunk, counted from the left of a horizontal line or
-/// the top of a vertical line. The Unicode bidirectional algorithm of SixLabors.Fonts gives it.
+/// the top of a vertical line. The Unicode bidirectional algorithm gives it, through the local copy in
+/// <see cref="BidiAlgorithm"/>.
 /// </remarks>
 internal sealed class SvgTextDirections
 {
@@ -35,12 +36,14 @@ internal sealed class SvgTextDirections
     /// <param name="writingMode">The writing mode of the <c>text</c> element.</param>
     /// <param name="flags">The flags per code unit.</param>
     /// <param name="visualOrder">The visual position per code unit, or <see langword="null"/> when it is the logical order.</param>
+    /// <param name="levels">The embedding level per code unit, or <see langword="null"/> when every level is 0.</param>
     /// <param name="centralBaselines">The central baseline per span, or <see langword="null"/> when the baseline is alphabetic.</param>
-    public SvgTextDirections(SvgWritingMode writingMode, byte[] flags, int[]? visualOrder, float[]? centralBaselines)
+    public SvgTextDirections(SvgWritingMode writingMode, byte[] flags, int[]? visualOrder, sbyte[]? levels, float[]? centralBaselines)
     {
         this.WritingMode = writingMode;
         this.Flags = flags;
         this.VisualOrder = visualOrder;
+        this.Levels = levels;
         this.CentralBaselines = centralBaselines;
     }
 
@@ -65,6 +68,13 @@ internal sealed class SvgTextDirections
     /// the visual order is the logical order and every text chunk runs in the inline direction from its start.
     /// </summary>
     public int[]? VisualOrder { get; }
+
+    /// <summary>
+    /// Gets the resolved embedding level of the grapheme of each code unit within its text chunk, or
+    /// <see langword="null"/> when the text needs no bidirectional reordering and every level is 0. An odd level is right
+    /// to left (<see cref="RightToLeft"/>); a shaping run has one level.
+    /// </summary>
+    public sbyte[]? Levels { get; }
 
     /// <summary>
     /// Gets, per span, the height of the central baseline above the alphabetic baseline in user units: half the sum of

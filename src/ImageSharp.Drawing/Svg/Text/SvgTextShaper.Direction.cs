@@ -24,13 +24,14 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Bidirectional text: SVG reorders each text chunk on its own, as one paragraph in the direction of the <c>text</c>
-/// element. SixLabors.Fonts keeps its implementation of the Unicode bidirectional algorithm internal; its public result is
-/// the visual glyph order of <see cref="TextShaper.Shape(Font, TextShapingBuffer)"/>. Each chunk is shaped once that way,
-/// with the <c>unicode-bidi</c> and <c>direction</c> values of its spans written as the equivalent bidirectional control
-/// characters of CSS Writing Modes, and the visual order of its graphemes is read from the glyphs. A grapheme is shaped
-/// right to left when its visual neighbour is its logical neighbour in reverse order; a grapheme with no such neighbour is
-/// right to left when its first code point is strongly right to left. This misses only the mirroring of a lone bracket
-/// between runs of the other direction, because the resolved embedding levels are not public.
+/// element. The embedding levels come from the Unicode bidirectional algorithm (UAX #9) in <see cref="BidiAlgorithm"/>,
+/// a local copy of the internal implementation of SixLabors.Fonts (folder <c>Bidi</c>). The <c>unicode-bidi</c> and
+/// <c>direction</c> values of the spans of a chunk enter the algorithm as the equivalent bidirectional control
+/// characters of CSS Writing Modes. Each grapheme takes the level of its first code point. A shaping run ends where the
+/// level changes, so each run is one level run, and a run at an odd level is shaped right to left. The shaper mirrors
+/// the characters of a right-to-left run (rule L4; <c>TextShaper</c> substitutes the Unicode mirror glyph or applies
+/// <c>rtlm</c>), so this stage does not mirror them again. The visual order of the graphemes of a chunk comes from the
+/// levels by rule L2.
 /// </para>
 /// </remarks>
 internal sealed partial class SvgTextShaper
@@ -60,8 +61,16 @@ internal sealed partial class SvgTextShaper
             centralBaselines = this.GetCentralBaselines();
         }
 
-        int[]? visualOrder = bidi ? this.ResolveBidi(flags) : null;
-        this.directions = new SvgTextDirections(root.WritingMode, flags, visualOrder, centralBaselines);
+        int[]? visualOrder = null;
+        sbyte[]? levels = null;
+        if (bidi)
+        {
+            visualOrder = new int[content.Text.Length];
+            levels = new sbyte[content.Text.Length];
+            ResolveBidi(content, flags, levels, visualOrder);
+        }
+
+        this.directions = new SvgTextDirections(root.WritingMode, flags, visualOrder, levels, centralBaselines);
         content.Directions = this.directions;
     }
 
@@ -73,10 +82,13 @@ internal sealed partial class SvgTextShaper
             return;
         }
 
+        // A run ends where the orientation or the embedding level changes. Two level runs of the same direction are not
+        // shaped together: rule L2 can place other characters between them.
         byte[] flags = this.directions.Flags;
+        sbyte[]? levels = this.directions.Levels;
         for (int i = start + 1; i < end; i++)
         {
-            if (flags[i] != flags[start])
+            if (flags[i] != flags[start] || (levels is not null && levels[i] != levels[start]))
             {
                 end = i;
                 return;
@@ -263,29 +275,22 @@ internal sealed partial class SvgTextShaper
     }
 
     /// <summary>
-    /// Resolves the visual order of every text chunk and sets <see cref="SvgTextDirections.RightToLeft"/> on the graphemes
-    /// of right-to-left runs.
+    /// Resolves the embedding levels and the visual order of every text chunk, and sets
+    /// <see cref="SvgTextDirections.RightToLeft"/> on the graphemes at an odd level.
     /// </summary>
+    /// <param name="content">The characters.</param>
     /// <param name="flags">The flags per code unit.</param>
-    /// <returns>The visual position per code unit, or <see langword="null"/> when no font exists.</returns>
-    private int[]? ResolveBidi(byte[] flags)
+    /// <param name="levels">Receives the embedding level per code unit.</param>
+    /// <param name="visualOrder">Receives the visual position per code unit.</param>
+    private static void ResolveBidi(SvgTextContent content, byte[] flags, sbyte[] levels, int[] visualOrder)
     {
-        SvgTextContent content = this.content;
-        SvgComputedStyle rootStyle = content.Spans[0].Style;
-        SvgTextStyle root = rootStyle.Text;
-        SvgFontFace? face = this.matcher.GetChain(root).Primary;
-        if (face is null)
-        {
-            return null;
-        }
+        // The paragraph level of each chunk: 0 for ltr, 1 for rtl, and 2 for plaintext, which makes the algorithm take
+        // the direction of the first strong character of the chunk (rules P2 and P3).
+        SvgTextStyle root = content.Spans[0].Style.Text;
+        sbyte paragraphLevel = root.UnicodeBidi == SvgUnicodeBidi.Plaintext
+            ? (sbyte)2
+            : root.Direction == SvgDirection.Rtl ? (sbyte)1 : (sbyte)0;
 
-        // The order does not depend on the size, and a font needs a positive one.
-        Font font = this.matcher.GetFont(face, rootStyle.FontSize > 0F ? rootStyle.FontSize : 16F, root.FontWeight, root.FontStyle);
-        TextDirection direction = root.UnicodeBidi == SvgUnicodeBidi.Plaintext
-            ? TextDirection.Auto
-            : root.Direction == SvgDirection.Rtl ? TextDirection.RightToLeft : TextDirection.LeftToRight;
-
-        int[] visualOrder = new int[content.Text.Length];
         BidiScratch scratch = new();
         int start = 0;
         while (start < content.Text.Length)
@@ -297,130 +302,123 @@ internal sealed partial class SvgTextShaper
                 end++;
             }
 
-            this.ResolveChunk(font, direction, start, end, scratch, flags, visualOrder);
+            ResolveChunk(content, paragraphLevel, start, end, scratch, flags, levels, visualOrder);
             start = end;
         }
-
-        return visualOrder;
     }
 
     /// <summary>
-    /// Resolves the visual order of one text chunk.
+    /// Resolves the embedding levels and the visual order of one text chunk.
     /// </summary>
-    /// <param name="font">The font to shape with; the order does not depend on it.</param>
-    /// <param name="direction">The paragraph direction.</param>
+    /// <param name="content">The characters.</param>
+    /// <param name="paragraphLevel">The paragraph embedding level: 0, 1, or 2 for the level of the first strong character.</param>
     /// <param name="start">The first character of the chunk.</param>
     /// <param name="end">The character after the chunk.</param>
     /// <param name="scratch">The reusable buffers.</param>
     /// <param name="flags">The flags per code unit.</param>
+    /// <param name="levels">The embedding level per code unit.</param>
     /// <param name="visualOrder">The visual position per code unit.</param>
-    private void ResolveChunk(
-        Font font,
-        TextDirection direction,
+    private static void ResolveChunk(
+        SvgTextContent content,
+        sbyte paragraphLevel,
         int start,
         int end,
         BidiScratch scratch,
         byte[] flags,
+        sbyte[] levels,
         int[] visualOrder)
     {
-        SvgTextContent content = this.content;
         string text = content.Text;
-        this.BuildBidiLine(start, end, scratch);
+        BuildBidiLine(content, start, end, scratch);
+        ReadOnlySpan<char> line = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(scratch.Line);
         List<int> map = scratch.Map;
-        List<int> graphemes = scratch.Graphemes;
+        BidiData data = scratch.Data;
+        BidiAlgorithm algorithm = scratch.Algorithm;
+        data.Init(line, paragraphLevel);
+        algorithm.Process(data);
+
+        // The algorithm gives one level per code point of the line. The control characters of the line map to no
+        // character and are skipped.
+        ArraySlice<sbyte> resolved = algorithm.ResolvedLevels;
+        int unit = 0;
+        int codePoint = 0;
+        SpanCodePointEnumerator enumerator = new(line);
+        while (enumerator.MoveNext())
+        {
+            int length = enumerator.Current.Utf16SequenceLength;
+            sbyte level = resolved[codePoint++];
+            for (int i = unit; i < unit + length; i++)
+            {
+                if (map[i] >= 0)
+                {
+                    levels[map[i]] = level;
+                }
+            }
+
+            unit += length;
+        }
+
+        // Each grapheme takes the level of its first code point, so that a shaping run never splits it.
         List<int> starts = scratch.Starts;
-        List<int> sequence = scratch.Sequence;
-
-        TextShapingBuffer buffer = this.buffer;
-        buffer.Add(scratch.Line.ToString());
-        buffer.TextDirection = direction;
-        buffer.LayoutMode = LayoutMode.HorizontalTopBottom;
-        buffer.KerningMode = KerningMode.None;
-        TextShaper.Shape(font, buffer);
-
-        // The graphemes of the chunk, by character.
-        graphemes.Clear();
         starts.Clear();
-        int count = 0;
+        int highest = 0;
+        int lowest = int.MaxValue;
         for (int position = start; position < end;)
         {
             int length = StringInfo.GetNextTextElementLength(text.AsSpan(position, end - position));
+            sbyte level = levels[position];
+            levels.AsSpan(position, length).Fill(level);
             starts.Add(position);
-            for (int i = 0; i < length; i++)
-            {
-                graphemes.Add(count);
-            }
-
-            count++;
+            highest = Math.Max(highest, level);
+            lowest = Math.Min(lowest, level);
             position += length;
         }
 
-        // The visual position of each grapheme is the order in which its first glyph appears. A grapheme without a glyph
-        // of its own, such as the second grapheme of a ligature, comes later.
-        Span<int> rank = count <= 256 ? stackalloc int[count] : new int[count];
-        rank.Fill(-1);
-        sequence.Clear();
-        foreach (ShapedGlyph glyph in buffer.Glyphs)
-        {
-            int character = map[glyph.StringIndex];
-            if (character < 0)
-            {
-                continue;
-            }
-
-            int grapheme = graphemes[character - start];
-            if (rank[grapheme] < 0)
-            {
-                rank[grapheme] = sequence.Count;
-                sequence.Add(grapheme);
-            }
-        }
-
-        // The ordinal of each grapheme that has a glyph among those graphemes in logical order. Two graphemes are logical
-        // neighbours when their ordinals differ by one.
-        Span<int> ordinal = count <= 256 ? stackalloc int[count] : new int[count];
-        int next = 0;
+        // Rule L2: from the highest level down to the lowest odd level at or above the lowest level of the chunk, reverse
+        // every maximal sequence of graphemes at that level or higher. The order holds the logical index of the grapheme at each visual position. The cost is
+        // the number of graphemes times the number of levels, which the depth limit of the algorithm (125) bounds.
+        int count = starts.Count;
+        Span<int> order = count <= 256 ? stackalloc int[count] : new int[count];
         for (int g = 0; g < count; g++)
         {
-            ordinal[g] = rank[g] >= 0 ? next++ : -1;
+            order[g] = g;
         }
 
-        Span<bool> rightToLeft = count <= 256 ? stackalloc bool[count] : new bool[count];
-        rightToLeft.Clear();
-        for (int p = 0; p < sequence.Count; p++)
+        for (int level = highest; level >= (lowest | 1); level--)
         {
-            int g = sequence[p];
-            int previous = p > 0 ? ordinal[sequence[p - 1]] : int.MinValue;
-            int following = p + 1 < sequence.Count ? ordinal[sequence[p + 1]] : int.MinValue;
-            if (previous == ordinal[g] + 1 || following == ordinal[g] - 1)
+            int p = 0;
+            while (p < count)
             {
-                rightToLeft[g] = true;
-            }
-            else if (previous != ordinal[g] - 1 && following != ordinal[g] + 1)
-            {
-                // A lone grapheme: its direction only matters for shaping, so its own strong direction decides.
-                BidiCharacterType type = CodePoint.GetBidiClass(DecodeCodePoint(text, starts[g])).CharacterType;
-                rightToLeft[g] = type is BidiCharacterType.RightToLeft or BidiCharacterType.ArabicLetter;
-            }
-        }
+                if (levels[starts[order[p]]] < level)
+                {
+                    p++;
+                    continue;
+                }
 
-        // A grapheme without a glyph belongs to the cluster of its logical predecessor and takes its values.
-        for (int g = 0; g < count; g++)
-        {
-            if (rank[g] < 0)
-            {
-                rank[g] = g > 0 ? rank[g - 1] : sequence.Count;
-                rightToLeft[g] = g > 0 && rightToLeft[g - 1];
+                int q = p + 1;
+                while (q < count && levels[starts[order[q]]] >= level)
+                {
+                    q++;
+                }
+
+                order[p..q].Reverse();
+                p = q;
             }
         }
 
-        for (int i = start; i < end; i++)
+        for (int p = 0; p < count; p++)
         {
-            int g = graphemes[i - start];
-            visualOrder[i] = rank[g];
-            if (rightToLeft[g])
+            int g = order[p];
+            int first = starts[g];
+            int next = g + 1 < count ? starts[g + 1] : end;
+            bool rightToLeft = (levels[first] & 1) != 0;
+            for (int i = first; i < next; i++)
             {
-                flags[i] |= SvgTextDirections.RightToLeft;
+                visualOrder[i] = p;
+                if (rightToLeft)
+                {
+                    flags[i] |= SvgTextDirections.RightToLeft;
+                }
             }
         }
     }
@@ -429,19 +427,19 @@ internal sealed partial class SvgTextShaper
     /// Writes the characters of a text chunk with the bidirectional control characters that CSS Writing Modes gives as
     /// the equivalent of <c>unicode-bidi</c> and <c>direction</c> on the spans, and maps each code unit to its character.
     /// </summary>
+    /// <param name="content">The characters.</param>
     /// <param name="start">The first character of the chunk.</param>
     /// <param name="end">The character after the chunk.</param>
     /// <param name="scratch">The buffers: the line receives the characters, and the map the character index of each
     /// written code unit, or -1 for a control character.</param>
-    private void BuildBidiLine(int start, int end, BidiScratch scratch)
+    private static void BuildBidiLine(SvgTextContent content, int start, int end, BidiScratch scratch)
     {
-        SvgTextContent content = this.content;
         SvgTextSpan[] spans = content.Spans;
-        StringBuilder line = scratch.Line;
+        List<char> line = scratch.Line;
         List<int> map = scratch.Map;
         List<int> open = scratch.Open;
         List<int> chain = scratch.Chain;
-        _ = line.Clear();
+        line.Clear();
         map.Clear();
         open.Clear();
 
@@ -491,7 +489,7 @@ internal sealed partial class SvgTextShaper
                 }
             }
 
-            _ = line.Append(content.Text[i]);
+            line.Add(content.Text[i]);
             map.Add(i);
         }
 
@@ -505,13 +503,13 @@ internal sealed partial class SvgTextShaper
             Append(line, map, '\u202C');
         }
 
-        static void Append(StringBuilder line, List<int> map, char control)
+        static void Append(List<char> line, List<int> map, char control)
         {
-            _ = line.Append(control);
+            line.Add(control);
             map.Add(-1);
         }
 
-        static void Open(StringBuilder line, List<int> map, SvgUnicodeBidi value, bool rtl)
+        static void Open(List<char> line, List<int> map, SvgUnicodeBidi value, bool rtl)
         {
             switch (value)
             {
@@ -534,7 +532,7 @@ internal sealed partial class SvgTextShaper
             }
         }
 
-        static void Close(StringBuilder line, List<int> map, SvgUnicodeBidi value)
+        static void Close(List<char> line, List<int> map, SvgUnicodeBidi value)
         {
             switch (value)
             {
@@ -573,7 +571,7 @@ internal sealed partial class SvgTextShaper
         /// <summary>
         /// Gets the text of the chunk with the bidirectional control characters.
         /// </summary>
-        public StringBuilder Line { get; } = new();
+        public List<char> Line { get; } = [];
 
         /// <summary>
         /// Gets the character index of each code unit of <see cref="Line"/>, or -1 for a control character.
@@ -581,19 +579,19 @@ internal sealed partial class SvgTextShaper
         public List<int> Map { get; } = [];
 
         /// <summary>
-        /// Gets the grapheme of each character of the chunk, counted from the start of the chunk.
-        /// </summary>
-        public List<int> Graphemes { get; } = [];
-
-        /// <summary>
         /// Gets the first character of each grapheme of the chunk.
         /// </summary>
         public List<int> Starts { get; } = [];
 
         /// <summary>
-        /// Gets the graphemes that have a glyph, in visual order.
+        /// Gets the bidirectional character types of <see cref="Line"/>; the algorithm reuses its buffers.
         /// </summary>
-        public List<int> Sequence { get; } = [];
+        public BidiData Data { get; } = new();
+
+        /// <summary>
+        /// Gets the bidirectional algorithm, which reuses its buffers for each chunk.
+        /// </summary>
+        public BidiAlgorithm Algorithm { get; } = new();
 
         /// <summary>
         /// Gets the spans with a <c>unicode-bidi</c> value whose control characters are open, from the outermost.

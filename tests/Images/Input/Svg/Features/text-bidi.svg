@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="200" viewBox="0 0 240 200" font-family="Open Sans, me_quran" font-size="14">
+  <g stroke="#ccc" stroke-width="0.5">
+    <path d="M10 0V200M230 0V200"/>
+  </g>
+  <!-- Brackets around Hebrew after Hebrew in a left-to-right text take R (N0) and draw mirrored. -->
+  <text x="10" y="20">abc אבג (דה) def</text>
+  <!-- Brackets around Latin in a right-to-left text take the embedding direction R. -->
+  <text x="230" y="40" direction="rtl">אב (cd) גד</text>
+  <!-- A lone bracket at the end of a right-to-left text has level 1 and draws mirrored. -->
+  <text x="230" y="60" direction="rtl">abc(</text>
+  <!-- Numbers with a decimal point and a percent sign keep their order in right-to-left text. -->
+  <text x="230" y="80" direction="rtl">אב 12.5% גד</text>
+  <!-- Arabic with European digits: the digits become Arabic numbers (W2). -->
+  <text x="230" y="100" direction="rtl">سلام 123 (ab)</text>
+  <!-- An isolate is a neutral for the text around it; a plain tspan is not. -->
+  <text x="10" y="120">אב <tspan unicode-bidi="isolate" fill="blue">cd</tspan> גד</text>
+  <text x="10" y="140">אב <tspan fill="blue">cd</tspan> גד</text>
+  <!-- Brackets inside a right-to-left embedding in left-to-right text. -->
+  <text x="10" y="160">a <tspan direction="rtl" unicode-bidi="embed" fill="green">b [c] ד</tspan> e</text>
+  <!-- A right-to-left override reverses Latin letters and mirrors the brackets. -->
+  <text x="10" y="180">x <tspan direction="rtl" unicode-bidi="bidi-override" fill="red">(ab) &lt;c&gt;</tspan> y</text>
+</svg>

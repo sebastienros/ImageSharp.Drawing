@@ -133,6 +133,30 @@ public class SvgTextHostileDocumentTests
         }
     }
 
+    [Theory]
+
+    // European numbers after one Arabic letter: rule W2 needs the last strong type before each number.
+    [InlineData("direction=\"rtl\"", "ب", "1 ")]
+
+    // Matched isolates: each joins the level runs around it into one isolating run sequence (BD13).
+    [InlineData("", "", "⁧ב⁩a")]
+
+    // Terminators without openers.
+    [InlineData("", "", "‬⁩a")]
+
+    // Openers without terminators, nested far beyond the depth limit of 125.
+    [InlineData("", "", "‫⁧aב")]
+    public void BidiAlgorithmInputs_CostLinearTime(string attributes, string prefix, string unit)
+    {
+        string Text(int count)
+            => SvgOpen + $"<text x=\"100\" y=\"50\" {attributes} font-family=\"Open Sans, me_quran\">"
+                + $"{prefix}{string.Concat(Enumerable.Repeat(unit, count))}</text></svg>";
+
+        TimeSpan small = this.Measure($"10,000 times {unit}", () => this.LoadAndDraw(Text(10_000)));
+        TimeSpan large = this.Measure($"100,000 times {unit}", () => this.LoadAndDraw(Text(100_000)));
+        AssertLinear(small, large, 10);
+    }
+
     [Fact]
     public void TrefFanOut_StopsAtTheCharacterLimit()
     {
