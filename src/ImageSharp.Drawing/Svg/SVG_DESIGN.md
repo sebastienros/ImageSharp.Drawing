@@ -183,9 +183,33 @@ public abstract partial class DrawingCanvas
 }
 ```
 
-A convenience method that renders a document to a new `Image<TPixel>` at a requested size is a thin wrapper over `Paint(...)`.
+Phase 5 added rendering to a new image and an ImageSharp decoder (all in `SixLabors.ImageSharp.Drawing.Svg`):
 
-An ImageSharp `IImageDecoder` for SVG, so `Image.Load("file.svg")` works and `DecoderOptions.TargetSize` selects the render size, is possible later. It matches how libvips handles thumbnails. It is listed as an open question because it changes format detection for every ImageSharp user who references the package.
+```csharp
+public sealed partial class SvgDocument
+{
+    // Intrinsic size rounded up to whole pixels, drawn as DrawSvg(document, PointF.Empty) draws it.
+    public Image<TPixel> Render<TPixel>();
+    public Image<TPixel> Render<TPixel>(Configuration configuration, Color backgroundColor);
+
+    // The view box fits the whole image; the caller's size is not limited.
+    public Image<TPixel> Render<TPixel>(Size size);
+    public Image<TPixel> Render<TPixel>(Configuration configuration, Size size, Color backgroundColor);
+}
+
+public sealed class SvgFormat : IImageFormat;                         // "SVG", image/svg+xml, svg and svgz
+public sealed class SvgImageFormatDetector : IImageFormatDetector;    // HeaderSize 512
+public sealed class SvgDecoder : SpecializedImageDecoder<SvgDecoderOptions>;
+public sealed class SvgDecoderOptions : ISpecializedDecoderOptions
+{
+    public DecoderOptions GeneralOptions { get; init; }
+    public SvgLoadOptions LoadOptions { get; init; }
+    public Color BackgroundColor { get; init; }                       // Transparent
+}
+public sealed class SvgConfigurationModule : IImageFormatConfigurationModule;
+```
+
+The decoder is opt-in: `configuration.Configure(new SvgConfigurationModule())`. `Configuration.Default` does not change. `DecoderOptions.TargetSize` follows the rule of the ImageSharp decoders (resize only when both sides differ, `ResizeMode.Max`), and the document renders directly at that size. Sizes that the document determines are bounded by `SvgLimits.MaxImagePixels` and by 65,535 pixels on a side before any pixel memory is allocated; gzip input inflates up to 64 MiB. The detector reads 512 bytes (the root element or a `DOCTYPE svg` must start within them); the module also registers a detector for data shorter than 512 bytes, which ImageSharp would not pass to a detector with a larger header size.
 
 ## 7. Mapping SVG to the Canvas
 
@@ -341,7 +365,7 @@ Each phase ships with conformance results and benchmark numbers.
 ## 13. Open Questions
 
 1. **Location.** Decided: the core package under `src/ImageSharp.Drawing/Svg/`, like `Barcodes/`. It adds no dependency and the assembly is trimmable.
-2. **Decoder integration.** Deferred to phase 5. Should an SVG `IImageDecoder` exist, and in which package?
+2. **Decoder integration.** Decided in phase 5: an SVG decoder in the core package, not registered by default. A caller opts in with `SvgConfigurationModule`, so referencing the package changes format detection for no one (section 6).
 3. **Shared parser with Fonts.** Should the OpenType SVG glyph interpreter in SixLabors.Fonts and this feature share code?
 4. **CSS depth for phase 1.** Simple selectors cover most design-tool exports. A full selector engine is a larger piece of work.
 5. **Text fonts.** Decided in phase 3: the caller gives the fonts (`SvgLoadOptions.FontCollection`, default the system fonts), the generic families, the default family (`serif`), and the fallback families, with a fixed, documented fallback order. A document never causes a font file to be read.

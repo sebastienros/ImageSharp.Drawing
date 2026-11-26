@@ -7,7 +7,8 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
 /// A static SVG document that is ready to render. Load it once and draw it with
-/// <see cref="Processing.DrawingCanvas.DrawSvg(SvgDocument, RectangleF)"/> as many times as needed.
+/// <see cref="Processing.DrawingCanvas.DrawSvg(SvgDocument, RectangleF)"/> as many times as needed, or render it into a
+/// new image with <see cref="Render{TPixel}(Configuration, Size, Color)"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,7 +22,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// element whose required geometry is invalid does not render.
 /// </para>
 /// </remarks>
-public sealed class SvgDocument
+public sealed partial class SvgDocument
 {
     private readonly SvgRenderNode[] nodes;
     private readonly Matrix3x2[] transforms;
@@ -134,7 +135,7 @@ public sealed class SvgDocument
         Guard.NotNull(options, nameof(options));
 
         SvgReaderOptions readerOptions = CreateReaderOptions(options);
-        return SvgResolver.Resolve(SvgReader.Read(stream, in readerOptions), options);
+        return SvgResolver.Resolve(SvgReader.Read(stream, in readerOptions), options).WithLoadLimits(options);
     }
 
     /// <summary>
@@ -184,7 +185,7 @@ public sealed class SvgDocument
         Guard.NotNull(options, nameof(options));
 
         SvgReaderOptions readerOptions = CreateReaderOptions(options);
-        return SvgResolver.Resolve(SvgReader.Read(svg, in readerOptions), options);
+        return SvgResolver.Resolve(SvgReader.Read(svg, in readerOptions), options).WithLoadLimits(options);
     }
 
     /// <summary>
