@@ -13,6 +13,26 @@ namespace SixLabors.ImageSharp.Drawing.Tests.Processing;
 /// </summary>
 public class SolidBrushRendererTests
 {
+    /// <summary>
+    /// The colors of the scenes: opaque, translucent down to the smallest 8-bit and 16-bit alpha, and transparent with
+    /// and without color channels, so that a full-coverage write of the wrong pixel shows for every alpha class.
+    /// </summary>
+    private static readonly Color[] Colors =
+    [
+        Color.HotPink,
+        Color.ParseHex("#1E90FF"),
+        Color.Black,
+        Color.White,
+        Color.ParseHex("#2E8B5780"),
+        Color.ParseHex("#FF000001"),
+        Color.ParseHex("#00000000"),
+        Color.ParseHex("#7F3FBFFE"),
+        Color.ParseHex("#FFFFFF00"),
+        Color.ParseHex("#C0408002"),
+        Color.FromPixel(new Rgba64(65535, 30000, 1000, 1)),
+        Color.FromPixel(new Rgba64(20000, 65535, 40000, 300)),
+    ];
+
     public static TheoryData<string> OptionNames { get; } =
     [
         "Default",
@@ -71,28 +91,73 @@ public class SolidBrushRendererTests
     [MemberData(nameof(OptionNames))]
     public void Fill_MatchesWholeRowBlend_HalfVector4(string optionName) => AssertMatchesWholeRowBlend<HalfVector4>(optionName);
 
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Rgba32(string optionName) => AssertClearMatchesWholeRowBlend<Rgba32>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Bgra32(string optionName) => AssertClearMatchesWholeRowBlend<Bgra32>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Argb32(string optionName) => AssertClearMatchesWholeRowBlend<Argb32>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Abgr32(string optionName) => AssertClearMatchesWholeRowBlend<Abgr32>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Rgb24(string optionName) => AssertClearMatchesWholeRowBlend<Rgb24>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Bgr24(string optionName) => AssertClearMatchesWholeRowBlend<Bgr24>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Rgba64(string optionName) => AssertClearMatchesWholeRowBlend<Rgba64>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_Rgb48(string optionName) => AssertClearMatchesWholeRowBlend<Rgb48>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_RgbaVector(string optionName) => AssertClearMatchesWholeRowBlend<RgbaVector>(optionName);
+
+    [Theory]
+    [MemberData(nameof(OptionNames))]
+    public void Clear_MatchesWholeRowBlend_L8(string optionName) => AssertClearMatchesWholeRowBlend<L8>(optionName);
+
     private static void AssertMatchesWholeRowBlend<TPixel>(string optionName)
         where TPixel : unmanaged, IPixel<TPixel>
     {
         DrawingOptions options = CreateOptions(optionName);
-        Color[] colors =
-        [
-            Color.HotPink,
-            Color.ParseHex("#1E90FF"),
-            Color.Black,
-            Color.White,
-            Color.ParseHex("#2E8B5780"),
-            Color.ParseHex("#FF000001"),
-            Color.ParseHex("#00000000"),
-            Color.ParseHex("#7F3FBFFE"),
-        ];
-
         using Image<TPixel> expected = CreateBackground<TPixel>();
         using Image<TPixel> actual = expected.Clone();
 
-        expected.Mutate(c => c.Paint(options, canvas => DrawScene(canvas, colors, color => new WholeRowBlendSolidBrush(color))));
-        actual.Mutate(c => c.Paint(options, canvas => DrawScene(canvas, colors, color => new SolidBrush(color))));
+        expected.Mutate(c => c.Paint(options, canvas => DrawScene(canvas, Colors, color => new WholeRowBlendSolidBrush(color))));
+        actual.Mutate(c => c.Paint(options, canvas => DrawScene(canvas, Colors, color => new SolidBrush(color))));
+        AssertEqual(expected, actual);
+    }
 
+    private static void AssertClearMatchesWholeRowBlend<TPixel>(string optionName)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
+        DrawingOptions options = CreateOptions(optionName);
+        using Image<TPixel> expected = CreateBackground<TPixel>();
+        using Image<TPixel> actual = expected.Clone();
+
+        expected.Mutate(c => c.Paint(options, canvas => DrawClearScene(canvas, Colors, color => new WholeRowBlendSolidBrush(color))));
+        actual.Mutate(c => c.Paint(options, canvas => DrawClearScene(canvas, Colors, color => new SolidBrush(color))));
+        AssertEqual(expected, actual);
+    }
+
+    private static void AssertEqual<TPixel>(Image<TPixel> expected, Image<TPixel> actual)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
         for (int y = 0; y < expected.Height; y++)
         {
             for (int x = 0; x < expected.Width; x++)
@@ -142,6 +207,28 @@ public class SolidBrushRendererTests
             canvas.Fill(brush, new RectanglePolygon(length % 16, 100 + length, length, 1));
             brush = createBrush(colors[(length + 1) % 4]);
             canvas.Fill(brush, new RectanglePolygon((length % 16) + 100.5F, 100 + length, length, 1));
+        }
+    }
+
+    /// <summary>
+    /// Clears rectangles on whole and fractional pixel edges, rows of every length from 1 to 79 pixels at every start
+    /// column modulo 16, and ellipses, in every color of the list. A clear replaces the pixels with the source
+    /// composition, so the interior of each shape takes the full-coverage pixel and its edges are blended.
+    /// </summary>
+    private static void DrawClearScene(DrawingCanvas canvas, Color[] colors, Func<Color, Brush> createBrush)
+    {
+        int index = 0;
+        for (int i = 0; i < 30; i++)
+        {
+            canvas.Clear(createBrush(colors[index++ % colors.Length]), new Rectangle(i * 3, i * 2, 60 + (i * 5), 12 + i));
+            canvas.Clear(createBrush(colors[index++ % colors.Length]), new RectanglePolygon(1.3F + (i * 2.37F), 0.6F + (i * 3.11F), 30F + (i * 7.9F), 8F + (i * 2.3F)));
+            canvas.Clear(createBrush(colors[index++ % colors.Length]), new EllipsePolygon(120F + (i * 3.7F), 60F + (i * 2.9F), 20F + (i * 6.1F), 10F + (i * 3.3F)));
+        }
+
+        for (int length = 1; length < 80; length++)
+        {
+            canvas.Clear(createBrush(colors[index++ % colors.Length]), new Rectangle(length % 16, 100 + length, length, 1));
+            canvas.Clear(createBrush(colors[index++ % colors.Length]), new RectanglePolygon((length % 16) + 100.5F, 100 + length, length, 1));
         }
     }
 

@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using SixLabors.ImageSharp.Advanced;
+
 namespace SixLabors.ImageSharp.Drawing.Processing.Backends;
 
 /// <summary>
@@ -35,6 +37,23 @@ internal static class ParallelExecutionHelper
     /// <returns>The number of partitions to schedule.</returns>
     public static int GetPartitionCount(int maxDegreeOfParallelism, int workItemCount, int secondaryLimit)
         => Math.Min(GetPartitionLimit(maxDegreeOfParallelism), Math.Min(workItemCount, secondaryLimit));
+
+    /// <summary>
+    /// Computes the number of partitions for row bands of pixels, with at least
+    /// <see cref="ParallelExecutionSettings.DefaultMinimumPixelsProcessedPerTask"/> pixels per partition,
+    /// as <c>ParallelRowIterator</c> of ImageSharp plans its steps. A result of 1 means the caller runs the
+    /// bands on the current thread without a parallel loop.
+    /// </summary>
+    /// <param name="maxDegreeOfParallelism">The configured maximum degree of parallelism.</param>
+    /// <param name="bandCount">The number of row bands.</param>
+    /// <param name="pixelCount">The number of pixels that the bands cover together.</param>
+    /// <returns>The number of partitions to schedule, at least 1.</returns>
+    public static int GetPartitionCountForPixels(int maxDegreeOfParallelism, int bandCount, long pixelCount)
+    {
+        long minimum = ParallelExecutionSettings.DefaultMinimumPixelsProcessedPerTask;
+        long pixelLimit = Math.Max(1, (pixelCount + minimum - 1) / minimum);
+        return (int)Math.Max(1, Math.Min(GetPartitionCount(maxDegreeOfParallelism, bandCount), pixelLimit));
+    }
 
     /// <summary>
     /// Creates the <see cref="ParallelOptions"/> for a partitioned operation.
