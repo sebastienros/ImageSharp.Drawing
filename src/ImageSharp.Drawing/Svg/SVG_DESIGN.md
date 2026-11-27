@@ -1190,6 +1190,92 @@ What this changes in the baseline:
 - Dashboard render with the default threads: 40.1 ± 4.2 ms, not 55.2 ± 8.4 ms, so the gap to Svg.Skia is 4.1 times, not 5.6. The default threads are faster than one thread for the render of a loaded document (40.1 against 58.5 ms); the statement of rank 3 that the default threads are slower holds for the under-warmed load and render cell only and must be measured again.
 - The cells of 18.2 and the gaps of 18.4 were not measured again as a whole. The work that follows measures before and after with the corrected benchmark, and the final matrix of phase 6 replaces 18.2. Until then, a gap in 18.2 or 18.4 that rests on a short job, or on a cell with one operation per iteration, is an upper bound for ImageSharp.Drawing.
 
+## 19. Phase 6 Results
+
+Each package of phase 6 adds a subsection here. The numbers are from the corrected benchmark of 18.9 (commit 820861e) unless a subsection says otherwise.
+
+### 19.1 Core Fill and Stroke
+
+**What changed.** Four changes were kept. None of them changes a pixel: every reference image and expected result is unchanged, the 2,242 images that the test suite writes are byte for byte equal before and after, and `results.tsv` of the resvg suite is equal line for line (1179 conformance passes).
+
+1. **Opaque solid fills** (`SolidBrush`). A new renderer, `OpaqueSolidBrushRenderer`, is chosen when the color is opaque, the blend percentage is 1, the blender is the straight source-over normal blender, and the pixel format stores 8-bit or 16-bit integer channels with straight or no alpha (`Rgba32`, `Bgra32`, `Argb32`, `Abgr32`, `Rgb24`, `Bgr24`, `Rgba64`, `Rgb48`). For a row of 32 pixels or more it finds the runs of coverage exactly 1 (an integer search for the bit pattern of 1.0) and writes the color into them with `Span.Fill`; it blends only the other pixels. Two facts make the result equal to one blend of the whole row. First, with an opaque source, amount 1, and coverage 1, the equations of the blender reduce to the source color, and the rounding error of every step stays below 1e-6, far below half a level of a 16-bit channel (7.6e-6), so the stored channel is the color's channel. Second, the blender of ImageSharp 4.1.2 runs a vector loop over the first multiple of 4 pixels (512-bit registers; 2 with 256-bit registers) of each call and a scalar loop over the rest, and the two loops differ in the last bit because only the vector loop fuses its multiply-adds; so every blended piece starts at a multiple of that group, and the last piece is never 2 or 3 pixels long on a 512-bit machine (that length takes the 256-bit loop). A test confirmed that the rule matters: with a float pixel format admitted, a split at multiples of 1 or 2 changed pixels on this machine, a split at multiples of 4 did not. The plain `SolidBrushRenderer` keeps its size (a flag in it added 8 bytes per renderer, 7 KB per Chart render).
+2. **Gradients** (`GradientBrush`, `LinearGradientBrush`, `RadialGradientBrush`). `Apply` computes the positions of the whole span with one call (`PositionsOnGradient`; the linear and radial renderers override it with the same expression per pixel and no virtual call), handles the repetition mode outside the pixel loop, finds the bracketing stops by index instead of copying tuples of stops, and, for `Rgba32` with the straight encoder, packs the straight colors of the row with one bulk `FromVector4Destructive` instead of one `FromScaledVector4` per pixel. The per-pixel and the bulk conversion both scale by 255, add one half, and truncate (one clamps first, the other saturates), so they give the same byte for every value within the range of a 32-bit integer.
+3. **Rectangle clips** (`DefaultDrawingBackend.ApplyRectangleInterior` and its difference variant). The columns whose axis coverage is exactly 1 by the comparisons of `GetAxisCoverage` alone (from `Ceiling(left)` to `Floor(right) - 1` for area coverage; the interval of centre tests for hard edges) are skipped in one step; columns outside are compared one by one as before, so the runs passed on are the same. The root viewport clip of `SvgEmitter.Draw` for the Chart (destination 666.67 pixels high on a canvas of 667) cannot be dropped: it gives the last row a coverage of 0.67. With the skip it costs a constant per span.
+4. **Curve flattening** (`CubicBezierLineSegment`, `FlattenedPointBuilder`). The bounds of a cubic segment are taken from the points of a flattening at scale 1 as they are produced, without keeping an array, unless the cached flattening is at scale 1. The bounds are the same values as before (same points, same order). The builder appends into a scratch array that the thread reuses and returns one array of the exact length, instead of a growing array that was trimmed at the end. A render at a scale other than 1 now flattens each curve once into a kept array instead of twice; a render at scale 1 flattens twice where it flattened once (the bounds pass no longer leaves its array in the cache).
+
+**Measured gain.** Alternating rounds of commit 820861e (built from `git archive`) and the final tree, 5 warmup and 15 measured iterations per case, 3 rounds; the value is the mean of the round means in ms, then the mean of the per-round ratios with its 95% t interval over the rounds. A ratio whose interval excludes 0 is a separated change. Allocation is the managed allocation of ImageSharp.Drawing per operation. Svg.Skia ran once in the same session from the final tree (`SvgSkia_ColdCaches` for render, `SvgSkia` for load and render; 99.9% interval of BenchmarkDotNet); the gap is ImageSharp.Drawing after the change divided by Svg.Skia (below 1: ImageSharp.Drawing is faster).
+
+Render of a loaded document:
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated (one thread) | Svg.Skia | Gap after, default threads / one thread |
+|---|---|---|---|---|---|---|
+| Icons | 1000 | 46.3 → 39 (-16 ± 20%) | 151 → 118 (-22 ± 10%) | 3.18 MB → 3.18 MB | 13.5 ± 2.16 | ×2.88 / ×8.73 |
+| Icons | 4000 | 641 → 481 (-25 ± 12%) | 2223 → 1668 (-25 ± 2%) | 12.22 MB → 12.22 MB | 221 ± 23.8 | ×2.17 / ×7.53 |
+| Tiger | 1000 | 12.1 → 8.23 (-31 ± 28%) | 26.2 → 19.7 (-24 ± 15%) | 1.84 MB → 1.84 MB | 6.93 ± 0.385 | ×1.19 / ×2.85 |
+| Tiger | 4000 | 69.6 → 37.3 (-45 ± 22%) | 212 → 116 (-45 ± 4%) | 4.82 MB → 4.82 MB | 44.3 ± 4.71 | ×0.84 / ×2.63 |
+| Chart | 1000 | 6.96 → 6.55 (-6 ± 36%) | 16.2 → 13.8 (-15 ± 17%) | 2.37 MB → 2.37 MB | 4.95 ± 0.29 | ×1.32 / ×2.79 |
+| Chart | 4000 | 45 → 28.5 (-36 ± 18%) | 140 → 86.2 (-38 ± 17%) | 5.03 MB → 5.03 MB | 22.2 ± 1.57 | ×1.28 / ×3.88 |
+| IconSheet | 1000 | 8.71 → 7.83 (-10 ± 11%) | 20.3 → 17.7 (-13 ± 12%) | 2.92 MB → 2.92 MB | 6.79 ± 0.422 | ×1.15 / ×2.60 |
+| IconSheet | 4000 | 44.6 → 31.7 (-29 ± 11%) | 149 → 95 (-36 ± 1%) | 5.09 MB → 5.09 MB | 41.3 ± 3.25 | ×0.77 / ×2.30 |
+| StreetMap | 1000 | 55.7 → 52.8 (-5 ± 22%) | 118 → 117 (-1 ± 8%) | 16.60 MB → 16.60 MB | 61.3 ± 1.22 | ×0.86 / ×1.91 |
+| StreetMap | 4000 | 219 → 198 (-9 ± 18%) | 579 → 498 (-14 ± 20%) | 48.45 MB → 48.45 MB | 307 ± 8.14 | ×0.64 / ×1.62 |
+| Moose | 1000 | 38.6 → 28.8 (-25 ± 7%) | 102 → 79.9 (-21 ± 2%) | 1.08 MB → 1.08 MB | 39 ± 0.152 | ×0.74 / ×2.05 |
+| Moose | 4000 | 537 → 357 (-33 ± 26%) | 1556 → 1141 (-27 ± 1%) | 3.66 MB → 3.66 MB | 561 ± 25.3 | ×0.64 / ×2.03 |
+| SoftIceCream | 1000 | 10.5 → 7.25 (-30 ± 30%) | 24.7 → 17 (-31 ± 7%) | 249 KB → 249 KB | 5.87 ± 0.0778 | ×1.23 / ×2.89 |
+| SoftIceCream | 4000 | 111 → 72.7 (-34 ± 19%) | 346 → 239 (-31 ± 3%) | 944 KB → 944 KB | 101 ± 9.85 | ×0.72 / ×2.37 |
+| StyledLandscape | 1000 | 6.72 → 4.49 (-33 ± 13%) | 16.4 → 10.2 (-38 ± 5%) | 286 KB → 286 KB | 3.97 ± 0.361 | ×1.13 / ×2.56 |
+| StyledLandscape | 4000 | 79 → 51.9 (-34 ± 38%) | 250 → 146 (-42 ± 9%) | 964 KB → 964 KB | 100 ± 6.71 | ×0.52 / ×1.45 |
+
+Load and render:
+
+| Document | Long edge | ImageSharp.Drawing | One thread | Allocated (one thread) | Svg.Skia | Gap after, default threads / one thread |
+|---|---|---|---|---|---|---|
+| Icons | 1000 | 52.7 → 39.1 (-26 ± 16%) | 76.1 → 42.5 (-44 ± 12%) | 4.00 MB → 3.65 MB | 19.5 ± 1.87 | ×2.00 / ×2.18 |
+| Icons | 4000 | 585 → 319 (-45 ± 25%) | 1225 → 541 (-56 ± 20%) | 14.66 MB → 14.03 MB | 823 ± 26.1 | ×0.39 / ×0.66 |
+| Tiger | 1000 | 12.7 → 10.2 (-19 ± 18%) | 25.3 → 21 (-17 ± 19%) | 6.80 MB → 4.01 MB | 12.3 ± 0.932 | ×0.83 / ×1.70 |
+| Tiger | 4000 | 68.5 → 37.4 (-44 ± 23%) | 173 → 87.5 (-49 ± 10%) | 12.51 MB → 8.15 MB | 61.6 ± 2.43 | ×0.61 / ×1.42 |
+| Chart | 1000 | 9.85 → 7.68 (-22 ± 19%) | 17.2 → 13.4 (-22 ± 8%) | 5.23 MB → 4.69 MB | 27.5 ± 2.33 | ×0.28 / ×0.49 |
+| Chart | 4000 | 49.1 → 28.6 (-41 ± 16%) | 125 → 70.9 (-44 ± 12%) | 8.16 MB → 7.41 MB | 46.1 ± 0.662 | ×0.62 / ×1.54 |
+| IconSheet | 1000 | 11.6 → 10.1 (-13 ± 8%) | 21.2 → 17.8 (-16 ± 3%) | 4.63 MB → 4.52 MB | 40.6 ± 1.96 | ×0.25 / ×0.44 |
+| IconSheet | 4000 | 48.9 → 31.5 (-35 ± 22%) | 123 → 71.8 (-42 ± 8%) | 6.80 MB → 6.62 MB | 81.2 ± 0.396 | ×0.39 / ×0.88 |
+| StreetMap | 1000 | 71.2 → 71.7 (+1 ± 13%) | 136 → 133 (-2 ± 14%) | 27.97 MB → 27.97 MB | 165 ± 4.75 | ×0.44 / ×0.81 |
+| StreetMap | 4000 | 217 → 210 (-3 ± 8%) | 548 → 490 (-10 ± 12%) | 59.72 MB → 59.72 MB | 397 ± 18.1 | ×0.53 / ×1.23 |
+| Moose | 1000 | 41.3 → 29.4 (-28 ± 19%) | 103 → 79.7 (-23 ± 12%) | 3.59 MB → 2.30 MB | 41.7 ± 0.233 | ×0.70 / ×1.91 |
+| Moose | 4000 | 451 → 338 (-25 ± 8%) | 1521 → 1219 (-20 ± 25%) | 7.48 MB → 5.24 MB | 571 ± 11.9 | ×0.59 / ×2.13 |
+| SoftIceCream | 1000 | 10.3 → 7.81 (-24 ± 29%) | 21.7 → 14.8 (-32 ± 1%) | 732 KB → 537 KB | 9.1 ± 0.329 | ×0.86 / ×1.62 |
+| SoftIceCream | 4000 | 110 → 76.7 (-30 ± 23%) | 337 → 209 (-37 ± 18%) | 1.49 MB → 1.15 MB | 134 ± 21 | ×0.57 / ×1.56 |
+| StyledLandscape | 1000 | 7.04 → 4.25 (-40 ± 3%) | 16.1 → 9.34 (-42 ± 17%) | 589 KB → 446 KB | 6.7 ± 0.136 | ×0.63 / ×1.39 |
+| StyledLandscape | 4000 | 75 → 44.9 (-40 ± 9%) | 221 → 138 (-38 ± 37%) | 1.26 MB → 1.06 MB | 112 ± 4.37 | ×0.40 / ×1.24 |
+
+The render of a loaded document allocates the same as before; load and render allocates less wherever the document has curves, because the load no longer keeps a flattening at scale 1 per curve (Tiger 6.80 to 4.01 MB at 1000 pixels, Moose 3.59 to 2.30 MB). Paris30k load and render at 1000 pixels: 870 → 874 ms (+1 ± 17%) with the default threads, 1135 → 1079 ms (−4.9 ± 2.8%) on one thread, allocation 428.7 → 364.0 MB; Svg.Skia 4242 ± 295 ms. The measured iterations show no trend: over all 198 cases the mean ratio of the last third of the iterations to the first third is 0.997 to 1.011 per method and size.
+
+Per attempt (each against the tree of the attempt before it, 3 alternating rounds of `RenderSvg` or `LoadAndRenderSvg` at 1000 pixels, corrected benchmark, mean ratio and 95% interval; one thread unless stated):
+
+| Attempt | Kept | Documents | Change |
+|---|---|---|---|
+| Opaque solid fill | yes | Icons −23.9 ± 2.3%, Tiger −15.7 ± 14.1%, Chart −10.5 ± 8.0%, IconSheet −12.6 ± 9.9%, StreetMap −4.8 ± 12.0% (not separated) | render allocation equal |
+| Gradient positions per row | yes | SoftIceCream −11.1 ± 8.4% (default threads −4.0 ± 2.2%), StyledLandscape −8.3 ± 3.1% (−14.1 ± 5.0%), Moose −7.9 ± 12.9% (not separated) | equal |
+| Rectangle clip interior | yes | Chart −13.0 ± 3.7%, IconSheet +1.2 ± 10.7% (not separated) | equal |
+| Curve flattening | yes | load and render allocation Tiger 6.88 → 4.10 MB, Paris 428.7 → 364.0 MB, StreetMap equal; Paris default threads −6.8 ± 4.9%, Tiger and StreetMap not separated | −40% Tiger, −15% Paris |
+| Padded blend of short tails | no | profile only (perf, Icons 1000 px, 250 iterations): scene render 31.2 → 33.5 ms, StreetMap 99.2 → 99.3 ms | reverted |
+| Gradient bulk pack (`Rgba32`) | yes | Moose −12.7 ± 11.5% (default −13.4 ± 8.8%), SoftIceCream −17.1 ± 3.3% (−19.6 ± 9.5%), StyledLandscape −24.7 ± 7.7% (−25.2 ± 14.1%) | equal |
+
+The reverted attempt blended the end of a short row in a padded copy, so that the bulk conversions of ImageSharp ran their vector loop over it (their scalar remainders were 8.9% and 8.9% of the Icons samples after the solid fill change). It kept the output equal, but the copies (`Memmove` 8.3% of the samples) and the blend of the padding (blend 8.2% → 12.2%) cost more than the remainders.
+
+**Non-SVG benchmarks.** `DrawBeziers`, `EllipseStressTest`, `FillRectangle` (both methods), and `FillWithPattern`, 15 warmup and 15 measured iterations, 5 alternating rounds: Draw Beziers +2.4 ± 6.7%, ellipse stress +7.0 ± 12.8%, fill with pattern −0.2 ± 6.0% (none separated), fill rectangle −27.1 ± 8.5% and as polygon −22.6 ± 22.1% (faster). `DrawPolygon`, `FillPolygon`, `FillParis`, and `FillTiger` cannot run on this machine: their setup creates System.Drawing objects, which throw `PlatformNotSupportedException` on Linux; the SVG Tiger and Paris cells above measure the same fill and stroke code.
+
+**Gap that remains to Svg.Skia.** Render of a loaded document on one thread is still 1.5 to 8.7 times slower than Svg.Skia; with the default threads ImageSharp.Drawing is now faster at 4000 pixels for Tiger, IconSheet, StreetMap, Moose, SoftIceCream, and StyledLandscape, and 1.1 to 2.9 times slower at 1000 pixels except StreetMap and Moose. The largest gap is the Icons document (×2.9 default threads, ×8.7 one thread at 1000 pixels). Where the time goes now (perf, one thread, 1000 pixels): in Icons, clearing the new output (`ImageFrameCollection` constructor, 10%), the scalar remainders of the row conversions (18%), and the blend of the edge pixels (8%); in Moose the gradient loop (27%), the radial position (18%), and the blend (18%); in StreetMap, whose roads are rows of 4 to 15 pixels, the blend and its scalar remainders (19%) and the rasterizer. The next steps that keep the output equal would be a blend of a short row that does not convert the whole row twice (it needs the blend functions of ImageSharp, which are internal) and a cheaper radial position. The per-draw scene build (rank 5) and the layers (rank 3) belong to later packages.
+
+**The clear in the render benchmark.** `RenderSvg` clears the target area of each document before it draws the document (`canvas.Clear` with a transparent brush; the Svg.Skia method does the same with `SKCanvas.Clear`). The Icons entry holds 40 documents, so one operation clears the whole canvas 40 times. Measured after this package with `--curve Icons 1000 80` and a scratch build that can leave the clear out (median of draws 31 to 80, one run of each, shared machine):
+
+| Icons, 1000 pixels | With the clear | Without the clear |
+|---|---|---|
+| ImageSharp.Drawing, one thread | 113.7 ms | 28.6 ms |
+| ImageSharp.Drawing, default threads | 51.0 ms | 12.5 ms |
+| Svg.Skia, replay | 13.9 ms | 7.2 ms |
+
+Three quarters of the Icons render time of ImageSharp.Drawing is the clear: about 2.1 ms per megapixel on one thread, against about 0.17 ms for Skia. The drawing of the icons alone is 1.7 times (default threads) and 4.0 times (one thread) slower than Svg.Skia, not 2.9 and 8.7 times. The baseline profile of rank 1 in 18.4 (about 60% of the Icons samples in the blend and its conversions) therefore measured the clear for the most part. The clear blends with the `Src` composition mode, so the opaque solid fill path of this package does not apply to it. Every `RenderSvg` cell holds one clear per document, and at 4000 pixels one clear is 16 megapixels; `LoadAndRenderSvg` draws into a new image and has no clear, which is why the Tiger at 4000 pixels on one thread takes 116 ms to render and 87.5 ms to load and render. A direct write for a clear at full coverage is the first item of the next package.
+
 ## Sources
 
 - librsvg features: https://gnome.pages.gitlab.gnome.org/librsvg/devel-docs/features.html

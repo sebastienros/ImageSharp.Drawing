@@ -65,6 +65,18 @@ public sealed class CubicBezierLineSegment : ILineSegment
     }
 
     /// <summary>
+    /// Receives the flattened points in order.
+    /// </summary>
+    private interface IPointSink
+    {
+        /// <summary>
+        /// Receives the next point.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        public void Add(PointF point);
+    }
+
+    /// <summary>
     /// Gets the control points.
     /// </summary>
     public IReadOnlyList<PointF> ControlPoints => this.controlPoints;
@@ -76,7 +88,24 @@ public sealed class CubicBezierLineSegment : ILineSegment
     public PointF EndPoint => this.controlPoints[^1];
 
     /// <inheritdoc />
-    public RectangleF Bounds => CalculateBounds(this.GetFlattenedPoints(Vector2.One));
+    public RectangleF Bounds
+    {
+        get
+        {
+            FlattenedCache? hit = Volatile.Read(ref this.flattenedCache);
+            if (hit is not null && hit.Scale == Vector2.One)
+            {
+                return CalculateBounds(hit.Points);
+            }
+
+            // The bounds are those of the points that a flattening at scale one gives. They are taken from
+            // the points as they are produced, in the same order, so the result is the same as from the
+            // retained array, without allocating one or replacing a cached flattening at the render scale.
+            BoundsSink sink = new();
+            Flatten(this.controlPoints, Vector2.One, ref sink);
+            return sink.ToBounds();
+        }
+    }
 
     /// <inheritdoc />
     public int LinearVertexCount(Vector2 scale) => this.GetFlattenedPoints(scale).Length;
@@ -158,8 +187,22 @@ public sealed class CubicBezierLineSegment : ILineSegment
 
         // Flattened points are cached as a retained array, so use the builder to avoid
         // the intermediate collection and copy a list would generate.
-        FlattenedPointBuilder output = new(curveCount * 4);
+        BuilderSink output = new(new FlattenedPointBuilder(curveCount * 4));
+        Flatten(controlPoints, scale, ref output);
+        return output.Builder.Detach();
+    }
 
+    /// <summary>
+    /// Produces the flattened points of every cubic in <paramref name="controlPoints"/> in order.
+    /// </summary>
+    /// <typeparam name="TSink">The receiver of the points.</typeparam>
+    /// <param name="controlPoints">The bezier control points; the length is a multiple of 3 plus 1.</param>
+    /// <param name="scale">The X/Y scale at which the curve is flattened.</param>
+    /// <param name="output">The sink that each point is passed to.</param>
+    private static void Flatten<TSink>(PointF[] controlPoints, Vector2 scale, ref TSink output)
+        where TSink : struct, IPointSink
+    {
+        int curveCount = (controlPoints.Length - 1) / 3;
         for (int curveIndex = 0; curveIndex < curveCount; curveIndex++)
         {
             int nodeIndex = curveIndex * 3;
@@ -176,13 +219,12 @@ public sealed class CubicBezierLineSegment : ILineSegment
             SubdivideAndAppend(0F, 1F, p0, p3, p0, p1, p2, p3, ref output, 0);
             output.Add((PointF)p3);
         }
-
-        return output.Detach();
     }
 
     /// <summary>
     /// Recursively subdivides the scaled cubic segment, appending midpoints in left-to-right order.
     /// </summary>
+    /// <typeparam name="TSink">The receiver of the points.</typeparam>
     /// <param name="t0">The curve parameter at the start of the span.</param>
     /// <param name="t1">The curve parameter at the end of the span.</param>
     /// <param name="left">The curve point at <paramref name="t0"/>, carried down so each level evaluates one new point.</param>
@@ -191,9 +233,9 @@ public sealed class CubicBezierLineSegment : ILineSegment
     /// <param name="p1">The first control point of the cubic.</param>
     /// <param name="p2">The second control point of the cubic.</param>
     /// <param name="p3">The end point of the cubic.</param>
-    /// <param name="output">The builder receiving the appended points.</param>
+    /// <param name="output">The receiver of the appended points.</param>
     /// <param name="depth">The current recursion depth; used to bound the subdivision.</param>
-    private static void SubdivideAndAppend(
+    private static void SubdivideAndAppend<TSink>(
         float t0,
         float t1,
         Vector2 left,
@@ -202,8 +244,9 @@ public sealed class CubicBezierLineSegment : ILineSegment
         Vector2 p1,
         Vector2 p2,
         Vector2 p3,
-        ref FlattenedPointBuilder output,
+        ref TSink output,
         int depth)
+        where TSink : struct, IPointSink
     {
         // Normal finite curves reach the flatness test first. The limit prevents unbounded
         // recursion for extreme input.
@@ -279,6 +322,58 @@ public sealed class CubicBezierLineSegment : ILineSegment
         }
 
         return RectangleF.FromLTRB(minX, minY, maxX, maxY);
+    }
+
+    /// <summary>
+    /// Appends the flattened points to a <see cref="FlattenedPointBuilder"/>.
+    /// </summary>
+    /// <param name="builder">The builder.</param>
+    private struct BuilderSink(FlattenedPointBuilder builder) : IPointSink
+    {
+        /// <summary>
+        /// The builder that holds the points.
+        /// </summary>
+        public FlattenedPointBuilder Builder = builder;
+
+        /// <inheritdoc />
+        public void Add(PointF point) => this.Builder.Add(point);
+    }
+
+    /// <summary>
+    /// Accumulates the bounds of the flattened points with the same operations as <see cref="CalculateBounds"/>.
+    /// </summary>
+    private struct BoundsSink : IPointSink
+    {
+        private float minX;
+        private float minY;
+        private float maxX;
+        private float maxY;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BoundsSink"/> struct.
+        /// </summary>
+        public BoundsSink()
+        {
+            this.minX = float.MaxValue;
+            this.minY = float.MaxValue;
+            this.maxX = float.MinValue;
+            this.maxY = float.MinValue;
+        }
+
+        /// <inheritdoc />
+        public void Add(PointF point)
+        {
+            this.minX = MathF.Min(this.minX, point.X);
+            this.minY = MathF.Min(this.minY, point.Y);
+            this.maxX = MathF.Max(this.maxX, point.X);
+            this.maxY = MathF.Max(this.maxY, point.Y);
+        }
+
+        /// <summary>
+        /// Gets the bounds of the points received.
+        /// </summary>
+        /// <returns>The axis-aligned bounds.</returns>
+        public readonly RectangleF ToBounds() => RectangleF.FromLTRB(this.minX, this.minY, this.maxX, this.maxY);
     }
 
     /// <summary>

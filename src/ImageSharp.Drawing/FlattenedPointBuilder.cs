@@ -8,12 +8,27 @@ namespace SixLabors.ImageSharp.Drawing;
 /// </summary>
 /// <remarks>
 /// Segment flatteners ultimately need to return a tightly-sized array that can be cached by the segment instance.
-/// This builder owns that array while points are appended.
+/// The builder appends into a scratch array that the thread reuses between builds, and <see cref="Detach"/>
+/// copies the appended points into one array of the exact length. A build therefore allocates only its result,
+/// not the arrays that a growing buffer would discard.
 /// </remarks>
 internal struct FlattenedPointBuilder
 {
     /// <summary>
-    /// The owned backing array. Grows geometrically; trimmed to <see cref="count"/> by <see cref="Detach"/>.
+    /// The largest scratch array that a thread keeps between builds (32 KB), so one large curve does not
+    /// keep a large buffer alive on the thread.
+    /// </summary>
+    private const int MaxRetainedScratchLength = 4096;
+
+    /// <summary>
+    /// The scratch array of the thread. A builder takes it while it builds and gives it back in
+    /// <see cref="Detach"/>, so a builder that starts while another is building gets its own array.
+    /// </summary>
+    [ThreadStatic]
+    private static PointF[]? threadScratch;
+
+    /// <summary>
+    /// The scratch array the points are appended to. Grows geometrically.
     /// </summary>
     private PointF[] points;
 
@@ -28,7 +43,9 @@ internal struct FlattenedPointBuilder
     /// <param name="capacity">The estimated number of points that will be appended.</param>
     public FlattenedPointBuilder(int capacity)
     {
-        this.points = new PointF[Math.Max(capacity, 4)];
+        PointF[]? scratch = threadScratch;
+        threadScratch = null;
+        this.points = scratch is not null && scratch.Length >= capacity ? scratch : new PointF[Math.Max(capacity, 64)];
         this.count = 0;
     }
 
@@ -60,21 +77,23 @@ internal struct FlattenedPointBuilder
     public void Advance(int length) => this.count += length;
 
     /// <summary>
-    /// Returns the owned point array, trimmed to the appended count.
+    /// Returns a new array with the appended points and gives the scratch array back to the thread.
     /// </summary>
     /// <remarks>
-    /// Ownership of the array transfers to the caller. The builder must not be appended to afterwards as further
-    /// writes could mutate the detached array.
+    /// The builder must not be appended to afterwards.
     /// </remarks>
     /// <returns>The tightly-sized retained point array.</returns>
     public PointF[] Detach()
     {
-        if (this.count != this.points.Length)
+        PointF[] result = this.points.AsSpan(0, this.count).ToArray();
+        if (this.points.Length <= MaxRetainedScratchLength)
         {
-            Array.Resize(ref this.points, this.count);
+            threadScratch = this.points;
         }
 
-        return this.points;
+        this.points = [];
+        this.count = 0;
+        return result;
     }
 
     /// <summary>

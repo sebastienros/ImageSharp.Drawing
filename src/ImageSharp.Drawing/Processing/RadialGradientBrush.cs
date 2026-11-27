@@ -2,6 +2,7 @@
 // Licensed under the Six Labors Split License.
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using SixLabors.ImageSharp.Drawing.Helpers;
 
 namespace SixLabors.ImageSharp.Drawing.Processing;
@@ -339,7 +340,26 @@ public sealed class RadialGradientBrush : GradientBrush
         }
 
         /// <inheritdoc/>
-        protected override float PositionOnGradient(float x, float y)
+        protected override float PositionOnGradient(float x, float y) => this.PositionAt(x, y);
+
+        /// <inheritdoc/>
+        protected override void PositionsOnGradient(int x, float y, Span<float> positions)
+        {
+            // The same computation as PositionOnGradient, inlined into the row loop.
+            for (int i = 0; i < positions.Length; i++)
+            {
+                positions[i] = this.PositionAt((x + i) + 0.5F, y);
+            }
+        }
+
+        /// <summary>
+        /// Calculates the position on the gradient for a given point.
+        /// </summary>
+        /// <param name="x">The x-coordinate of the point.</param>
+        /// <param name="y">The y-coordinate of the point.</param>
+        /// <returns>The position on the gradient, or NaN where the gradient is undefined.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float PositionAt(float x, float y)
         {
             if (!this.isTwoCircle)
             {
