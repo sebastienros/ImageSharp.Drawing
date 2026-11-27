@@ -61,7 +61,7 @@ The emitter fills its own outline in two places: `SvgEmitter.StrokeNode` for a t
 ### 2.6 Documents
 
 - `SVG_DESIGN.md`: the API sketch (section 6), the canvas mapping (section 7), the open questions (section 13: write the answers of the owner), and a new section 20 "Upstream Sync 1" with what changed, the results of 2.3 and 2.4, and the numbers of 2.7.
-- `SVG_IMPLEMENTATION_PHASE6.md` section 2: the source rule names version 4.1.2; change it to the new version and commit.
+- `SVG_IMPLEMENTATION_PHASE6.md` section 2: the source rule names version 4.1.2; change it to the new version and its source commit.
 - `Processing/Backends/DEFAULT_DRAWING_BACKEND.md` where it describes a fast path that changed.
 
 ### 2.7 Measurement
