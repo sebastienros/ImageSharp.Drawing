@@ -54,6 +54,8 @@ Z2 is done; `SVG_DESIGN.md` section 19.1 holds its results. Two facts from it ch
 - The benchmark method of section 18.9 of `SVG_DESIGN.md` applies to every package: the setup warm-up of `RenderSvg` and `LoadAndRenderSvg`, `SvgSkia_ColdCaches` or `LoadAndRenderSvg` for a gap to Svg.Skia on a document with filters, and alternating rounds of a tree built from the start commit against the work tree for a before and after claim.
 - `RenderSvg` clears the target area of each document with `canvas.Clear` before it draws, and that clear costs about 2.1 ms per megapixel on one thread (Svg.Skia: about 0.17 ms). It is three quarters of the Icons render time (40 documents, so 40 clears) and a fixed part of every cell at 4000 pixels. A direct write for a clear at full coverage is the first item of Z3, because a clear is a composite of a whole area, like a layer.
 
+**Upstream sync.** The upstream owner merged the gradient option and a stroke fill into `main`, moved the library to ImageSharp 5, and asked for `init` accessors on the option classes. `SVG_IMPLEMENTATION_UPSTREAM.md` holds the plan of that work as package U1. It runs after Z3 and before Z5, so the order is Z3, U1, Z5, Z4, Z6. The fast paths of Z2 and Z3 were proven against ImageSharp 4.1.2; U1 proves them again for the new version.
+
 The profiles of Z1 used `perf` (`/usr/lib/linux-tools/6.8.0-151-generic/perf`, with `DOTNET_PerfMapEnabled=1` and `DOTNET_EnableWriteXorExecute=0`), because the thread-time sampler of `dotnet-trace` put 30% to 80% of the render samples at a GC poll where `perf` shows under 2%. The tool was installed with apt in the container and is gone after a restart; install it again when it is missing.
 
 ## 4. Package Z1: Baseline and Targets
