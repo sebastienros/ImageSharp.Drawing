@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
 using System.Text;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Processing.Backends;
@@ -8,6 +9,7 @@ using SixLabors.ImageSharp.Drawing.Svg;
 using SixLabors.ImageSharp.Drawing.Tests.TestUtilities.ImageComparison;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Memory;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using IOPath = System.IO.Path;
@@ -145,8 +147,9 @@ public class SvgPaintContentTests
     }
 
     /// <summary>
-    /// A retained scene keeps the pattern tiles and decoded images that its commands sample, so replaying it after the
-    /// draw call gives the same pixels as a direct render.
+    /// A retained scene keeps the pattern tiles, decoded images, and filter results that its commands sample, so
+    /// replaying it after the canvas that recorded it is disposed gives the same pixels as a direct render. Filter results
+    /// live in pooled memory, which the scene must keep until it is disposed.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
     /// <param name="provider">The image provider.</param>
@@ -155,7 +158,8 @@ public class SvgPaintContentTests
     public void DrawSvg_RetainedSceneMatchesDirectRender<TPixel>(TestImageProvider<TPixel> provider)
         where TPixel : unmanaged, IPixel<TPixel>
     {
-        foreach (string name in new[] { "pattern", "image" })
+        // filter-drop-shadow and filter-blur draw their results at the device scale, filter-transform under a rotation.
+        foreach (string name in new[] { "pattern", "image", "filter-drop-shadow", "filter-blur", "filter-transform" })
         {
             SvgDocument document = SvgDocument.Load(TestFile.GetInputFileFullPath($"Svg/Features/{name}.svg"));
             using Image<TPixel> direct = provider.GetImage();
@@ -169,9 +173,27 @@ public class SvgPaintContentTests
                 scene = canvas.CreateScene();
             }));
 
-            // Collect garbage between recording and replay: nothing the scene needs may depend on the draw call.
+            // Collect garbage between recording and replay: nothing the scene needs may depend on the draw call. Then rent
+            // buffers of every size up to the largest filter result from the allocator, fill them, and return them, so
+            // that a buffer that went back to the pool with the disposed canvas would be overwritten before the replay.
             GC.Collect();
             GC.WaitForPendingFinalizers();
+            MemoryAllocator allocator = replayed.Configuration.MemoryAllocator;
+            for (int length = 64; length <= 200 * 200 * 4; length *= 2)
+            {
+                IMemoryOwner<Rgba32>[] owners = new IMemoryOwner<Rgba32>[8];
+                for (int i = 0; i < owners.Length; i++)
+                {
+                    owners[i] = allocator.Allocate<Rgba32>(length - i);
+                    owners[i].Memory.Span.Fill(new Rgba32(255, 0, 255, 128));
+                }
+
+                foreach (IMemoryOwner<Rgba32> owner in owners)
+                {
+                    owner.Dispose();
+                }
+            }
+
             replayed.Mutate(x => x.Paint(canvas => canvas.RenderScene(scene)));
             scene.Dispose();
 

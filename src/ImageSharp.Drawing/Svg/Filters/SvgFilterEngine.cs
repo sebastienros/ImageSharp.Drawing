@@ -40,8 +40,9 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// </para>
 /// <para>
 /// Buffers come from the memory allocator of the configuration of the canvas and return to it when their last consumer
-/// has run. Only the final texture is a managed array, because the canvas defers its commands and a retained scene keeps
-/// the texture.
+/// has run. The buffer of the final result becomes the texture without a copy. The canvas defers its commands and a
+/// retained scene keeps them, so the texture must outlive the draw call: the emitter hands it to the canvas, which
+/// disposes it after the commands have rendered or moves it to the retained scene (see <see cref="SvgTexture"/>).
 /// </para>
 /// <para>
 /// Threads. The primitives run one after another; within one primitive the rows of the output split into bands on up
@@ -107,7 +108,7 @@ internal sealed class SvgFilterEngine
     /// <param name="visible">The device rectangle that can show the result.</param>
     /// <param name="maxPixels">The largest number of pixels of one result.</param>
     /// <param name="configuration">The configuration of the canvas that draws the result.</param>
-    /// <param name="texture">When this method returns <see langword="true"/>, contains the result, premultiplied sRGB.</param>
+    /// <param name="texture">When this method returns <see langword="true"/>, contains the result, premultiplied sRGB, in a pooled buffer of the allocator of <paramref name="configuration"/>. The caller owns it and disposes it once nothing samples it.</param>
     /// <param name="textureToDevice">When this method returns <see langword="true"/>, contains the transform from the texels of the result to device space.</param>
     /// <returns><see langword="true"/> if the result has pixels to draw; otherwise, <see langword="false"/>.</returns>
     public static bool TryRender(
@@ -242,15 +243,11 @@ internal sealed class SvgFilterEngine
             return false;
         }
 
-        using (result)
-        {
-            Rectangle area = result.Area;
-            Rgba32[] pixels = new Rgba32[area.Width * area.Height];
-            result.Pixels.CopyTo(pixels);
-            texture = new SvgTexture(pixels, area.Width, area.Height);
-            textureToDevice = Matrix3x2.CreateTranslation(area.X, area.Y) * filterToDevice;
-        }
-
+        // The result keeps its pooled buffer: the texture takes it over without a copy, and the caller owns the texture.
+        Rectangle area = result.Area;
+        texture = result.MoveToTexture();
+        result.Dispose();
+        textureToDevice = Matrix3x2.CreateTranslation(area.X, area.Y) * filterToDevice;
         return true;
     }
 
@@ -546,6 +543,7 @@ internal sealed class SvgFilterEngine
                     results[i] = output;
                     SvgFilterRenderContext context = new(this, region, subregions[i], primitive.ColorSpace, space);
                     this.RenderPrimitive(primitive, in context, inputImages.AsSpan(0, inputs.Length)!, output);
+                    output.IsAlphaOnly = primitive.PreservesAlphaOnly && AreAlphaOnly(inputImages.AsSpan(0, inputs.Length));
 
                     foreach (SvgFilterImage temporary in temporaries)
                     {
@@ -641,6 +639,24 @@ internal sealed class SvgFilterEngine
     }
 
     /// <summary>
+    /// Returns whether every input image has only zero color channels. An empty image is transparent black, so it counts.
+    /// </summary>
+    /// <param name="inputs">The input images.</param>
+    /// <returns><see langword="true"/> if every input is alpha-only or empty.</returns>
+    private static bool AreAlphaOnly(ReadOnlySpan<SvgFilterImage?> inputs)
+    {
+        foreach (SvgFilterImage? input in inputs)
+        {
+            if (!input!.IsAlphaOnly && !input.IsEmpty)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Brings the inputs of a primitive into the color space it computes in, and returns the color space of its output.
     /// An input that needs another color space is converted into a copy, because other primitives can still read it.
     /// </summary>
@@ -677,6 +693,16 @@ internal sealed class SvgFilterEngine
             SvgFilterImage input = inputs[k]!;
             if (input.IsEmpty || input.ColorSpace == target)
             {
+                continue;
+            }
+
+            if (input.IsAlphaOnly)
+            {
+                // The conversion would not change a pixel of an image whose color channels are all 0, so a view with
+                // the tag of the target stands for the converted copy, without the copy.
+                SvgFilterImage view = input.ViewAs(target);
+                temporaries.Add(view);
+                inputs[k] = view;
                 continue;
             }
 
@@ -728,7 +754,7 @@ internal sealed class SvgFilterEngine
     /// <returns>The image.</returns>
     private SvgFilterImage CreateSourceAlpha(SvgFilterImage source)
     {
-        SvgFilterImage image = new(this.Allocator, source.Area, SvgColorInterpolation.SRgb);
+        SvgFilterImage image = new(this.Allocator, source.Area, SvgColorInterpolation.SRgb) { IsAlphaOnly = true };
         Span<Rgba32> target = image.Pixels;
         ReadOnlySpan<Rgba32> pixels = source.Pixels;
         for (int i = 0; i < pixels.Length; i++)

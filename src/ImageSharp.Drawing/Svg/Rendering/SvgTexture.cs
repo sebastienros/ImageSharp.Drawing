@@ -1,32 +1,40 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
+using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
-/// The pixels of a decoded <c>image</c> or of a rendered <c>pattern</c> tile, held in a managed array with premultiplied
+/// The pixels of a decoded <c>image</c>, of a rendered <c>pattern</c> tile, or of a filter result, with premultiplied
 /// alpha, and the box-filtered levels that <see cref="SvgTextureBrush"/> samples when it draws the texture smaller.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Ownership: the texture owns its arrays and nothing else. It holds no pooled buffer and no <see cref="Image"/>, so it
-/// needs no disposal, and the garbage collector frees it when the last document, brush, or deferred canvas command that
-/// refers to it is gone. That is what lets an immutable, non-disposable <see cref="SvgDocument"/> keep decoded images,
-/// and lets a canvas that defers its commands, or a retained scene, sample the pixels long after the draw call returned.
+/// Ownership. A texture made from an array owns the array and nothing else, needs no disposal, and the garbage
+/// collector frees it when the last document, brush, or deferred canvas command that refers to it is gone. That is what
+/// lets an immutable, non-disposable <see cref="SvgDocument"/> keep decoded images and pattern tiles. A texture made
+/// from a pooled buffer (a filter result, which belongs to one draw) owns that buffer and returns it to its allocator on
+/// <see cref="Dispose"/>. The emitter hands such a texture to the canvas that draws it
+/// (<see cref="DrawingCanvas.TryTakeOwnership"/>): the canvas disposes it after its recorded commands have rendered, or
+/// moves it to the retained scene that holds those commands, which disposes it with the scene. So the pixels live as
+/// long as any command that samples them can still run.
 /// </para>
 /// <para>
 /// The pixels are premultiplied, so bilinear filtering and the box filter of the smaller levels weight color by
 /// coverage, and transparent texels do not bleed their color into opaque ones. Level <c>n</c> has half the size of level
-/// <c>n - 1</c>, rounded up, down to one pixel. The levels are built on first use and are safe to request from several
-/// threads at the same time.
+/// <c>n - 1</c>, rounded up, down to one pixel. The levels are built on first use, are managed arrays whatever holds level
+/// 0, and are safe to request from several threads at the same time.
 /// </para>
 /// </remarks>
-internal sealed class SvgTexture
+internal sealed class SvgTexture : IDisposable
 {
     private readonly object levelLock = new();
     private SvgTexture?[]? levels;
+    private IMemoryOwner<Rgba32>? owner;
+    private Memory<Rgba32> memory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SvgTexture"/> class. The texture takes ownership of the array.
@@ -36,15 +44,31 @@ internal sealed class SvgTexture
     /// <param name="height">The height in pixels. It is greater than zero.</param>
     public SvgTexture(Rgba32[] pixels, int width, int height)
     {
-        this.Pixels = pixels;
+        this.memory = pixels;
         this.Width = width;
         this.Height = height;
     }
 
     /// <summary>
-    /// Gets the pixels in rows, with premultiplied alpha.
+    /// Initializes a new instance of the <see cref="SvgTexture"/> class over a pooled buffer. The texture takes
+    /// ownership of the buffer and returns it to its allocator on <see cref="Dispose"/>.
     /// </summary>
-    public Rgba32[] Pixels { get; }
+    /// <param name="owner">The buffer.</param>
+    /// <param name="pixels">The pixels in rows, with premultiplied alpha: the first <paramref name="width"/> times <paramref name="height"/> elements of the buffer.</param>
+    /// <param name="width">The width in pixels. It is greater than zero.</param>
+    /// <param name="height">The height in pixels. It is greater than zero.</param>
+    public SvgTexture(IMemoryOwner<Rgba32> owner, Memory<Rgba32> pixels, int width, int height)
+    {
+        this.owner = owner;
+        this.memory = pixels;
+        this.Width = width;
+        this.Height = height;
+    }
+
+    /// <summary>
+    /// Gets the pixels in rows, with premultiplied alpha. Empty after <see cref="Dispose"/> of a pooled texture.
+    /// </summary>
+    public ReadOnlySpan<Rgba32> Pixels => this.memory.Span;
 
     /// <summary>
     /// Gets the width in pixels.
@@ -82,6 +106,23 @@ internal sealed class SvgTexture
         }
 
         return new SvgTexture(pixels, width, height);
+    }
+
+    /// <summary>
+    /// Returns a texture with a managed copy of the pixels, which needs no disposal.
+    /// </summary>
+    /// <returns>The copy.</returns>
+    public SvgTexture ToManaged() => new(this.Pixels.ToArray(), this.Width, this.Height);
+
+    /// <summary>
+    /// Returns the pooled buffer of the texture to its allocator. A texture made from an array has nothing to release.
+    /// No brush may sample the texture afterwards.
+    /// </summary>
+    public void Dispose()
+    {
+        this.owner?.Dispose();
+        this.owner = null;
+        this.memory = default;
     }
 
     /// <summary>
@@ -152,7 +193,7 @@ internal sealed class SvgTexture
     {
         int width = (this.Width + 1) / 2;
         int height = (this.Height + 1) / 2;
-        Rgba32[] source = this.Pixels;
+        ReadOnlySpan<Rgba32> source = this.Pixels;
         Rgba32[] result = new Rgba32[width * height];
 
         for (int y = 0; y < height; y++)

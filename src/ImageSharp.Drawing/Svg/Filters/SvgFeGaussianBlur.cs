@@ -61,6 +61,10 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// <remarks>The blur splits its own passes over threads.</remarks>
     public override bool CanRenderInBands => false;
 
+    /// <inheritdoc/>
+    /// <remarks>Each color channel of the output is a rounded weighted mean of the same channel of the input.</remarks>
+    public override bool PreservesAlphaOnly => true;
+
     /// <summary>
     /// Creates the primitive of an <c>feGaussianBlur</c> element.
     /// </summary>
@@ -111,9 +115,18 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// Blurs an image into the area of another. The output must be transparent; the input can have any area.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The rows of the horizontal pass and the column strips of the vertical pass are independent, so each pass runs
     /// in bands on up to the configured number of threads (<see cref="SvgFilterEngine.ForEachBand"/>); every band
     /// has its own scratch lines. The result does not depend on the number of threads.
+    /// </para>
+    /// <para>
+    /// When the color channels of the input are all 0 (<see cref="SvgFilterImage.IsAlphaOnly"/>, such as
+    /// <c>SourceAlpha</c>), the passes compute the alpha channel only and write 0 to the color channels. That is what the
+    /// passes give for those channels anyway: a box sum of zeros is 0 and the rounded division of 0 + half the box size
+    /// by the box size is 0, and a kernel sum of zeros is 0, plus one half truncates to 0. The alpha channel is
+    /// computed with the same operations in the same order as in the four-channel passes, so the bytes are equal.
+    /// </para>
     /// </remarks>
     /// <param name="input">The input image.</param>
     /// <param name="output">The output image, transparent, not empty.</param>
@@ -132,6 +145,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
         Passes vertical = GetPasses(deviation.Y);
         int reachX = horizontal.Reach;
         int reachY = vertical.Reach;
+        bool alphaOnly = input.IsAlphaOnly;
 
         // Rows of the intermediate image: the output rows widened by the vertical reach, limited to the input rows,
         // because the horizontal pass does not spread across rows.
@@ -164,7 +178,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
             for (int y = top + first; y < top + last; y++)
             {
                 input.CopyRow(y, lineLeft, line);
-                Span<Rgba32> blurred = horizontal.Apply(line, scratch);
+                Span<Rgba32> blurred = horizontal.Apply(line, scratch, alphaOnly);
                 blurred.Slice(offset, area.Width).CopyTo(intermediate.GetRow(y));
             }
         });
@@ -177,7 +191,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
         SvgFilterEngine.ForEachBand(configuration, strips, (long)columnLength * StripWidth, (first, last) =>
         {
             using IMemoryOwner<Rgba32> lines = allocator.Allocate<Rgba32>(columnLength * 2 * StripWidth);
-            VerticalStrips(intermediate, output, vertical, lines.Memory.Span, columnTop, columnLength, first, last);
+            VerticalStrips(intermediate, output, vertical, alphaOnly, lines.Memory.Span, columnTop, columnLength, first, last);
         });
     }
 
@@ -187,6 +201,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// <param name="intermediate">The result of the horizontal pass, with the columns of the output.</param>
     /// <param name="output">The output image.</param>
     /// <param name="vertical">The vertical passes.</param>
+    /// <param name="alphaOnly">Whether the color channels of the input are all 0, so the passes compute the alpha channel only.</param>
     /// <param name="buffer">Scratch memory of <c>2 * StripWidth</c> lines of <paramref name="length"/> pixels: each column of a strip uses a line and its scratch line.</param>
     /// <param name="columnTop">The first row of the lines in filter space.</param>
     /// <param name="length">The length of the lines.</param>
@@ -196,6 +211,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
         SvgFilterImage intermediate,
         SvgFilterImage output,
         in Passes vertical,
+        bool alphaOnly,
         Span<Rgba32> buffer,
         int columnTop,
         int length,
@@ -235,7 +251,7 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
             {
                 int offset = 2 * k * length;
                 Span<Rgba32> column = buffer.Slice(offset, length);
-                Span<Rgba32> blurred = vertical.Apply(column, buffer.Slice(offset + length, length));
+                Span<Rgba32> blurred = vertical.Apply(column, buffer.Slice(offset + length, length), alphaOnly);
                 results[k] = blurred == column ? offset : offset + length;
             }
 
@@ -297,8 +313,15 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// <param name="destination">The result, of the same length.</param>
     /// <param name="left">The number of pixels the window reaches to the left.</param>
     /// <param name="right">The number of pixels the window reaches to the right.</param>
-    private static void Box(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, int left, int right)
+    /// <param name="alphaOnly">Whether the color channels of the line are all 0; then only the alpha channel is summed and the color channels of the result are 0.</param>
+    private static void Box(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, int left, int right, bool alphaOnly)
     {
+        if (alphaOnly)
+        {
+            BoxAlpha(source, destination, left, right);
+            return;
+        }
+
         int size = left + right + 1;
         int half = size / 2;
         ulong multiplier = GetDivisionMultiplier(size);
@@ -346,6 +369,45 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     }
 
     /// <summary>
+    /// The pass of <see cref="Box"/> for a line whose color channels are all 0: the alpha channel of the result is the
+    /// value that <see cref="Box"/> computes for it, with the same window and the same division, and the color channels
+    /// are 0, as <see cref="Box"/> gives them for zero sums.
+    /// </summary>
+    /// <param name="source">The line.</param>
+    /// <param name="destination">The result, of the same length.</param>
+    /// <param name="left">The number of pixels the window reaches to the left.</param>
+    /// <param name="right">The number of pixels the window reaches to the right.</param>
+    private static void BoxAlpha(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, int left, int right)
+    {
+        int size = left + right + 1;
+        int half = size / 2;
+        ulong multiplier = GetDivisionMultiplier(size);
+        int n = source.Length;
+        int a = 0;
+        for (int i = 0; i <= Math.Min(right, n - 1); i++)
+        {
+            a += source[i].A;
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            destination[i] = new Rgba32(0, 0, 0, Divide(a + half, multiplier));
+
+            int enter = i + right + 1;
+            if (enter < n)
+            {
+                a += source[enter].A;
+            }
+
+            int leave = i - left;
+            if (leave >= 0)
+            {
+                a -= source[leave].A;
+            }
+        }
+    }
+
+    /// <summary>
     /// Returns the multiplier that <see cref="Divide"/> uses to divide by a box size: <c>ceil(2^40 / size)</c>.
     /// </summary>
     /// <remarks>
@@ -375,8 +437,15 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
     /// <param name="source">The line.</param>
     /// <param name="destination">The result, of the same length.</param>
     /// <param name="kernel">The normalized kernel, of odd length.</param>
-    private static void Convolve(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, float[] kernel)
+    /// <param name="alphaOnly">Whether the color channels of the line are all 0; then only the alpha channel is summed and the color channels of the result are 0.</param>
+    private static void Convolve(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, float[] kernel, bool alphaOnly)
     {
+        if (alphaOnly)
+        {
+            ConvolveAlpha(source, destination, kernel);
+            return;
+        }
+
         int radius = kernel.Length / 2;
         int n = source.Length;
         for (int i = 0; i < n; i++)
@@ -392,6 +461,35 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
 
             sum += new Vector4(0.5F);
             destination[i] = new Rgba32((byte)MathF.Min(sum.X, 255F), (byte)MathF.Min(sum.Y, 255F), (byte)MathF.Min(sum.Z, 255F), (byte)MathF.Min(sum.W, 255F));
+        }
+    }
+
+    /// <summary>
+    /// The pass of <see cref="Convolve"/> for a line whose color channels are all 0. The alpha lane of the vector sum of
+    /// <see cref="Convolve"/> is a float sum of the products of the alpha and the kernel weight, in the order of the taps,
+    /// and the runtime evaluates each vector product and sum lane by lane with the same rounding as the scalar product and
+    /// sum (it does not fuse a multiply and an add that the code writes separately), so the scalar sum here has the same
+    /// value. The color lanes of <see cref="Convolve"/> sum zeros; 0 + 0.5 truncates to 0.
+    /// </summary>
+    /// <param name="source">The line.</param>
+    /// <param name="destination">The result, of the same length.</param>
+    /// <param name="kernel">The normalized kernel, of odd length.</param>
+    private static void ConvolveAlpha(ReadOnlySpan<Rgba32> source, Span<Rgba32> destination, float[] kernel)
+    {
+        int radius = kernel.Length / 2;
+        int n = source.Length;
+        for (int i = 0; i < n; i++)
+        {
+            float sum = 0F;
+            int start = Math.Max(0, i - radius);
+            int end = Math.Min(n - 1, i + radius);
+            for (int j = start; j <= end; j++)
+            {
+                sum += source[j].A * kernel[j - i + radius];
+            }
+
+            sum += 0.5F;
+            destination[i] = new Rgba32(0, 0, 0, (byte)MathF.Min(sum, 255F));
         }
     }
 
@@ -444,12 +542,13 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
         /// </summary>
         /// <param name="line">The line; it is overwritten.</param>
         /// <param name="scratch">A scratch line of the same length.</param>
+        /// <param name="alphaOnly">Whether the color channels of the line are all 0, so the passes compute the alpha channel only.</param>
         /// <returns>The span that holds the result: <paramref name="line"/> or <paramref name="scratch"/>.</returns>
-        public Span<Rgba32> Apply(Span<Rgba32> line, Span<Rgba32> scratch)
+        public Span<Rgba32> Apply(Span<Rgba32> line, Span<Rgba32> scratch, bool alphaOnly)
         {
             if (this.Kernel is not null)
             {
-                Convolve(line, scratch, this.Kernel);
+                Convolve(line, scratch, this.Kernel, alphaOnly);
                 return scratch;
             }
 
@@ -462,17 +561,17 @@ internal sealed class SvgFeGaussianBlur : SvgFilterPrimitive
             if (d % 2 == 1)
             {
                 int half = (d - 1) / 2;
-                Box(line, scratch, half, half);
-                Box(scratch, line, half, half);
-                Box(line, scratch, half, half);
+                Box(line, scratch, half, half, alphaOnly);
+                Box(scratch, line, half, half, alphaOnly);
+                Box(line, scratch, half, half, alphaOnly);
                 return scratch;
             }
 
             // Two boxes of size d centered on the pixel boundary to the left and to the right, then one of size d + 1
             // centered on the pixel.
-            Box(line, scratch, d / 2, (d / 2) - 1);
-            Box(scratch, line, (d / 2) - 1, d / 2);
-            Box(line, scratch, d / 2, d / 2);
+            Box(line, scratch, d / 2, (d / 2) - 1, alphaOnly);
+            Box(scratch, line, (d / 2) - 1, d / 2, alphaOnly);
+            Box(line, scratch, d / 2, d / 2, alphaOnly);
             return scratch;
         }
     }
