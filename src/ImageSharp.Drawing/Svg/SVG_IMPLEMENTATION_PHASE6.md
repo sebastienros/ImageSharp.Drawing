@@ -49,6 +49,11 @@ The order of Z2 to Z5 follows the ranked list of Z1: if Z1 shows that another ar
 
 After Z1 the order is Z2, Z3, Z5, Z4, Z6. `SVG_DESIGN.md` section 18 is the baseline: 18.4 ranks the targets, 18.5 and 18.6 hold the profiles, 18.7 the ImageSharp patterns, and 18.8 what each package tries first. Each package starts from those profiles and measures against the numbers of section 18.2. The load of custom properties and `Image.Identify` (18.6) belong to Z4.
 
+Z2 is done; `SVG_DESIGN.md` section 19.1 holds its results. Two facts from it change what follows:
+
+- The benchmark method of section 18.9 of `SVG_DESIGN.md` applies to every package: the setup warm-up of `RenderSvg` and `LoadAndRenderSvg`, `SvgSkia_ColdCaches` or `LoadAndRenderSvg` for a gap to Svg.Skia on a document with filters, and alternating rounds of a tree built from the start commit against the work tree for a before and after claim.
+- `RenderSvg` clears the target area of each document with `canvas.Clear` before it draws, and that clear costs about 2.1 ms per megapixel on one thread (Svg.Skia: about 0.17 ms). It is three quarters of the Icons render time (40 documents, so 40 clears) and a fixed part of every cell at 4000 pixels. A direct write for a clear at full coverage is the first item of Z3, because a clear is a composite of a whole area, like a layer.
+
 The profiles of Z1 used `perf` (`/usr/lib/linux-tools/6.8.0-151-generic/perf`, with `DOTNET_PerfMapEnabled=1` and `DOTNET_EnableWriteXorExecute=0`), because the thread-time sampler of `dotnet-trace` put 30% to 80% of the render samples at a GC poll where `perf` shows under 2%. The tool was installed with apt in the container and is gone after a restart; install it again when it is missing.
 
 ## 4. Package Z1: Baseline and Targets
