@@ -278,6 +278,8 @@ public sealed partial class DefaultDrawingBackend
             Span<TPixel> destination,
             Span<float> coverage)
         {
+            GetInteriorColumns(rectangle.Left, rectangle.Right, descriptor.EdgeMode, out int interiorStart, out int interiorEnd);
+
             int x = clipStart;
             while (x < clipEnd)
             {
@@ -287,10 +289,7 @@ public sealed partial class DefaultDrawingBackend
 
                 // Rectangle edge coverage is constant across interior pixels and only changes
                 // at the left/right edge pixels, so collapse adjacent equal-coverage columns.
-                while (x < clipEnd && GetAxisCoverage(x, rectangle.Left, rectangle.Right, descriptor.EdgeMode) == xCoverage)
-                {
-                    x++;
-                }
+                x = ExtendAxisRun(x, clipEnd, xCoverage, interiorStart, interiorEnd, rectangle.Left, rectangle.Right, descriptor.EdgeMode);
 
                 this.ApplyCoverageRun(clipIndex + 1, y, runStart, x, spanStart, multiplier, destination, coverage);
             }
@@ -321,6 +320,8 @@ public sealed partial class DefaultDrawingBackend
             Span<TPixel> destination,
             Span<float> coverage)
         {
+            GetInteriorColumns(rectangle.Left, rectangle.Right, descriptor.EdgeMode, out int interiorStart, out int interiorEnd);
+
             int x = clipStart;
             while (x < clipEnd)
             {
@@ -330,10 +331,7 @@ public sealed partial class DefaultDrawingBackend
 
                 // Subtraction uses the inverse coverage of the rectangle, but the same run
                 // coalescing applies: edge pixels differ, interior pixels share one value.
-                while (x < clipEnd && GetAxisCoverage(x, rectangle.Left, rectangle.Right, descriptor.EdgeMode) == xCoverage)
-                {
-                    x++;
-                }
+                x = ExtendAxisRun(x, clipEnd, xCoverage, interiorStart, interiorEnd, rectangle.Left, rectangle.Right, descriptor.EdgeMode);
 
                 this.ApplyCoverageRun(clipIndex + 1, y, runStart, x, spanStart, multiplier, destination, coverage);
             }
@@ -729,6 +727,112 @@ public sealed partial class DefaultDrawingBackend
 
             float coverage = MathF.Min(pixel + 1F, clipEnd) - MathF.Max(pixel, clipStart);
             return Math.Clamp(coverage, 0F, 1F);
+        }
+
+        /// <summary>
+        /// Advances past the columns that continue a run of equal axis coverage, as a column-by-column
+        /// comparison with <see cref="GetAxisCoverage"/> would, but skips the interior columns in one step.
+        /// </summary>
+        /// <param name="x">The first column after the start of the run.</param>
+        /// <param name="clipEnd">The exclusive column where the walk ends.</param>
+        /// <param name="runCoverage">The axis coverage of the first column of the run.</param>
+        /// <param name="interiorStart">The first interior column from <see cref="GetInteriorColumns"/>.</param>
+        /// <param name="interiorEnd">The exclusive last interior column from <see cref="GetInteriorColumns"/>.</param>
+        /// <param name="clipStart">The clip interval start.</param>
+        /// <param name="clipIntervalEnd">The clip interval end.</param>
+        /// <param name="edgeMode">The edge mode.</param>
+        /// <returns>The exclusive end column of the run.</returns>
+        private static int ExtendAxisRun(
+            int x,
+            int clipEnd,
+            float runCoverage,
+            int interiorStart,
+            int interiorEnd,
+            float clipStart,
+            float clipIntervalEnd,
+            DrawingClipEdgeMode edgeMode)
+        {
+            while (x < clipEnd)
+            {
+                if (x >= interiorStart && x < interiorEnd)
+                {
+                    // Every interior column has coverage 1, so the run either ends here or
+                    // continues through the whole interior.
+                    if (runCoverage != 1F)
+                    {
+                        break;
+                    }
+
+                    x = Math.Min(interiorEnd, clipEnd);
+                    continue;
+                }
+
+                if (GetAxisCoverage(x, clipStart, clipIntervalEnd, edgeMode) != runCoverage)
+                {
+                    break;
+                }
+
+                x++;
+            }
+
+            return x;
+        }
+
+        /// <summary>
+        /// Finds the interval of columns for which <see cref="GetAxisCoverage"/> returns exactly 1 by
+        /// its comparisons alone, so the column walk can skip them.
+        /// </summary>
+        /// <param name="clipStart">The clip interval start.</param>
+        /// <param name="clipEnd">The clip interval end.</param>
+        /// <param name="edgeMode">The edge mode.</param>
+        /// <param name="interiorStart">The first interior column.</param>
+        /// <param name="interiorEnd">The exclusive last interior column; equal to the start when there is none.</param>
+        private static void GetInteriorColumns(
+            float clipStart,
+            float clipEnd,
+            DrawingClipEdgeMode edgeMode,
+            out int interiorStart,
+            out int interiorEnd)
+        {
+            // Below 2^22 in magnitude every integer column x, x + 1, and x + 0.5 is exact in single
+            // precision, so the comparisons below are the comparisons of GetAxisCoverage. NaN and
+            // larger bounds fail these tests and keep the column walk.
+            const float limit = 1 << 22;
+            if (!(clipStart > -limit && clipEnd < limit && clipStart < clipEnd))
+            {
+                interiorStart = 0;
+                interiorEnd = 0;
+                return;
+            }
+
+            if (edgeMode == DrawingClipEdgeMode.Hard)
+            {
+                // Centre sampling returns 1 exactly when x + 0.5 >= clipStart and x + 0.5 <= clipEnd.
+                // Both tests are monotonic in x, so the columns that pass form one interval; its ends
+                // are within one column of the floors and are found with the same float tests.
+                int first = (int)MathF.Floor(clipStart) - 1;
+                while (!(first + 0.5F >= clipStart))
+                {
+                    first++;
+                }
+
+                int last = (int)MathF.Floor(clipEnd) + 1;
+                while (!(last + 0.5F <= clipEnd))
+                {
+                    last--;
+                }
+
+                interiorStart = first;
+                interiorEnd = Math.Max(first, last + 1);
+                return;
+            }
+
+            // Area coverage is Min(x + 1, end) - Max(x, start). When x >= start and x + 1 <= end the two
+            // operands are x + 1 and x, both exact, so the difference is exactly 1. For integer x these
+            // tests hold from Ceiling(start) to Floor(end) - 1. Columns outside can still reach 1 through
+            // rounding; the walk compares those one by one.
+            interiorStart = (int)MathF.Ceiling(clipStart);
+            interiorEnd = Math.Max(interiorStart, (int)MathF.Floor(clipEnd));
         }
     }
 

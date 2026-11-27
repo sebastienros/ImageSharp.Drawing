@@ -2,6 +2,7 @@
 // Licensed under the Six Labors Split License.
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace SixLabors.ImageSharp.Drawing.Processing;
 
@@ -155,6 +156,16 @@ public abstract class GradientBrush : Brush
     {
         private static readonly TPixel Transparent = Color.Transparent.ToPixel<TPixel>();
 
+        /// <summary>
+        /// Whether <see cref="Apply"/> packs a row of straight vectors with one bulk conversion instead of one
+        /// conversion per pixel. It holds for <see cref="Rgba32"/> with the straight encoder: the per-pixel
+        /// conversion of ImageSharp 4.1.2 scales by 255, adds one half, clamps to [0, 255], and truncates, and
+        /// the bulk conversion scales by 255, adds one half, truncates, and saturates, which gives the same byte
+        /// for every value within the range of a 32-bit integer. The gradient values lie within rounding of [0, 1].
+        /// </summary>
+        private static readonly bool EncodesInBulk =
+            typeof(TPixel) == typeof(Rgba32) && typeof(TEncoder) == typeof(UnassociatedGradientPixelEncoder<TPixel>);
+
         private readonly GradientColorStop[] colorStops;
 
         private readonly GradientRepetitionMode repetitionMode;
@@ -214,6 +225,19 @@ public abstract class GradientBrush : Brush
         }
 
         /// <summary>
+        /// Maps a position on the complete gradient into the range that one repetition mode samples.
+        /// </summary>
+        private interface IRepetitionMode
+        {
+            /// <summary>
+            /// Maps the position in place.
+            /// </summary>
+            /// <param name="position">The position, which is not NaN.</param>
+            /// <returns><see langword="false"/> when the pixel stays transparent.</returns>
+            public static abstract bool TryWrap(ref float position);
+        }
+
+        /// <summary>
         /// Gets a value indicating whether the brush has a gradient transform, so samples must be
         /// mapped through <see cref="InverseGradientTransform"/> before the gradient is evaluated.
         /// </summary>
@@ -231,79 +255,10 @@ public abstract class GradientBrush : Brush
         /// <param name="y">The y-coordinate of the pixel in device space.</param>
         /// <returns>The blended gradient color converted to <typeparamref name="TPixel"/>.</returns>
         internal TPixel this[int x, int y]
-        {
-            get
-            {
-                // Evaluate at pixel centers so gradient sampling lines up with the
-                // rasterized coverage positions.
-                float fx = x + 0.5f;
-                float fy = y + 0.5f;
 
-                // NaN signals that the parameterization is undefined at this point
-                // (e.g. outside the valid branch of a conic); such pixels stay transparent.
-                float positionOnCompleteGradient = this.PositionOnGradient(fx, fy);
-                if (float.IsNaN(positionOnCompleteGradient))
-                {
-                    return Transparent;
-                }
-
-                switch (this.repetitionMode)
-                {
-                    case GradientRepetitionMode.Repeat:
-                        // The floor subtraction moves every position into [0, 1], so the pattern also
-                        // repeats before the start point. The remainder operator keeps the sign of a
-                        // negative position, and the brush then pads that position with the first stop.
-                        positionOnCompleteGradient -= MathF.Floor(positionOnCompleteGradient);
-                        break;
-                    case GradientRepetitionMode.Reflect:
-                        // Reflection is symmetric about the start point, so the magnitude gives the
-                        // same color as the signed position. Every second period folds back on itself,
-                        // so alternate repetitions run the stops in reverse order.
-                        positionOnCompleteGradient = MathF.Abs(positionOnCompleteGradient) % 2;
-                        if (positionOnCompleteGradient > 1)
-                        {
-                            positionOnCompleteGradient = 2 - positionOnCompleteGradient;
-                        }
-
-                        break;
-                    case GradientRepetitionMode.DontFill:
-                        if (positionOnCompleteGradient is > 1 or < 0)
-                        {
-                            return Transparent;
-                        }
-
-                        break;
-                    case GradientRepetitionMode.None:
-                    default:
-                        // do nothing. The following could be done, but is not necessary:
-                        // onLocalGradient = Math.Min(0, Math.Max(1, onLocalGradient));
-                        break;
-                }
-
-                (GradientColorStop from, GradientColorStop to) = this.GetGradientSegment(positionOnCompleteGradient);
-
-                Vector4 color;
-                if (from.Color == to.Color)
-                {
-                    color = from.Color;
-                }
-                else
-                {
-                    float onLocalGradient = (positionOnCompleteGradient - from.Ratio) / (to.Ratio - from.Ratio);
-                    color = Vector4.Lerp(from.Color, to.Color, onLocalGradient);
-                }
-
-                if (this.unpremultiplied)
-                {
-                    // The encoders take an associated vector, so a straight result is premultiplied here.
-                    float alpha = color.W;
-                    color *= alpha;
-                    color.W = alpha;
-                }
-
-                return TEncoder.Encode(color);
-            }
-        }
+            // Evaluate at pixel centers so gradient sampling lines up with the
+            // rasterized coverage positions.
+            => this.ColorAt(this.PositionOnGradient(x + 0.5f, y + 0.5f));
 
         /// <inheritdoc />
         public override void Apply(
@@ -315,10 +270,37 @@ public abstract class GradientBrush : Brush
         {
             Span<TPixel> overlays = workspace.GetOverlays(scanline.Length);
 
-            // TODO: Remove bounds checks.
-            for (int i = 0; i < scanline.Length; i++)
+            // The positions of the whole row come first, from one call, so the per-pixel work below
+            // has no virtual call. The amount buffer is free here: this renderer does not read it otherwise.
+            Span<float> positions = workspace.GetAmounts(scanline.Length);
+            this.PositionsOnGradient(x, y + 0.5f, positions);
+
+            if (EncodesInBulk)
             {
-                overlays[i] = this[x + i, y];
+                // The first blend scratch row is free until the blend below fills it.
+                Span<Vector4> colors = workspace.GetBlendScratch(scanline.Length, 3)[..scanline.Length];
+                switch (this.repetitionMode)
+                {
+                    case GradientRepetitionMode.Repeat:
+                        this.StraightColorsAt<RepeatMode>(positions, colors);
+                        break;
+                    case GradientRepetitionMode.Reflect:
+                        this.StraightColorsAt<ReflectMode>(positions, colors);
+                        break;
+                    case GradientRepetitionMode.DontFill:
+                        this.StraightColorsAt<DontFillMode>(positions, colors);
+                        break;
+                    case GradientRepetitionMode.None:
+                    default:
+                        this.StraightColorsAt<NoneMode>(positions, colors);
+                        break;
+                }
+
+                PixelOperations<TPixel>.Instance.FromVector4Destructive(this.Configuration, colors, overlays, PixelConversionModifiers.Scale);
+            }
+            else
+            {
+                this.ColorsAt(positions, overlays);
             }
 
             this.Blender.BlendWithCoverage<TPixel>(
@@ -329,6 +311,31 @@ public abstract class GradientBrush : Brush
                 this.Options.BlendPercentage,
                 scanline,
                 workspace.GetBlendScratch(scanline.Length, 3));
+        }
+
+        /// <summary>
+        /// Converts a row of gradient positions to pixels.
+        /// </summary>
+        /// <param name="positions">The positions on the complete gradient.</param>
+        /// <param name="overlays">The destination pixels, of the same length as <paramref name="positions"/>.</param>
+        private void ColorsAt(ReadOnlySpan<float> positions, Span<TPixel> overlays)
+        {
+            switch (this.repetitionMode)
+            {
+                case GradientRepetitionMode.Repeat:
+                    this.ColorsAt<RepeatMode>(positions, overlays);
+                    break;
+                case GradientRepetitionMode.Reflect:
+                    this.ColorsAt<ReflectMode>(positions, overlays);
+                    break;
+                case GradientRepetitionMode.DontFill:
+                    this.ColorsAt<DontFillMode>(positions, overlays);
+                    break;
+                case GradientRepetitionMode.None:
+                default:
+                    this.ColorsAt<NoneMode>(positions, overlays);
+                    break;
+            }
         }
 
         /// <summary>
@@ -346,33 +353,215 @@ public abstract class GradientBrush : Brush
         protected abstract float PositionOnGradient(float x, float y);
 
         /// <summary>
-        /// Finds the pair of adjacent color stops bracketing the given gradient position.
-        /// Positions before the first stop return the first stop twice; positions after the
-        /// last stop return the last stop twice, which yields the stable edge colors used
-        /// by <see cref="GradientRepetitionMode.None"/>.
+        /// Calculates the positions on the gradient for the pixel centers of one row segment.
+        /// Element <c>i</c> must equal <c>PositionOnGradient((x + i) + 0.5F, y)</c> bit for bit; a derived
+        /// renderer overrides this only to remove the virtual call and the invariant branches per pixel.
         /// </summary>
-        /// <param name="positionOnCompleteGradient">The position on the gradient, after repetition handling.</param>
-        /// <returns>The bracketing stops; equal when the position lies outside the stop range.</returns>
-        private (GradientColorStop From, GradientColorStop To) GetGradientSegment(float positionOnCompleteGradient)
+        /// <param name="x">The device x-coordinate of the first pixel.</param>
+        /// <param name="y">The device y-coordinate of the pixel centers of the row.</param>
+        /// <param name="positions">The destination for one position per pixel.</param>
+        protected virtual void PositionsOnGradient(int x, float y, Span<float> positions)
         {
-            // Stop counts are tiny, so a linear scan over the sorted stops beats a binary search.
-            GradientColorStop localGradientFrom = this.colorStops[0];
-            GradientColorStop localGradientTo = default;
-
-            foreach (GradientColorStop colorStop in this.colorStops)
+            for (int i = 0; i < positions.Length; i++)
             {
-                localGradientTo = colorStop;
+                positions[i] = this.PositionOnGradient((x + i) + 0.5F, y);
+            }
+        }
 
-                if (colorStop.Ratio > positionOnCompleteGradient)
+        /// <summary>
+        /// Converts a row of gradient positions to pixels with one repetition mode.
+        /// </summary>
+        /// <typeparam name="TMode">The repetition mode.</typeparam>
+        /// <param name="positions">The positions on the complete gradient.</param>
+        /// <param name="overlays">The destination pixels, of the same length as <paramref name="positions"/>.</param>
+        private void ColorsAt<TMode>(ReadOnlySpan<float> positions, Span<TPixel> overlays)
+            where TMode : struct, IRepetitionMode
+        {
+            for (int i = 0; i < positions.Length; i++)
+            {
+                float position = positions[i];
+
+                // NaN signals that the parameterization is undefined at this point
+                // (e.g. outside the valid branch of a conic); such pixels stay transparent.
+                if (float.IsNaN(position) || !TMode.TryWrap(ref position))
                 {
-                    // we're done here, so break it!
-                    break;
+                    overlays[i] = Transparent;
+                    continue;
                 }
 
-                localGradientFrom = localGradientTo;
+                overlays[i] = this.InterpolateAt(position);
+            }
+        }
+
+        /// <summary>
+        /// Converts a row of gradient positions to the straight vectors that
+        /// <see cref="UnassociatedGradientPixelEncoder{TPixel}"/> would pack, one pixel at a time, into
+        /// <typeparamref name="TPixel"/>.
+        /// </summary>
+        /// <typeparam name="TMode">The repetition mode.</typeparam>
+        /// <param name="positions">The positions on the complete gradient.</param>
+        /// <param name="colors">The destination vectors, of the same length as <paramref name="positions"/>.</param>
+        private void StraightColorsAt<TMode>(ReadOnlySpan<float> positions, Span<Vector4> colors)
+            where TMode : struct, IRepetitionMode
+        {
+            for (int i = 0; i < positions.Length; i++)
+            {
+                float position = positions[i];
+
+                // A transparent pixel is zero in every channel, which the encoder also gives for zero alpha.
+                if (float.IsNaN(position) || !TMode.TryWrap(ref position))
+                {
+                    colors[i] = Vector4.Zero;
+                    continue;
+                }
+
+                // The same steps as UnassociatedGradientPixelEncoder.Encode before its final conversion.
+                Vector4 color = this.AssociatedColorAt(position);
+                float alpha = color.W;
+                if (alpha > 0)
+                {
+                    color /= alpha;
+                    color.W = alpha;
+                }
+                else
+                {
+                    color = Vector4.Zero;
+                }
+
+                colors[i] = color;
+            }
+        }
+
+        /// <summary>
+        /// Gets the pixel for one position on the complete gradient.
+        /// </summary>
+        /// <param name="positionOnCompleteGradient">The position, before repetition handling.</param>
+        /// <returns>The gradient color converted to <typeparamref name="TPixel"/>.</returns>
+        private TPixel ColorAt(float positionOnCompleteGradient)
+        {
+            if (float.IsNaN(positionOnCompleteGradient))
+            {
+                return Transparent;
             }
 
-            return (localGradientFrom, localGradientTo);
+            bool inside = this.repetitionMode switch
+            {
+                GradientRepetitionMode.Repeat => RepeatMode.TryWrap(ref positionOnCompleteGradient),
+                GradientRepetitionMode.Reflect => ReflectMode.TryWrap(ref positionOnCompleteGradient),
+                GradientRepetitionMode.DontFill => DontFillMode.TryWrap(ref positionOnCompleteGradient),
+                _ => NoneMode.TryWrap(ref positionOnCompleteGradient),
+            };
+
+            return inside ? this.InterpolateAt(positionOnCompleteGradient) : Transparent;
+        }
+
+        /// <summary>
+        /// Interpolates the color stops at a position after repetition handling and encodes the result.
+        /// </summary>
+        /// <param name="position">The position on the gradient, after repetition handling.</param>
+        /// <returns>The gradient color converted to <typeparamref name="TPixel"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private TPixel InterpolateAt(float position) => TEncoder.Encode(this.AssociatedColorAt(position));
+
+        /// <summary>
+        /// Interpolates the color stops at a position after repetition handling.
+        /// </summary>
+        /// <param name="position">The position on the gradient, after repetition handling.</param>
+        /// <returns>The associated color that the encoder converts to <typeparamref name="TPixel"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Vector4 AssociatedColorAt(float position)
+        {
+            // Find the bracketing stops: "to" is the first stop whose ratio is greater than the
+            // position, "from" the stop before it. Positions before the first stop return the first
+            // stop twice; positions after the last stop (or a NaN position from Repeat with an
+            // infinite input) return the last stop twice, which yields the stable edge colors used
+            // by GradientRepetitionMode.None. Stop counts are tiny, so a linear scan over the sorted
+            // stops beats a binary search.
+            GradientColorStop[] stops = this.colorStops;
+            int next = 0;
+            while (next < stops.Length && !(stops[next].Ratio > position))
+            {
+                next++;
+            }
+
+            ref GradientColorStop from = ref stops[next == 0 ? 0 : next - 1];
+            ref GradientColorStop to = ref stops[next == stops.Length ? next - 1 : next];
+
+            Vector4 color;
+            if (from.Color == to.Color)
+            {
+                color = from.Color;
+            }
+            else
+            {
+                float onLocalGradient = (position - from.Ratio) / (to.Ratio - from.Ratio);
+                color = Vector4.Lerp(from.Color, to.Color, onLocalGradient);
+            }
+
+            if (this.unpremultiplied)
+            {
+                // The encoders take an associated vector, so a straight result is premultiplied here.
+                float alpha = color.W;
+                color *= alpha;
+                color.W = alpha;
+            }
+
+            return color;
+        }
+
+        /// <summary>
+        /// <see cref="GradientRepetitionMode.None"/>: positions outside the stops take the edge colors.
+        /// </summary>
+        private readonly struct NoneMode : IRepetitionMode
+        {
+            /// <inheritdoc />
+            public static bool TryWrap(ref float position) => true;
+        }
+
+        /// <summary>
+        /// <see cref="GradientRepetitionMode.Repeat"/>.
+        /// </summary>
+        private readonly struct RepeatMode : IRepetitionMode
+        {
+            /// <inheritdoc />
+            public static bool TryWrap(ref float position)
+            {
+                // The floor subtraction moves every position into [0, 1], so the pattern also
+                // repeats before the start point. The remainder operator keeps the sign of a
+                // negative position, and the brush then pads that position with the first stop.
+                position -= MathF.Floor(position);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// <see cref="GradientRepetitionMode.Reflect"/>.
+        /// </summary>
+        private readonly struct ReflectMode : IRepetitionMode
+        {
+            /// <inheritdoc />
+            public static bool TryWrap(ref float position)
+            {
+                // Reflection is symmetric about the start point, so the magnitude gives the
+                // same color as the signed position. Every second period folds back on itself,
+                // so alternate repetitions run the stops in reverse order.
+                position = MathF.Abs(position) % 2;
+                if (position > 1)
+                {
+                    position = 2 - position;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// <see cref="GradientRepetitionMode.DontFill"/>: positions outside [0, 1] stay transparent.
+        /// </summary>
+        private readonly struct DontFillMode : IRepetitionMode
+        {
+            /// <inheritdoc />
+            public static bool TryWrap(ref float position) => position is <= 1 and >= 0;
         }
 
         /// <summary>

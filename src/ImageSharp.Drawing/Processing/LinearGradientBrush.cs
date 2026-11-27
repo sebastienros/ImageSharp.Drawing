@@ -313,5 +313,27 @@ public sealed class LinearGradientBrush : GradientBrush
             float deltaY = y - this.start.Y;
             return ((deltaX * this.alongX) + (deltaY * this.alongY)) / this.alongsSquared;
         }
+
+        /// <inheritdoc/>
+        protected override void PositionsOnGradient(int x, float y, Span<float> positions)
+        {
+            if (this.alongsSquared == 0f)
+            {
+                positions.Fill(1f);
+                return;
+            }
+
+            // The same expression as PositionOnGradient; the y term is the same for the whole row,
+            // and hoisting it keeps every intermediate value, so the result is the same bit for bit.
+            float startX = this.start.X;
+            float alongX = this.alongX;
+            float alongsSquared = this.alongsSquared;
+            float yTerm = (y - this.start.Y) * this.alongY;
+            for (int i = 0; i < positions.Length; i++)
+            {
+                float deltaX = ((x + i) + 0.5F) - startX;
+                positions[i] = ((deltaX * alongX) + yTerm) / alongsSquared;
+            }
+        }
     }
 }

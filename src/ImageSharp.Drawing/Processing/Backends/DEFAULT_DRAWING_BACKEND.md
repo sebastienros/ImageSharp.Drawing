@@ -128,6 +128,8 @@ The important separation is:
 - the brush renderer decides color
 - the backend executor binds the two together
 
+Two renderers avoid work that cannot change the result. The solid brush writes an opaque color directly into the runs of full coverage when it draws with normal source-over blending at full opacity into a pixel format with 8-bit or 16-bit integer channels and straight or no alpha; it blends the other pixels in pieces that start at multiples of the vector width of the blender, so every pixel takes the same blender loop as in one blend of the whole span. Gradient renderers compute the positions of a whole span with one call before they interpolate the stops.
+
 Renderers are memoized per scene item: `FillSceneItem.GetRenderer<TPixel>(...)` and `StrokeSceneItem.GetRenderer<TPixel>(...)` create the renderer on first use and cache it, and `RenderScene` warms every renderer before the parallel row pass so the hot loop never constructs one.
 
 ### Worker State
@@ -315,7 +317,7 @@ flowchart LR
     E --> F[Pixels updated]
 ```
 
-Clip descriptors are applied by kind: rectangle clips narrow the span analytically, integer-region and region clips test rectangle membership, and path clips multiply the span by coverage rasterized from `PreparedPathClipState`, retained clip raster data built once per scene item at scene-creation time. Descriptors are recorded in canvas space and anchored through the item's destination offset so clips track the drawn geometry.
+Clip descriptors are applied by kind: rectangle clips narrow the span analytically (the interior columns, whose coverage on the axis is exactly 1, pass as one run without a test per column), integer-region and region clips test rectangle membership, and path clips multiply the span by coverage rasterized from `PreparedPathClipState`, retained clip raster data built once per scene item at scene-creation time. Descriptors are recorded in canvas space and anchored through the item's destination offset so clips track the drawn geometry.
 
 This is why the brush renderer can stay target-unbound. It receives the destination row slice and coverage data at execution time rather than owning the destination frame itself.
 
