@@ -540,55 +540,58 @@ public sealed partial class DefaultDrawingBackend
                 return;
             }
 
+            // Path clips use the same retained rasterizer as fills. The rasterizer emits a whole band
+            // of rows at once, and one subject item asks for the same clip band once for every span of
+            // every row of the band, so the worker keeps the emitted band per clip index and rasterizes
+            // it again only for another clip geometry or band.
+            PathClipBand band = this.workerState.GetPathClipBand(clipIndex);
+            if (!band.Holds(rasterizable, localRowIndex))
+            {
+                DefaultRasterizer.RasterizableItem item = new(rasterizable, localRowIndex);
+                DefaultRasterizer.RasterizableBandInfo bandInfo = rasterizable.GetBandInfo(localRowIndex);
+                DefaultRasterizer.WorkerScratch scratch = this.workerState.GetOrCreatePathClipScratch(rasterizable.Width);
+                DefaultRasterizer.Context context = scratch.CreateContext(
+                    bandInfo.IntersectionRule,
+                    bandInfo.RasterizationMode,
+                    bandInfo.LineCount);
+
+                band.Begin(rasterizable, localRowIndex, bandInfo.DestinationLeft, bandInfo.DestinationTop, bandInfo.Width, bandInfo.BandHeight);
+                PathClipBandRowHandler rowHandler = new(band);
+                DefaultRasterizer.ExecuteRasterizableItem(
+                    ref context,
+                    in item,
+                    in bandInfo,
+                    scratch.Scanline,
+                    ref rowHandler);
+            }
+
+            // The clip row is materialized into worker-local coverage only for the subject span
+            // currently being painted, so rectangle and region clips stay on their cheaper
+            // span-slicing paths.
             Span<float> clipCoverage = this.workerState.GetOrCreatePathClipCoverage(coverage.Length);
             clipCoverage = clipCoverage[..coverage.Length];
             clipCoverage.Fill(descriptor.Operation == ClipOperation.Difference ? 1F : 0F);
+            band.CopyRow(y, startX, clipCoverage, descriptor.Operation);
 
-            DefaultRasterizer.RasterizableItem item = new(rasterizable, localRowIndex);
-            DefaultRasterizer.RasterizableBandInfo bandInfo = rasterizable.GetBandInfo(localRowIndex);
-            DefaultRasterizer.WorkerScratch scratch = this.workerState.GetOrCreatePathClipScratch(rasterizable.Width);
-            DefaultRasterizer.Context context = scratch.CreateContext(
-                bandInfo.IntersectionRule,
-                bandInfo.RasterizationMode,
-                bandInfo.LineCount);
-
-            PathClipCoverageRowHandler<TPixel> rowHandler = new(
-                this.workerState,
-                descriptor.Operation,
-                y,
-                startX,
-                coverage.Length);
-
-            // Path clips use the same retained rasterizer as fills. The clip row is materialized
-            // into worker-local coverage only for the subject span currently being painted, so
-            // rectangle and region clips stay on their cheaper span-slicing paths.
-            DefaultRasterizer.ExecuteRasterizableItem(
-                ref context,
-                in item,
-                in bandInfo,
-                scratch.Scanline,
-                ref rowHandler);
-
-            int spanEnd = startX + coverage.Length;
-            int runStart = startX;
-            float runCoverage = clipCoverage[0];
-            for (int x = startX + 1; x < spanEnd; x++)
+            // Coalesce equal clip coverage into runs so deeper clips and brush rendering are invoked
+            // per coverage run instead of once per pixel. The run ends are found with the vectorized
+            // integer search of the runtime on the bit patterns. Bit equality is float equality here:
+            // the values are the fill values +0 and 1, coverage that the rasterizer emitted (positive),
+            // zeros of unwritten band columns (+0), and 1 - c for c in 0 to 1 (never -0), so no value
+            // is -0 or NaN, the two cases where the comparisons differ.
+            // A deeper path clip reuses the same worker buffer, but it writes only the first
+            // (runEnd - runStart) entries, which lie before every entry this loop reads afterwards.
+            ReadOnlySpan<int> clipBits = MemoryMarshal.Cast<float, int>(clipCoverage);
+            int length = clipBits.Length;
+            int runStart = 0;
+            while (runStart < length)
             {
-                float pixelCoverage = clipCoverage[x - startX];
-                if (pixelCoverage == runCoverage)
-                {
-                    continue;
-                }
-
-                // Coalesce equal clip coverage into runs so deeper clips and brush rendering
-                // are invoked per coverage run instead of once per pixel.
-                this.ApplyCoverageRun(clipIndex + 1, y, runStart, x, startX, runCoverage, destination, coverage);
-
-                runStart = x;
-                runCoverage = pixelCoverage;
+                float runCoverage = clipCoverage[runStart];
+                int runLength = clipBits[(runStart + 1)..].IndexOfAnyExcept(clipBits[runStart]);
+                int runEnd = runLength < 0 ? length : runStart + 1 + runLength;
+                this.ApplyCoverageRun(clipIndex + 1, y, startX + runStart, startX + runEnd, startX, runCoverage, destination, coverage);
+                runStart = runEnd;
             }
-
-            this.ApplyCoverageRun(clipIndex + 1, y, runStart, spanEnd, startX, runCoverage, destination, coverage);
         }
 
         /// <summary>
@@ -837,99 +840,25 @@ public sealed partial class DefaultDrawingBackend
     }
 
     /// <summary>
-    /// Writes retained path clip coverage into a worker-local span for one subject row.
+    /// Writes the rows that the rasterizer emits for one band of a path clip into a <see cref="PathClipBand"/>.
     /// </summary>
-    /// <typeparam name="TPixel">The pixel format.</typeparam>
-    private readonly struct PathClipCoverageRowHandler<TPixel> : IRasterizerCoverageRowHandler
-        where TPixel : unmanaged, IPixel<TPixel>
+    private readonly struct PathClipBandRowHandler : IRasterizerCoverageRowHandler
     {
-        private readonly WorkerState<TPixel> workerState;
-        private readonly ClipOperation operation;
-        private readonly int targetY;
-        private readonly int targetStartX;
-        private readonly int targetLength;
+        private readonly PathClipBand band;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="PathClipCoverageRowHandler{TPixel}"/> struct.
+        /// Initializes a new instance of the <see cref="PathClipBandRowHandler"/> struct.
         /// </summary>
-        /// <param name="workerState">The worker-local execution state that owns the clip coverage span.</param>
-        /// <param name="operation">The clip operation represented by the path descriptor.</param>
-        /// <param name="targetY">The subject row being clipped.</param>
-        /// <param name="targetStartX">The subject span start.</param>
-        /// <param name="targetLength">The subject span length.</param>
-        public PathClipCoverageRowHandler(
-            WorkerState<TPixel> workerState,
-            ClipOperation operation,
-            int targetY,
-            int targetStartX,
-            int targetLength)
-        {
-            this.workerState = workerState;
-            this.operation = operation;
-            this.targetY = targetY;
-            this.targetStartX = targetStartX;
-            this.targetLength = targetLength;
-        }
+        /// <param name="band">The band that receives the emitted rows; <see cref="PathClipBand.Begin"/> ran on it.</param>
+        public PathClipBandRowHandler(PathClipBand band) => this.band = band;
 
         /// <summary>
-        /// Records clip coverage emitted by the rasterizer for the target subject row.
+        /// Records one emitted span of clip coverage.
         /// </summary>
         /// <param name="y">The absolute row emitted by the clip rasterizer.</param>
         /// <param name="startX">The absolute start column emitted by the clip rasterizer.</param>
         /// <param name="coverage">The emitted clip coverage values.</param>
-        public void Handle(int y, int startX, Span<float> coverage)
-        {
-            if (y != this.targetY)
-            {
-                return;
-            }
-
-            int targetEndX = this.targetStartX + this.targetLength;
-            int overlapStart = Math.Max(startX, this.targetStartX);
-            int overlapEnd = Math.Min(startX + coverage.Length, targetEndX);
-            if (overlapEnd <= overlapStart)
-            {
-                return;
-            }
-
-            Span<float> clipCoverage = this.workerState.PathClipCoverage;
-            int sourceOffset = overlapStart - startX;
-            int targetOffset = overlapStart - this.targetStartX;
-            int length = overlapEnd - overlapStart;
-            Span<float> source = coverage.Slice(sourceOffset, length);
-            Span<float> target = clipCoverage.Slice(targetOffset, length);
-
-            if (this.operation == ClipOperation.Difference)
-            {
-                int i = 0;
-                if (Vector.IsHardwareAccelerated)
-                {
-                    int vectorCount = Vector<float>.Count;
-                    int vectorLength = length - (length % vectorCount);
-                    Vector<float> one = Vector<float>.One;
-                    ReadOnlySpan<Vector<float>> sourceVectors = MemoryMarshal.Cast<float, Vector<float>>(source[..vectorLength]);
-                    Span<Vector<float>> targetVectors = MemoryMarshal.Cast<float, Vector<float>>(target[..vectorLength]);
-
-                    // Difference clips invert the clip coverage into the reusable target span.
-                    // Casting the vector-width prefix avoids per-lane loads and stores when SIMD is available.
-                    for (int j = 0; j < sourceVectors.Length; j++)
-                    {
-                        targetVectors[j] = one - sourceVectors[j];
-                    }
-
-                    i = vectorLength;
-                }
-
-                for (; i < length; i++)
-                {
-                    target[i] = 1F - source[i];
-                }
-
-                return;
-            }
-
-            source.CopyTo(target);
-        }
+        public void Handle(int y, int startX, Span<float> coverage) => this.band.Write(y, startX, coverage);
     }
 
     /// <summary>
@@ -1046,6 +975,215 @@ public sealed partial class DefaultDrawingBackend
     }
 
     /// <summary>
+    /// Holds the coverage that the rasterizer emitted for one band of one path clip geometry, so that every subject
+    /// span of the band reads its clip row without rasterizing the band again.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A row stores the emitted values in a dense array over the columns of the band. Each row keeps the interval of
+    /// columns written since <see cref="Begin"/>; a column inside that interval that no span wrote holds 0, and a column
+    /// outside it counts as 0. This gives the same clip coverage as a direct copy of the emitted spans into a span that
+    /// holds the empty value of the clip: an intersecting clip fills with 0 and copies the values, a subtracting clip
+    /// fills with 1 and writes <c>1 - value</c>, and <c>1 - 0</c> is exactly 1.
+    /// </para>
+    /// <para>
+    /// The band is keyed by the identity of the retained geometry and the band index. Retained geometry does not change
+    /// while its scene exists, so a key that matches holds the rows that the rasterizer would emit again.
+    /// </para>
+    /// </remarks>
+    private sealed class PathClipBand : IDisposable
+    {
+        private readonly MemoryAllocator allocator;
+        private IMemoryOwner<float>? rowsOwner;
+        private int[] rowStarts = [];
+        private int[] rowEnds = [];
+        private DefaultRasterizer.RasterizableGeometry? geometry;
+        private int localRowIndex;
+        private int left;
+        private int top;
+        private int width;
+        private int height;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PathClipBand"/> class.
+        /// </summary>
+        /// <param name="allocator">The allocator of the row storage.</param>
+        public PathClipBand(MemoryAllocator allocator) => this.allocator = allocator;
+
+        /// <summary>
+        /// Gets a value indicating whether the band holds the rows of a clip geometry band.
+        /// </summary>
+        /// <param name="rasterizable">The clip geometry.</param>
+        /// <param name="rowIndex">The band index local to the geometry.</param>
+        /// <returns><see langword="true"/> when the rows were emitted for this geometry and band.</returns>
+        public bool Holds(DefaultRasterizer.RasterizableGeometry rasterizable, int rowIndex)
+            => ReferenceEquals(this.geometry, rasterizable) && this.localRowIndex == rowIndex;
+
+        /// <summary>
+        /// Empties the band and keys it to a clip geometry band before the rasterizer emits its rows.
+        /// </summary>
+        /// <param name="rasterizable">The clip geometry.</param>
+        /// <param name="rowIndex">The band index local to the geometry.</param>
+        /// <param name="destinationLeft">The absolute column of the first column of the band.</param>
+        /// <param name="destinationTop">The absolute row of the first row of the band.</param>
+        /// <param name="bandWidth">The number of columns of the band.</param>
+        /// <param name="bandHeight">The number of rows of the band.</param>
+        public void Begin(
+            DefaultRasterizer.RasterizableGeometry rasterizable,
+            int rowIndex,
+            int destinationLeft,
+            int destinationTop,
+            int bandWidth,
+            int bandHeight)
+        {
+            int length = bandWidth * bandHeight;
+            if (this.rowsOwner is null || this.rowsOwner.Memory.Length < length)
+            {
+                // Null before allocating, as in WorkerState.GetOrCreateScratch.
+                this.geometry = null;
+                this.rowsOwner?.Dispose();
+                this.rowsOwner = null;
+                this.rowsOwner = this.allocator.Allocate<float>(length);
+            }
+
+            if (this.rowStarts.Length < bandHeight)
+            {
+                this.rowStarts = new int[bandHeight];
+                this.rowEnds = new int[bandHeight];
+            }
+
+            this.rowStarts.AsSpan(0, bandHeight).Clear();
+            this.rowEnds.AsSpan(0, bandHeight).Clear();
+            this.geometry = rasterizable;
+            this.localRowIndex = rowIndex;
+            this.left = destinationLeft;
+            this.top = destinationTop;
+            this.width = bandWidth;
+            this.height = bandHeight;
+        }
+
+        /// <summary>
+        /// Stores one emitted span. The rasterizer emits only columns inside the band.
+        /// </summary>
+        /// <param name="y">The absolute row.</param>
+        /// <param name="startX">The absolute start column.</param>
+        /// <param name="coverage">The emitted coverage values.</param>
+        public void Write(int y, int startX, ReadOnlySpan<float> coverage)
+        {
+            int row = y - this.top;
+            if ((uint)row >= (uint)this.height || coverage.Length == 0)
+            {
+                return;
+            }
+
+            int start = startX - this.left;
+            int end = start + coverage.Length;
+            Span<float> values = this.rowsOwner!.Memory.Span.Slice(row * this.width, this.width);
+            int rowStart = this.rowStarts[row];
+            int rowEnd = this.rowEnds[row];
+            if (rowStart == rowEnd)
+            {
+                rowStart = start;
+                rowEnd = end;
+            }
+            else
+            {
+                // Columns between the written interval and the new span were not emitted: they hold 0.
+                if (start > rowEnd)
+                {
+                    values[rowEnd..start].Clear();
+                }
+
+                if (end < rowStart)
+                {
+                    values[end..rowStart].Clear();
+                }
+
+                rowStart = Math.Min(rowStart, start);
+                rowEnd = Math.Max(rowEnd, end);
+            }
+
+            coverage.CopyTo(values[start..end]);
+            this.rowStarts[row] = rowStart;
+            this.rowEnds[row] = rowEnd;
+        }
+
+        /// <summary>
+        /// Writes the clip coverage of one subject span into a span that holds the empty value of the clip:
+        /// the stored values for an intersecting clip, and one minus them for a subtracting clip.
+        /// </summary>
+        /// <param name="y">The absolute subject row.</param>
+        /// <param name="targetStartX">The absolute start column of the subject span.</param>
+        /// <param name="target">The clip coverage of the subject span, filled with 0 or 1 by the caller.</param>
+        /// <param name="operation">The clip operation.</param>
+        public void CopyRow(int y, int targetStartX, Span<float> target, ClipOperation operation)
+        {
+            int row = y - this.top;
+            if ((uint)row >= (uint)this.height)
+            {
+                return;
+            }
+
+            int overlapStart = Math.Max(this.left + this.rowStarts[row], targetStartX);
+            int overlapEnd = Math.Min(this.left + this.rowEnds[row], targetStartX + target.Length);
+            if (overlapEnd <= overlapStart)
+            {
+                return;
+            }
+
+            int length = overlapEnd - overlapStart;
+            ReadOnlySpan<float> source = this.rowsOwner!.Memory.Span.Slice((row * this.width) + (overlapStart - this.left), length);
+            Span<float> destination = target.Slice(overlapStart - targetStartX, length);
+
+            if (operation == ClipOperation.Difference)
+            {
+                int i = 0;
+                if (Vector.IsHardwareAccelerated)
+                {
+                    int vectorCount = Vector<float>.Count;
+                    int vectorLength = length - (length % vectorCount);
+                    Vector<float> one = Vector<float>.One;
+                    ReadOnlySpan<Vector<float>> sourceVectors = MemoryMarshal.Cast<float, Vector<float>>(source[..vectorLength]);
+                    Span<Vector<float>> destinationVectors = MemoryMarshal.Cast<float, Vector<float>>(destination[..vectorLength]);
+
+                    // Difference clips invert the clip coverage into the reusable target span.
+                    // Casting the vector-width prefix avoids per-lane loads and stores when SIMD is available.
+                    for (int j = 0; j < sourceVectors.Length; j++)
+                    {
+                        destinationVectors[j] = one - sourceVectors[j];
+                    }
+
+                    i = vectorLength;
+                }
+
+                for (; i < length; i++)
+                {
+                    destination[i] = 1F - source[i];
+                }
+
+                return;
+            }
+
+            source.CopyTo(destination);
+        }
+
+        /// <summary>
+        /// Forgets the key, so that a pooled worker state keeps no reference to the geometry of a finished scene.
+        /// </summary>
+        public void Reset() => this.geometry = null;
+
+        /// <summary>
+        /// Releases the row storage.
+        /// </summary>
+        public void Dispose()
+        {
+            this.geometry = null;
+            this.rowsOwner?.Dispose();
+            this.rowsOwner = null;
+        }
+    }
+
+    /// <summary>
     /// Holds the reusable worker-local scratch used while executing retained scene rows.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
@@ -1074,6 +1212,7 @@ public sealed partial class DefaultDrawingBackend
         private DefaultRasterizer.WorkerScratch? pathClipScratch;
         private IMemoryOwner<float>? pathClipCoverageOwner;
         private int pathClipCoverageLength;
+        private PathClipBand?[] pathClipBands = [];
 
         /// <summary>
         /// Initializes static members of the <see cref="WorkerState{TPixel}"/> class,
@@ -1160,6 +1299,11 @@ public sealed partial class DefaultDrawingBackend
         /// <param name="state">The state to recycle.</param>
         public static void Return(WorkerState<TPixel> state)
         {
+            foreach (PathClipBand? band in state.pathClipBands)
+            {
+                band?.Reset();
+            }
+
             lock (PoolSync)
             {
                 if (Pool.Count < MaxPooledStates)
@@ -1264,6 +1408,22 @@ public sealed partial class DefaultDrawingBackend
         }
 
         /// <summary>
+        /// Returns the worker-local band of path clip coverage for one clip descriptor index. Nested path clips have
+        /// different indices, so each keeps its own band while the outer clip walks its row.
+        /// </summary>
+        /// <param name="clipIndex">The clip descriptor index.</param>
+        /// <returns>The band for the index.</returns>
+        public PathClipBand GetPathClipBand(int clipIndex)
+        {
+            if (clipIndex >= this.pathClipBands.Length)
+            {
+                Array.Resize(ref this.pathClipBands, clipIndex + 1);
+            }
+
+            return this.pathClipBands[clipIndex] ??= new PathClipBand(this.allocator);
+        }
+
+        /// <summary>
         /// Releases the worker-local scratch and brush workspace. The scratch fields are nulled
         /// so a disposed state can never hand out spans over returned pool memory.
         /// </summary>
@@ -1275,6 +1435,12 @@ public sealed partial class DefaultDrawingBackend
             this.pathClipScratch = null;
             this.pathClipCoverageOwner?.Dispose();
             this.pathClipCoverageOwner = null;
+            foreach (PathClipBand? band in this.pathClipBands)
+            {
+                band?.Dispose();
+            }
+
+            this.pathClipBands = [];
             this.BrushWorkspace.Dispose();
         }
 

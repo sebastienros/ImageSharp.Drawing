@@ -128,7 +128,7 @@ The important separation is:
 - the brush renderer decides color
 - the backend executor binds the two together
 
-Two renderers avoid work that cannot change the result. The solid brush writes an opaque color directly into the runs of full coverage when it draws with normal source-over blending at full opacity into a pixel format with 8-bit or 16-bit integer channels and straight or no alpha; it blends the other pixels in pieces that start at multiples of the vector width of the blender, so every pixel takes the same blender loop as in one blend of the whole span. Gradient renderers compute the positions of a whole span with one call before they interpolate the stops.
+Two renderers avoid work that cannot change the result. The solid brush writes one pixel directly into the runs of full coverage when the blender gives that pixel there for every backdrop: an opaque color with normal source-over blending, or any color with normal source composition (the composition of `Clear`), at full opacity, into a pixel format with 8-bit or 16-bit integer channels and straight or no alpha (for 16-bit formats under source composition only an opaque or a transparent color). A transparent color under source composition writes the transparent pixel of zeros, which is what the blender writes, whatever the color channels of the brush. The solid brush blends the other pixels in pieces that start at multiples of the vector width of the blender, so every pixel takes the same blender loop as in one blend of the whole span. Gradient renderers compute the positions of a whole span with one call before they interpolate the stops.
 
 Renderers are memoized per scene item: `FillSceneItem.GetRenderer<TPixel>(...)` and `StrokeSceneItem.GetRenderer<TPixel>(...)` create the renderer on first use and cache it, and `RenderScene` warms every renderer before the parallel row pass so the hot loop never constructs one.
 
@@ -141,9 +141,10 @@ It owns worker-local scratch such as:
 - raster scratch (`DefaultRasterizer.WorkerScratch`)
 - a second scratch reserved for path clip rasterization
 - a reusable path clip coverage buffer
+- one `PathClipBand` per clip descriptor index, which holds the rows of the last rasterized band of a path clip
 - the brush workspace
 
-This is how the backend avoids allocating fresh buffers for every row item during the hot parallel pass. Each `Parallel.For` worker gets one instance through `localInit` and disposes it in `localFinally`.
+This is how the backend avoids allocating fresh buffers for every row item during the hot parallel pass. Each `Parallel.For` worker gets one instance through `localInit` and returns it to a pool in `localFinally`. The loops plan their tasks as `ParallelRowIterator` of ImageSharp does: at most one task per band and per 4,096 pixels (`ParallelExecutionSettings.DefaultMinimumPixelsProcessedPerTask`), and at most the configured degree of parallelism. When that gives one task (one band, at most 4,096 pixels, or a degree of 1), the loop runs on the calling thread with one rented state instead of a `Parallel.For`. This applies to the scene rows of each segment, to the write-back of an apply item, and to the composite of a scoped layer.
 
 ## The Big Picture Flow
 
@@ -317,7 +318,7 @@ flowchart LR
     E --> F[Pixels updated]
 ```
 
-Clip descriptors are applied by kind: rectangle clips narrow the span analytically (the interior columns, whose coverage on the axis is exactly 1, pass as one run without a test per column), integer-region and region clips test rectangle membership, and path clips multiply the span by coverage rasterized from `PreparedPathClipState`, retained clip raster data built once per scene item at scene-creation time. Descriptors are recorded in canvas space and anchored through the item's destination offset so clips track the drawn geometry.
+Clip descriptors are applied by kind: rectangle clips narrow the span analytically (the interior columns, whose coverage on the axis is exactly 1, pass as one run without a test per column), integer-region and region clips test rectangle membership, and path clips multiply the span by coverage rasterized from `PreparedPathClipState`, retained clip raster data built once per scene item at scene-creation time. The rasterizer emits a path clip one band of 16 rows at a time, and a scene item asks for the same clip band for every span of each of its rows, so the worker keeps the emitted rows of the last band per clip index (`PathClipBand`) and rasterizes the band again only for another clip geometry or band; the clip coverage of a span is then a copy of its row. The path clip splits the span into runs of equal clip coverage with a vectorized search. Descriptors are recorded in canvas space and anchored through the item's destination offset so clips track the drawn geometry.
 
 This is why the brush renderer can stay target-unbound. It receives the destination row slice and coverage data at execution time rather than owning the destination frame itself.
 
@@ -363,10 +364,10 @@ Disposed when the scene is disposed; short-lived scenes are disposed after one r
 Owned by `WorkerState<TPixel>` during execution:
 
 - raster scratch and path-clip scratch
-- path-clip coverage buffer
+- path-clip coverage buffer and the path clip bands
 - brush workspace
 
-Disposed when the worker completes (`localFinally`).
+Returned to the worker pool when the worker completes (`localFinally`); the path clip bands forget their geometry then, so a pooled state keeps no reference to a finished scene. The pool releases its states on a generation 2 collection when nothing rented one since the previous collection.
 
 ### Execution-scoped
 

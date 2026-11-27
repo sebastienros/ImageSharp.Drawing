@@ -231,12 +231,38 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
     {
         int requestedParallelism = configuration.MaxDegreeOfParallelism;
 
+        // A scene with layers or apply barriers runs one row loop per segment, and many segments
+        // hold a few small bands. Below the minimum of pixels per task that ImageSharp uses for
+        // its row loops, the bands run on the current thread, which saves waking the workers.
+        int partitionCount = ParallelExecutionHelper.GetPartitionCountForPixels(
+            requestedParallelism,
+            rows.Length,
+            (long)rows.Length * DefaultRasterizer.DefaultTileHeight * target.Region.Width);
+
+        if (partitionCount == 1)
+        {
+            WorkerState<TPixel> state = WorkerState<TPixel>.Rent(configuration.MemoryAllocator, target.Region.Width);
+            try
+            {
+                for (int rowIndex = 0; rowIndex < rows.Length; rowIndex++)
+                {
+                    ExecuteSceneRow(configuration, canvasWidth, scene, rows[rowIndex], target, state);
+                }
+            }
+            finally
+            {
+                WorkerState<TPixel>.Return(state);
+            }
+
+            return;
+        }
+
         // Each SceneRow owns one disjoint horizontal band of the target, so rows can execute in
         // parallel with no synchronization: no two workers ever write the same destination pixel.
         _ = Parallel.For(
             fromInclusive: 0,
             toExclusive: rows.Length,
-            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(requestedParallelism, rows.Length),
+            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(requestedParallelism, partitionCount),
             localInit: () => WorkerState<TPixel>.Rent(configuration.MemoryAllocator, target.Region.Width),
             body: (rowIndex, _, state) =>
             {
@@ -459,31 +485,73 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
         where TPixel : unmanaged, IPixel<TPixel>
     {
         int rowBandCount = item.Rasterizable.RowBandCount;
+        int partitionCount = ParallelExecutionHelper.GetPartitionCountForPixels(
+            configuration.MaxDegreeOfParallelism,
+            rowBandCount,
+            (long)rowBandCount * DefaultRasterizer.DefaultTileHeight * item.Rasterizable.Width);
+
+        if (partitionCount == 1)
+        {
+            // Small items run on the current thread, as in ExecuteSceneRows.
+            WorkerState<TPixel> state = WorkerState<TPixel>.Rent(configuration.MemoryAllocator, target.Region.Width);
+            try
+            {
+                for (int localRowIndex = 0; localRowIndex < rowBandCount; localRowIndex++)
+                {
+                    ExecuteApplyItemBand(renderer, item, target, localRowIndex, state);
+                }
+            }
+            finally
+            {
+                WorkerState<TPixel>.Return(state);
+            }
+
+            return;
+        }
 
         _ = Parallel.For(
             fromInclusive: 0,
             toExclusive: rowBandCount,
-            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(configuration.MaxDegreeOfParallelism, rowBandCount),
+            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(configuration.MaxDegreeOfParallelism, partitionCount),
             localInit: () => WorkerState<TPixel>.Rent(configuration.MemoryAllocator, target.Region.Width),
             body: (localRowIndex, _, state) =>
             {
-                if (item.Rasterizable.HasCoverage(localRowIndex))
-                {
-                    DefaultRasterizer.WorkerScratch scratch = state.GetOrCreateScratch(Math.Max(target.Region.Width, item.Rasterizable.Width));
-                    ExecuteFillOperation(
-                        renderer,
-                        new DefaultRasterizer.RasterizableItem(item.Rasterizable, localRowIndex),
-                        target,
-                        scratch,
-                        item.ClipState,
-                        item.PathClipState,
-                        item.DestinationOffset,
-                        state);
-                }
-
+                ExecuteApplyItemBand(renderer, item, target, localRowIndex, state);
                 return state;
             },
             localFinally: static state => WorkerState<TPixel>.Return(state));
+    }
+
+    /// <summary>
+    /// Writes the processed pixels of one row band of an apply item back to the target.
+    /// </summary>
+    /// <typeparam name="TPixel">The pixel format.</typeparam>
+    /// <param name="renderer">The image brush renderer that writes the processed pixels back.</param>
+    /// <param name="item">The retained apply operation.</param>
+    /// <param name="target">The active target receiving the processed pixels.</param>
+    /// <param name="localRowIndex">The row band index local to the item.</param>
+    /// <param name="state">The worker-local execution state.</param>
+    private static void ExecuteApplyItemBand<TPixel>(
+        BrushRenderer<TPixel> renderer,
+        FlushScene.ApplySceneItem item,
+        BandTarget<TPixel> target,
+        int localRowIndex,
+        WorkerState<TPixel> state)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
+        if (item.Rasterizable.HasCoverage(localRowIndex))
+        {
+            DefaultRasterizer.WorkerScratch scratch = state.GetOrCreateScratch(Math.Max(target.Region.Width, item.Rasterizable.Width));
+            ExecuteFillOperation(
+                renderer,
+                new DefaultRasterizer.RasterizableItem(item.Rasterizable, localRowIndex),
+                target,
+                scratch,
+                item.ClipState,
+                item.PathClipState,
+                item.DestinationOffset,
+                state);
+        }
     }
 
     /// <summary>
@@ -688,38 +756,82 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
         int firstRowBandIndex = overlap.Top / DefaultRasterizer.DefaultTileHeight;
         int lastRowBandIndex = (overlap.Bottom - 1) / DefaultRasterizer.DefaultTileHeight;
         int rowBandCount = (lastRowBandIndex - firstRowBandIndex) + 1;
+        int partitionCount = ParallelExecutionHelper.GetPartitionCountForPixels(
+            configuration.MaxDegreeOfParallelism,
+            rowBandCount,
+            (long)overlap.Width * overlap.Height);
+
+        if (partitionCount == 1)
+        {
+            // Small layers composite on the current thread, as in ExecuteSceneRows.
+            WorkerState<TPixel> state = WorkerState<TPixel>.Rent(configuration.MemoryAllocator, overlap.Width);
+            try
+            {
+                for (int rowSlot = 0; rowSlot < rowBandCount; rowSlot++)
+                {
+                    CompositeLayerTargetBand(configuration, source, destination, overlap, firstRowBandIndex + rowSlot, state);
+                }
+            }
+            finally
+            {
+                WorkerState<TPixel>.Return(state);
+            }
+
+            return;
+        }
 
         _ = Parallel.For(
             fromInclusive: 0,
             toExclusive: rowBandCount,
-            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(configuration.MaxDegreeOfParallelism, rowBandCount),
+            parallelOptions: ParallelExecutionHelper.CreateParallelOptions(configuration.MaxDegreeOfParallelism, partitionCount),
             localInit: () => WorkerState<TPixel>.Rent(configuration.MemoryAllocator, overlap.Width),
             body: (rowSlot, _, state) =>
             {
-                int bandTop = (firstRowBandIndex + rowSlot) * DefaultRasterizer.DefaultTileHeight;
-                Rectangle rowBand = new(overlap.X, bandTop, overlap.Width, DefaultRasterizer.DefaultTileHeight);
-                Rectangle band = Rectangle.Intersect(overlap, rowBand);
-
-                if (band.Width > 0 && band.Height > 0)
-                {
-                    Buffer2DRegion<TPixel> sourceBand = source.Region.GetSubRegion(
-                        band.X - source.AbsoluteLeft,
-                        band.Y - source.AbsoluteTop,
-                        band.Width,
-                        band.Height);
-                    Buffer2DRegion<TPixel> destinationBand = destination.Region.GetSubRegion(
-                        band.X - destination.AbsoluteLeft,
-                        band.Y - destination.AbsoluteTop,
-                        band.Width,
-                        band.Height);
-                    BandTarget<TPixel> sourceTarget = new(sourceBand, band.X, band.Y, source.GraphicsOptions);
-                    BandTarget<TPixel> destinationTarget = new(destinationBand, band.X, band.Y, destination.GraphicsOptions);
-                    CompositeLayerBand(configuration, sourceTarget, destinationTarget, state.BrushWorkspace);
-                }
-
+                CompositeLayerTargetBand(configuration, source, destination, overlap, firstRowBandIndex + rowSlot, state);
                 return state;
             },
             localFinally: static state => WorkerState<TPixel>.Return(state));
+    }
+
+    /// <summary>
+    /// Composites the part of a layer target that lies in one row band of the tile grid.
+    /// </summary>
+    /// <typeparam name="TPixel">The pixel format.</typeparam>
+    /// <param name="configuration">The active processing configuration.</param>
+    /// <param name="source">The temporary layer target carrying the layer's graphics options.</param>
+    /// <param name="destination">The destination target to blend into.</param>
+    /// <param name="overlap">The absolute overlap of the two targets.</param>
+    /// <param name="rowBandIndex">The absolute row band index.</param>
+    /// <param name="state">The worker-local execution state.</param>
+    private static void CompositeLayerTargetBand<TPixel>(
+        Configuration configuration,
+        BandTarget<TPixel> source,
+        BandTarget<TPixel> destination,
+        Rectangle overlap,
+        int rowBandIndex,
+        WorkerState<TPixel> state)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
+        int bandTop = rowBandIndex * DefaultRasterizer.DefaultTileHeight;
+        Rectangle rowBand = new(overlap.X, bandTop, overlap.Width, DefaultRasterizer.DefaultTileHeight);
+        Rectangle band = Rectangle.Intersect(overlap, rowBand);
+
+        if (band.Width > 0 && band.Height > 0)
+        {
+            Buffer2DRegion<TPixel> sourceBand = source.Region.GetSubRegion(
+                band.X - source.AbsoluteLeft,
+                band.Y - source.AbsoluteTop,
+                band.Width,
+                band.Height);
+            Buffer2DRegion<TPixel> destinationBand = destination.Region.GetSubRegion(
+                band.X - destination.AbsoluteLeft,
+                band.Y - destination.AbsoluteTop,
+                band.Width,
+                band.Height);
+            BandTarget<TPixel> sourceTarget = new(sourceBand, band.X, band.Y, source.GraphicsOptions);
+            BandTarget<TPixel> destinationTarget = new(destinationBand, band.X, band.Y, destination.GraphicsOptions);
+            CompositeLayerBand(configuration, sourceTarget, destinationTarget, state.BrushWorkspace);
+        }
     }
 
     /// <summary>
