@@ -1,6 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Runtime.CompilerServices;
+
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
 /// <summary>
@@ -840,10 +842,14 @@ internal static class SvgCalc
     /// </summary>
     private sealed class Term
     {
+        // The coefficients live inline in the term, so a parsed value allocates one object; a separate array per term was
+        // the largest allocation of a document whose custom properties hold math functions.
+        private SlotBuffer slots;
+
         /// <summary>
         /// Gets the coefficient of each slot. Meaningless when <see cref="Opaque"/>.
         /// </summary>
-        public double[] Slots { get; } = new double[SlotCount];
+        public Span<double> Slots => this.slots;
 
         /// <summary>
         /// Gets or sets the CSS types of the term.
@@ -896,10 +902,20 @@ internal static class SvgCalc
         /// <param name="factor">The factor.</param>
         public void Scale(double factor)
         {
-            for (int i = 0; i < this.Slots.Length; i++)
+            Span<double> slots = this.Slots;
+            for (int i = 0; i < slots.Length; i++)
             {
-                this.Slots[i] *= factor;
+                slots[i] *= factor;
             }
+        }
+
+        /// <summary>
+        /// The inline storage of the coefficients, one per slot.
+        /// </summary>
+        [InlineArray(SlotCount)]
+        private struct SlotBuffer
+        {
+            private double element0;
         }
     }
 }

@@ -330,18 +330,14 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
         this.EnsureNotDisposed();
         Guard.NotNull(options, nameof(options));
 
-        // Reuse Save() to push the snapshot frame, then swap the top frame for one carrying
-        // the caller's options while keeping clip, bounds and layer linkage identical.
-        _ = this.Save();
+        // Push the frame that Save() would push, with the caller's options in place of the current
+        // ones: the same clip, bounds and layer linkage, and no layer to close on restore.
         DrawingCanvasState current = this.ResolveState();
-        DrawingCanvasState state = new(options, current.ClipState, current.TargetBounds, current.DestinationOffset)
+        this.savedStates.Push(new DrawingCanvasState(options, current.ClipState, current.TargetBounds, current.DestinationOffset)
         {
-            IsLayer = current.IsLayer,
-            Layer = current.Layer,
-        };
+            Layer = current.Layer
+        });
 
-        _ = this.savedStates.Pop();
-        this.savedStates.Push(state);
         return this.savedStates.Count;
     }
 

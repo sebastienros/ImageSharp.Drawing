@@ -251,7 +251,7 @@ That includes:
 - retained line block chains for each band
 - optional start-cover arrays for bands that need carry-in winding
 
-The retained line data uses specialized storage formats: `LineArrayX16Y16` and `LineArrayX32Y16` collect lines during building, and their retained block chains (`LineArrayX16Y16Block`, `LineArrayX32Y16Block`) are what execution iterates. Narrow geometries (band width below 128 pixels) pack both X endpoints into one 32-bit word, halving retained line memory.
+The retained line data uses specialized storage formats: the linearizer appends each line straight into the block chain of its band (`LineArrayX16Y16Block`, `LineArrayX32Y16Block`, through the static `LineArrayX16Y16.AppendLine` and `LineArrayX32Y16.AppendLine`), keeping the front block and its line count of every band in the two arrays that the retained geometry takes over, so building needs no collector object per band. Those chains are what execution iterates. Narrow geometries (band width below 128 pixels) pack both X endpoints into one 32-bit word, halving retained line memory.
 
 These are storage-oriented types. They exist to retain compact fixed-point line segments so execution does not need to revisit contour data.
 
@@ -262,7 +262,7 @@ The linearizer is the retained-geometry builder. `Linearizer<TL>` is generic ove
 Its responsibilities are:
 
 - traverse prepared contours
-- apply the residual transform per-point as contours are read
+- apply the residual transform per-point as contours are read, once per point (the end of one segment is the start of the next), with one addition per axis when the residual only translates
 - clip work to retained bounds
 - convert coordinates into fixed-point
 - decide whether a segment is contained or must be split

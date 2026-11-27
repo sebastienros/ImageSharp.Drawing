@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using SixLabors.ImageSharp.Memory;
 
 namespace SixLabors.ImageSharp.Drawing.Processing.Backends;
@@ -10,9 +11,82 @@ namespace SixLabors.ImageSharp.Drawing.Processing.Backends;
 internal static partial class DefaultRasterizer
 {
     /// <summary>
+    /// Maps geometry points to the local float space of an interest: the residual transform, then the whole-pixel
+    /// translation, then the interest origin, with the operations and their order of the linearizer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A residual that only translates maps a finite point with one addition per axis. That gives the value of
+    /// <see cref="PointF.Transform(PointF, Matrix4x4)"/>, which evaluates <c>x * M11 + y * M21 + 0 * M31 + 1 * M41</c>
+    /// (and the same for Y) and divides by <c>x * M14 + y * M24 + 0 * M34 + 1 * M44</c>. With a unit diagonal and zero
+    /// shear, perspective, and Z terms, every product except the translation is exact (the coordinate itself or a signed
+    /// zero), so in any order of evaluation, fused or not, the sum rounds once, to <c>x + M41</c>, and the divisor is
+    /// exactly 1. The sign of a zero result can differ, but the next step adds the whole-pixel translation, and
+    /// <c>-0 + 0</c> is <c>+0</c>, so the local value is the same. A coordinate that is not finite takes the general
+    /// path, because the products of the divisor are then not zero.
+    /// </para>
+    /// <para>
+    /// The text documents of the SVG renderer place every glyph with such a residual, and their linearization is the
+    /// largest part of their scene build.
+    /// </para>
+    /// </remarks>
+    private readonly struct LocalMapping
+    {
+        private readonly Matrix4x4 residual;
+        private readonly bool hasResidual;
+        private readonly bool translationOnly;
+        private readonly int translateX;
+        private readonly int translateY;
+        private readonly int minX;
+        private readonly int minY;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LocalMapping"/> struct.
+        /// </summary>
+        /// <param name="residual">The residual transform applied to each source point.</param>
+        /// <param name="hasResidual">Whether <paramref name="residual"/> is not the identity.</param>
+        /// <param name="translateX">The whole-pixel X translation applied after the residual.</param>
+        /// <param name="translateY">The whole-pixel Y translation applied after the residual.</param>
+        /// <param name="minX">The X origin of the interest.</param>
+        /// <param name="minY">The Y origin of the interest.</param>
+        public LocalMapping(in Matrix4x4 residual, bool hasResidual, int translateX, int translateY, int minX, int minY)
+        {
+            this.residual = residual;
+            this.hasResidual = hasResidual;
+            this.translationOnly = hasResidual
+                && residual.M11 == 1F && residual.M12 == 0F && residual.M14 == 0F
+                && residual.M21 == 0F && residual.M22 == 1F && residual.M24 == 0F
+                && residual.M31 == 0F && residual.M32 == 0F && residual.M34 == 0F
+                && residual.M44 == 1F;
+            this.translateX = translateX;
+            this.translateY = translateY;
+            this.minX = minX;
+            this.minY = minY;
+        }
+
+        /// <summary>
+        /// Maps one geometry point.
+        /// </summary>
+        /// <param name="point">The geometry point.</param>
+        /// <returns>The point relative to the interest origin.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public PointF Map(PointF point)
+        {
+            if (this.hasResidual)
+            {
+                point = this.translationOnly && float.IsFinite(point.X) && float.IsFinite(point.Y)
+                    ? new PointF(point.X + this.residual.M41, point.Y + this.residual.M42)
+                    : PointF.Transform(point, this.residual);
+            }
+
+            return new PointF((point.X + this.translateX) - this.minX, (point.Y + this.translateY) - this.minY);
+        }
+    }
+
+    /// <summary>
     /// Base class that lowers translated geometry into retained per-row line storage.
     /// </summary>
-    /// <typeparam name="TL">The mutable per-row line collector type.</typeparam>
+    /// <typeparam name="TL">The retained line block type of a row band.</typeparam>
     private abstract class Linearizer<TL>
         where TL : class
     {
@@ -65,10 +139,9 @@ internal static partial class DefaultRasterizer
             this.RowBandCount = rowBandCount;
             this.Allocator = allocator;
             this.BandTopStart = (firstBandIndex * PreferredRowHeight) - minY;
+            this.FinalLines = new TL?[rowBandCount];
             this.FirstBlockLineCounts = new int[rowBandCount];
-            this.LineCounts = new int[rowBandCount];
             this.StartCoverTable = new IMemoryOwner<int>?[rowBandCount];
-            this.LineArrays = new TL?[rowBandCount];
         }
 
         /// <summary>
@@ -142,19 +215,18 @@ internal static partial class DefaultRasterizer
         protected int BandTopStart { get; }
 
         /// <summary>
-        /// Gets the mutable per-row line collectors used during lowering.
+        /// Gets the front retained line block of each row band, or <see langword="null"/> for a band without lines.
         /// </summary>
-        protected TL?[] LineArrays { get; }
+        /// <remarks>
+        /// Lines are appended straight into these chains (<see cref="LineArrayX16Y16"/>, <see cref="LineArrayX32Y16"/>),
+        /// so a band needs no collector object, and the retained geometry takes this array over as it is.
+        /// </remarks>
+        public TL?[] FinalLines { get; }
 
         /// <summary>
         /// Gets the valid front-block line count for each retained row band.
         /// </summary>
         protected int[] FirstBlockLineCounts { get; }
-
-        /// <summary>
-        /// Gets the total retained line count for each row band.
-        /// </summary>
-        protected int[] LineCounts { get; }
 
         /// <summary>
         /// Gets the retained start-cover storage for each row band.
@@ -227,68 +299,93 @@ internal static partial class DefaultRasterizer
                 this.ProcessUncontained();
             }
 
-            if (!this.hasAnyCoverage)
-            {
-                return false;
-            }
-
-            this.FinalizeLines();
-            return true;
+            return this.hasAnyCoverage;
         }
 
         /// <summary>
         /// Linearizes geometry that is fully contained inside the destination interest.
         /// </summary>
+        /// <remarks>
+        /// The segments are those of <see cref="LinearGeometry.GetSegments()"/>, in the same order: segment <c>s</c> of a
+        /// contour runs from point <c>s</c> to point <c>s + 1</c>, and the closing segment of a closed contour runs from
+        /// its last point back to its first. Each point is transformed and converted to fixed point once, and the end of
+        /// one segment is reused as the start of the next. The conversion of a point is a function of the point alone, so
+        /// every segment receives the endpoints that a conversion per segment gives, and the retained lines are the same.
+        /// </remarks>
         protected void ProcessContained()
         {
-            SegmentEnumerator enumerator = this.Geometry.GetSegments();
-            Matrix4x4 residual = this.Residual;
-            bool hasResidual = this.HasResidual;
-            while (enumerator.MoveNext())
+            LinearGeometry geometry = this.Geometry;
+            LocalMapping mapping = new(this.Residual, this.HasResidual, this.TranslateX, this.TranslateY, this.MinX, this.MinY);
+            ReadOnlySpan<LinearContour> contours = geometry.GetContours();
+            for (int c = 0; c < contours.Length; c++)
             {
-                LinearSegment segment = enumerator.Current;
-                PointF p0 = segment.Start;
-                PointF p1 = segment.End;
-                if (hasResidual)
+                ref readonly LinearContour contour = ref contours[c];
+                int segmentCount = contour.SegmentCount;
+                if (segmentCount <= 0)
                 {
-                    p0 = PointF.Transform(p0, residual);
-                    p1 = PointF.Transform(p1, residual);
+                    continue;
                 }
 
-                this.AddContainedLineF24Dot8(
-                    FloatToFixed24Dot8((p0.X + this.TranslateX) - this.MinX),
-                    FloatToFixed24Dot8((p0.Y + this.TranslateY) - this.MinY),
-                    FloatToFixed24Dot8((p1.X + this.TranslateX) - this.MinX),
-                    FloatToFixed24Dot8((p1.Y + this.TranslateY) - this.MinY),
-                    this.NextSegmentTag());
+                ReadOnlySpan<PointF> points = geometry.GetContourPoints(in contour);
+                int lastPoint = points.Length - 1;
+                PointF first = mapping.Map(points[0]);
+                int firstX = FloatToFixed24Dot8(first.X);
+                int firstY = FloatToFixed24Dot8(first.Y);
+                int x0 = firstX;
+                int y0 = firstY;
+                for (int s = 0; s < segmentCount; s++)
+                {
+                    int x1;
+                    int y1;
+                    if (s == lastPoint)
+                    {
+                        x1 = firstX;
+                        y1 = firstY;
+                    }
+                    else
+                    {
+                        PointF p1 = mapping.Map(points[s + 1]);
+                        x1 = FloatToFixed24Dot8(p1.X);
+                        y1 = FloatToFixed24Dot8(p1.Y);
+                    }
+
+                    this.AddContainedLineF24Dot8(x0, y0, x1, y1, this.NextSegmentTag());
+                    x0 = x1;
+                    y0 = y1;
+                }
             }
         }
 
         /// <summary>
         /// Linearizes geometry that intersects the destination interest bounds and requires clipping.
         /// </summary>
+        /// <remarks>
+        /// The segments are visited as in <see cref="ProcessContained"/>, and each point is mapped once.
+        /// </remarks>
         protected void ProcessUncontained()
         {
-            SegmentEnumerator enumerator = this.Geometry.GetSegments();
-            Matrix4x4 residual = this.Residual;
-            bool hasResidual = this.HasResidual;
-            while (enumerator.MoveNext())
+            LinearGeometry geometry = this.Geometry;
+            LocalMapping mapping = new(this.Residual, this.HasResidual, this.TranslateX, this.TranslateY, this.MinX, this.MinY);
+            ReadOnlySpan<LinearContour> contours = geometry.GetContours();
+            for (int c = 0; c < contours.Length; c++)
             {
-                LinearSegment segment = enumerator.Current;
-                PointF p0 = segment.Start;
-                PointF p1 = segment.End;
-                if (hasResidual)
+                ref readonly LinearContour contour = ref contours[c];
+                int segmentCount = contour.SegmentCount;
+                if (segmentCount <= 0)
                 {
-                    p0 = PointF.Transform(p0, residual);
-                    p1 = PointF.Transform(p1, residual);
+                    continue;
                 }
 
-                this.AddUncontainedLine(
-                    (p0.X + this.TranslateX) - this.MinX,
-                    (p0.Y + this.TranslateY) - this.MinY,
-                    (p1.X + this.TranslateX) - this.MinX,
-                    (p1.Y + this.TranslateY) - this.MinY,
-                    this.NextSegmentTag());
+                ReadOnlySpan<PointF> points = geometry.GetContourPoints(in contour);
+                int lastPoint = points.Length - 1;
+                PointF first = mapping.Map(points[0]);
+                PointF p0 = first;
+                for (int s = 0; s < segmentCount; s++)
+                {
+                    PointF p1 = s == lastPoint ? first : mapping.Map(points[s + 1]);
+                    this.AddUncontainedLine(p0.X, p0.Y, p1.X, p1.Y, this.NextSegmentTag());
+                    p0 = p1;
+                }
             }
         }
 
@@ -568,7 +665,6 @@ internal static partial class DefaultRasterizer
                 {
                     int rowTop = bandTop + (band * bandExtent);
                     this.AppendLine(band, x0, y0 - rowTop, x1, y1 - rowTop, tag);
-                    this.LineCounts[band]++;
                     this.hasAnyCoverage = true;
                 }
 
@@ -576,7 +672,6 @@ internal static partial class DefaultRasterizer
                 {
                     int rowTop = bandTop + ((band - 1) * bandExtent);
                     this.AppendLine(band - 1, x0, y0 - rowTop, x1, y1 - rowTop, tag);
-                    this.LineCounts[band - 1]++;
                 }
 
                 return;
@@ -634,7 +729,6 @@ internal static partial class DefaultRasterizer
             {
                 int rowTop = bandTopStart + (rowIndex0 * bandHeight);
                 this.AppendLine(rowIndex0, x0, y0 - rowTop, x1, y1 - rowTop, tag);
-                this.LineCounts[rowIndex0]++;
                 this.hasAnyCoverage = true;
                 return;
             }
@@ -643,13 +737,7 @@ internal static partial class DefaultRasterizer
         }
 
         /// <summary>
-        /// Creates the mutable line collector used for one row band.
-        /// </summary>
-        /// <returns>The mutable line collector.</returns>
-        protected abstract TL CreateLineArray();
-
-        /// <summary>
-        /// Appends one line segment into the retained row-band collector.
+        /// Appends one line segment to the retained block chain of a row band (<see cref="FinalLines"/>).
         /// </summary>
         /// <param name="rowIndex">The local row-band index.</param>
         /// <param name="x0">The starting X coordinate relative to the row band.</param>
@@ -658,29 +746,6 @@ internal static partial class DefaultRasterizer
         /// <param name="y1">The ending Y coordinate relative to the row band.</param>
         /// <param name="tag">The segment profile tag.</param>
         protected abstract void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag);
-
-        /// <summary>
-        /// Finalizes the mutable collectors into the retained line-block representation.
-        /// </summary>
-        protected abstract void FinalizeLines();
-
-        /// <summary>
-        /// Gets the mutable line collector for a row band, creating it on first use.
-        /// </summary>
-        /// <param name="rowIndex">The local row-band index.</param>
-        /// <returns>The mutable line collector.</returns>
-        protected TL GetOrCreateLineArray(int rowIndex)
-        {
-            TL? lineArray = this.LineArrays[rowIndex];
-            if (lineArray is not null)
-            {
-                return lineArray;
-            }
-
-            lineArray = this.CreateLineArray();
-            this.LineArrays[rowIndex] = lineArray;
-            return lineArray;
-        }
 
         /// <summary>
         /// Splits a contained line segment at row-band boundaries and appends each retained piece.
@@ -718,7 +783,6 @@ internal static partial class DefaultRasterizer
 
                 // Each retained segment is stored in the local coordinate space of its owning band.
                 this.AppendLine(currentBand, currentX, currentY - rowTop, nextX, bandBoundaryY - rowTop, tag);
-                this.LineCounts[currentBand]++;
                 this.hasAnyCoverage = true;
                 currentX = nextX;
                 currentY = bandBoundaryY;
@@ -733,7 +797,6 @@ internal static partial class DefaultRasterizer
 
             int finalRowTop = bandTopStart + (endBand * bandHeight);
             this.AppendLine(endBand, currentX, currentY - finalRowTop, x1, y1 - finalRowTop, tag);
-            this.LineCounts[endBand]++;
             this.hasAnyCoverage = true;
         }
 
@@ -946,7 +1009,7 @@ internal static partial class DefaultRasterizer
     /// <summary>
     /// Linearizer that finalizes retained lines into the 32-bit-X encoding.
     /// </summary>
-    private sealed class LinearizerX32Y16 : Linearizer<LineArrayX32Y16>
+    private sealed class LinearizerX32Y16 : Linearizer<LineArrayX32Y16Block>
     {
         private readonly LinearGeometryProfileStorage profileStorage;
 
@@ -981,33 +1044,19 @@ internal static partial class DefaultRasterizer
             LinearGeometryProfileStorage profileStorage,
             bool keepHorizontalLines)
             : base(geometry, residual, translateX, translateY, minX, minY, width, height, firstBandIndex, rowBandCount, allocator, keepHorizontalLines)
-        {
-            this.profileStorage = profileStorage;
-            this.FinalLines = new LineArrayX32Y16Block?[rowBandCount];
-        }
-
-        /// <summary>
-        /// Gets the finalized retained line blocks for each row band.
-        /// </summary>
-        public LineArrayX32Y16Block?[] FinalLines { get; }
-
-        /// <inheritdoc />
-        protected override LineArrayX32Y16 CreateLineArray() => new(this.KeepHorizontalLines);
+            => this.profileStorage = profileStorage;
 
         /// <inheritdoc />
         protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
-            => this.GetOrCreateLineArray(rowIndex).AppendLine(x0, y0, x1, y1, tag);
-
-        /// <inheritdoc />
-        protected override void FinalizeLines()
-        {
-            for (int i = 0; i < this.RowBandCount; i++)
-            {
-                LineArrayX32Y16? lineArray = this.LineArrays[i];
-                this.FinalLines[i] = lineArray?.GetFrontBlock();
-                this.FirstBlockLineCounts[i] = lineArray?.GetFrontBlockLineCount() ?? 0;
-            }
-        }
+            => LineArrayX32Y16.AppendLine(
+                ref this.FinalLines[rowIndex],
+                ref this.FirstBlockLineCounts[rowIndex],
+                this.KeepHorizontalLines,
+                x0,
+                y0,
+                x1,
+                y1,
+                tag);
 
         /// <summary>
         /// Executes the 32-bit-X linearization pass and returns the retained result.
@@ -1041,7 +1090,7 @@ internal static partial class DefaultRasterizer
     /// <summary>
     /// Linearizer that finalizes retained lines into the packed 16-bit-X encoding.
     /// </summary>
-    private sealed class LinearizerX16Y16 : Linearizer<LineArrayX16Y16>
+    private sealed class LinearizerX16Y16 : Linearizer<LineArrayX16Y16Block>
     {
         private readonly LinearGeometryProfileStorage profileStorage;
 
@@ -1076,33 +1125,19 @@ internal static partial class DefaultRasterizer
             LinearGeometryProfileStorage profileStorage,
             bool keepHorizontalLines)
             : base(geometry, residual, translateX, translateY, minX, minY, width, height, firstBandIndex, rowBandCount, allocator, keepHorizontalLines)
-        {
-            this.profileStorage = profileStorage;
-            this.FinalLines = new LineArrayX16Y16Block?[rowBandCount];
-        }
-
-        /// <summary>
-        /// Gets the finalized retained line blocks for each row band.
-        /// </summary>
-        public LineArrayX16Y16Block?[] FinalLines { get; }
-
-        /// <inheritdoc />
-        protected override LineArrayX16Y16 CreateLineArray() => new(this.KeepHorizontalLines);
+            => this.profileStorage = profileStorage;
 
         /// <inheritdoc />
         protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
-            => this.GetOrCreateLineArray(rowIndex).AppendLine(x0, y0, x1, y1, tag);
-
-        /// <inheritdoc />
-        protected override void FinalizeLines()
-        {
-            for (int i = 0; i < this.RowBandCount; i++)
-            {
-                LineArrayX16Y16? lineArray = this.LineArrays[i];
-                this.FinalLines[i] = lineArray?.GetFrontBlock();
-                this.FirstBlockLineCounts[i] = lineArray?.GetFrontBlockLineCount() ?? 0;
-            }
-        }
+            => LineArrayX16Y16.AppendLine(
+                ref this.FinalLines[rowIndex],
+                ref this.FirstBlockLineCounts[rowIndex],
+                this.KeepHorizontalLines,
+                x0,
+                y0,
+                x1,
+                y1,
+                tag);
 
         /// <summary>
         /// Executes the 16-bit-X linearization pass and returns the retained result.

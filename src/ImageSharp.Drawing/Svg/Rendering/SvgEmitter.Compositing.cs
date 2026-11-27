@@ -87,7 +87,7 @@ internal static partial class SvgEmitter
         /// </remarks>
         /// <param name="key">The key with antialiasing.</param>
         /// <returns>The aliased key.</returns>
-        public readonly int GetAliasedKey(int key) => key + this.options.Length;
+        public readonly int GetAliasedKey(int key) => key + this.keyCount;
 
         /// <summary>
         /// Returns the drawing options of an aliased key, creating them on first use in this render.
@@ -98,7 +98,7 @@ internal static partial class SvgEmitter
         {
             if (this.aliasedOptions is null)
             {
-                this.aliasedOptions = new DrawingOptions?[this.options.Length];
+                this.aliasedOptions = new DrawingOptions?[this.keyCount];
                 this.outerAliasedGraphics = this.outerGraphics.DeepClone();
                 this.outerAliasedGraphics.Antialias = false;
                 this.innerAliasedGraphics = this.innerGraphics.DeepClone();

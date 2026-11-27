@@ -29,6 +29,9 @@ public sealed partial class DefaultDrawingBackend
         private readonly WorkerState<TPixel> workerState;
         private readonly Rectangle interest;
 
+        // Bit i is set when clip descriptor i passes every span of this handler unchanged; see GetSkippedClips.
+        private readonly ulong skippedClips;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="FillCoverageRowHandler{TPixel}"/> struct.
         /// </summary>
@@ -61,6 +64,64 @@ public sealed partial class DefaultDrawingBackend
             this.destinationOffset = destinationOffset;
             this.brushWorkspace = brushWorkspace;
             this.workerState = workerState;
+            this.skippedClips = clipState.Count == 0 ? 0 : GetSkippedClips(clipState, destinationOffset, target, interest);
+        }
+
+        /// <summary>
+        /// Finds the rectangle clips that cannot change a span of a handler.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <see cref="Handle"/> passes on only spans inside the band target and the interest, so every span lies in the
+        /// rectangle of their intersection. An intersecting rectangle clip whose interior rows and interior columns
+        /// (<see cref="GetInteriorColumns"/>: the pixels whose axis coverage is exactly 1 by the comparisons of
+        /// <see cref="GetAxisCoverage"/>) contain that rectangle passes every such span on unchanged: the row coverage is
+        /// 1, the span starts and ends inside the interior, so <see cref="ApplyRectangleInterior"/> forms one run of the
+        /// whole span with the multiplier 1 * 1 = 1, and <see cref="ApplyCoverageRun"/> hands the same span, unscaled, to
+        /// the next descriptor. Skipping the descriptor gives the next descriptor the same call.
+        /// </para>
+        /// <para>
+        /// The root viewport clip of an SVG document and the viewport clips of its <c>use</c> instances usually contain
+        /// the items they clip; without the skip every span pays for the rectangle tests.
+        /// </para>
+        /// </remarks>
+        /// <param name="clipState">The clip state of the item.</param>
+        /// <param name="destinationOffset">The destination offset used to place clip descriptors.</param>
+        /// <param name="target">The band target.</param>
+        /// <param name="interest">The absolute bounds that the item can write.</param>
+        /// <returns>A mask with bit i set when descriptor i can be skipped; descriptors from index 64 on are never skipped.</returns>
+        private static ulong GetSkippedClips(DrawingClipState clipState, Point destinationOffset, BandTarget<TPixel> target, Rectangle interest)
+        {
+            int left = Math.Max(target.AbsoluteLeft, interest.Left);
+            int right = Math.Min(target.AbsoluteLeft + target.Region.Width, interest.Right);
+            int top = Math.Max(target.AbsoluteTop, interest.Top);
+            int bottom = Math.Min(target.AbsoluteTop + target.Region.Height, interest.Bottom);
+            if (right <= left || bottom <= top)
+            {
+                return 0;
+            }
+
+            ulong skipped = 0;
+            int count = Math.Min(clipState.Count, 64);
+            for (int i = 0; i < count; i++)
+            {
+                DrawingClipDescriptor descriptor = clipState.GetDescriptor(i);
+                if (descriptor.Kind != DrawingClipKind.Rectangle || descriptor.Operation == ClipOperation.Difference)
+                {
+                    continue;
+                }
+
+                RectangleF rectangle = descriptor.Rectangle;
+                rectangle.Offset(destinationOffset.X, destinationOffset.Y);
+                GetInteriorColumns(rectangle.Left, rectangle.Right, descriptor.EdgeMode, out int columnStart, out int columnEnd);
+                GetInteriorColumns(rectangle.Top, rectangle.Bottom, descriptor.EdgeMode, out int rowStart, out int rowEnd);
+                if (left >= columnStart && right <= columnEnd && top >= rowStart && bottom <= rowEnd)
+                {
+                    skipped |= 1UL << i;
+                }
+            }
+
+            return skipped;
         }
 
         /// <summary>
@@ -114,6 +175,12 @@ public sealed partial class DefaultDrawingBackend
             if (coverage.Length == 0)
             {
                 return;
+            }
+
+            // A skipped descriptor would pass the span on unchanged (GetSkippedClips).
+            while (clipIndex < 64 && ((this.skippedClips >> clipIndex) & 1UL) != 0)
+            {
+                clipIndex++;
             }
 
             if (clipIndex == this.clipState.Count)
