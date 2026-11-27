@@ -301,7 +301,13 @@ internal sealed partial class SvgResolver
                 return this.LoadNestedDocument(stream);
             }
 
-            DecoderOptions options = new() { MaxFrames = 1 };
+            // Damaged image data makes the image draw nothing, as a broken image in a browser: the decoders do not
+            // return a partly decoded image (ImageSharp 5 defaults to IgnoreImageData).
+            DecoderOptions options = new(Configuration.Default)
+            {
+                MaxFrames = 1,
+                SegmentIntegrityHandling = SegmentIntegrityHandling.IgnoreAncillary,
+            };
             ImageInfo info = Image.Identify(options, stream);
             long pixels = (long)info.Width * info.Height;
             if (info.Width <= 0 || info.Height <= 0 || pixels > this.MaxImagePixels - this.decodedImagePixels)
@@ -348,16 +354,11 @@ internal sealed partial class SvgResolver
             return null;
         }
 
-        SvgLimits nestedLimits = new()
+        SvgLimits nestedLimits = new(limits)
         {
             MaxElements = elements,
             MaxNodes = nodes,
-            MaxNestingDepth = limits.MaxNestingDepth,
-            MaxCharactersFromEntities = limits.MaxCharactersFromEntities,
             MaxImagePixels = Math.Max(1, this.MaxImagePixels - this.decodedImagePixels),
-            MaxPatternTilePixels = limits.MaxPatternTilePixels,
-            MaxFilterPixels = limits.MaxFilterPixels,
-            MaxLayerPixels = limits.MaxLayerPixels,
             MaxTextCharacters = (int)Math.Max(1, limits.MaxTextCharacters - this.TextCharacters),
         };
 
@@ -366,18 +367,10 @@ internal sealed partial class SvgResolver
         // skipped in every document, so a font that the nested document embeds as a data URL is not used, and its text
         // takes the font that matching gives without that rule. Its characters count against the text limit of this
         // document: the nested limit is what remains, and the nested count is added below.
-        SvgLoadOptions options = new()
+        SvgLoadOptions options = new(this.loadOptions)
         {
-            Dpi = this.loadOptions.Dpi,
-            CurrentColor = this.loadOptions.CurrentColor,
             Limits = nestedLimits,
-            Languages = this.loadOptions.Languages,
-            UserStyleSheet = this.loadOptions.UserStyleSheet,
             ResourceBaseDirectory = null,
-            FontCollection = this.loadOptions.FontCollection,
-            GenericFontFamilies = this.loadOptions.GenericFontFamilies,
-            DefaultFontFamily = this.loadOptions.DefaultFontFamily,
-            FallbackFontFamilies = this.loadOptions.FallbackFontFamilies,
         };
 
         try

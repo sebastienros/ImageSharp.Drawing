@@ -45,7 +45,7 @@ public class SvgLayerLimitTests
         SvgLimits limits = new();
 
         Assert.Equal(16L * 4096 * 4096, limits.MaxLayerPixels);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxLayerPixels = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxLayerPixels = 0 });
     }
 
     [Fact]

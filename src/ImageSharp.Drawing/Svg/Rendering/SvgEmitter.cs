@@ -34,9 +34,11 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// The canvas strokes a path in device space with the stroke width scaled by the square root of the transform
 /// determinant. That equals the SVG stroke, which is computed in user space and then transformed, only when the
 /// transform is conformal: a rotation, a uniform scale, a reflection, and a translation. For any other transform (a
-/// non-uniform scale or a skew) the emitter builds the stroke outline itself, in a copy of user space scaled uniformly by
-/// the largest scale of the transform so that curves flatten at device precision, scales the outline back to user space,
-/// and fills it under the node transform. This costs an outline per such stroke per render.
+/// non-uniform scale or a skew) the stroke outline is built in user space and filled under the node transform. When the
+/// transform does not enlarge, <see cref="DrawingCanvas.Fill(Pen, IPath)"/> does that. When it enlarges, an outline built
+/// in user space would show its flattening, so the emitter builds the outline itself, in a copy of user space scaled
+/// uniformly by the largest scale of the transform so that curves flatten at device precision, scales the outline back
+/// to user space, and fills it under the node transform. Both cost an outline per such stroke per render.
 /// </para>
 /// </remarks>
 internal static partial class SvgEmitter
@@ -462,17 +464,28 @@ internal static partial class SvgEmitter
                 return;
             }
 
-            // Build the outline in a copy of user space scaled by the largest scale of the transform, so curves and round
-            // joins flatten at device precision, then scale the outline back to user space and fill it under the node
-            // transform. The dash pattern and the width scale together, so dashes keep their user space lengths, and
-            // the brush stays in user space.
+            // The outline fills with the non-zero rule: clearing the even-odd bit of the key keeps the other state, and the
+            // canvas does not need options of its own for the fill.
             float scale = MathF.Max(GetMaxScale(drawOptions.Transform), float.Epsilon);
+            this.SetState(key & ~EvenOddKeyBit);
+            if (scale <= 1F)
+            {
+                // The canvas builds the outline in user space and fills it under the node transform, which is the SVG
+                // stroke. A transform that does not enlarge flattens curves and round joins at least as finely as the
+                // device needs.
+                this.canvas.Fill(stroke, node.Path!);
+                return;
+            }
+
+            // An enlarging transform would show the flattening of a user space outline (round caps and joins become
+            // visibly polygonal). Build the outline in a copy of user space scaled by the largest scale of the transform,
+            // so curves and round joins flatten at device precision, then scale the outline back to user space and fill
+            // it under the node transform. The dash pattern and the width scale together, so dashes keep their user space
+            // lengths, and the brush stays in user space.
             IPath scaled = node.Path!.Transform(Matrix4x4.CreateScale(scale, scale, 1F));
             IPath outline = stroke.GeneratePath(scaled, stroke.StrokeWidth * scale)
                 .Transform(Matrix4x4.CreateScale(1F / scale, 1F / scale, 1F));
 
-            // The outline fills with the non-zero rule: clearing the even-odd bit of the key keeps the other state.
-            this.SetState(key & ~EvenOddKeyBit);
             this.canvas.Fill(stroke.StrokeFill, outline);
         }
 

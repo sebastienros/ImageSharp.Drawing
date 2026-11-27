@@ -26,8 +26,8 @@ public class SvgNestedImageTextTests
 
     /// <summary>
     /// The text of an embedded document draws with the fonts of the outer load options, through
-    /// <see cref="SvgDocument.Load(Stream, SvgLoadOptions)"/> and through <see cref="SvgDecoder"/>; without fonts it draws
-    /// nothing, as text of the outer document does.
+    /// <see cref="SvgDocument.Parse(ReadOnlySpan{char}, SvgLoadOptions)"/> and through <see cref="SvgDocument.Load(Stream, SvgLoadOptions)"/>;
+    /// without fonts it draws nothing, as text of the outer document does.
     /// </summary>
     [Fact]
     public void EmbeddedText_DrawsWithTheOuterFonts()
@@ -36,9 +36,8 @@ public class SvgNestedImageTextTests
         using Image<Rgba32> drawn = SvgDocument.Parse(svg, SvgSvg2RenderTests.TextOptions).Render<Rgba32>();
         Assert.True(CountInk(drawn, 0, 100) > 50);
 
-        SvgDecoderOptions options = new() { LoadOptions = SvgSvg2RenderTests.TextOptions };
-        using Image<Rgba32> decoded = SvgDecoderTests.Decoder.Decode<Rgba32>(options, new MemoryStream(Encoding.UTF8.GetBytes(svg)));
-        Assert.Equal(CountInk(drawn, 0, 100), CountInk(decoded, 0, 100));
+        using Image<Rgba32> loaded = SvgDocument.Load(new MemoryStream(Encoding.UTF8.GetBytes(svg)), SvgSvg2RenderTests.TextOptions).Render<Rgba32>();
+        Assert.Equal(CountInk(drawn, 0, 100), CountInk(loaded, 0, 100));
 
         SvgLoadOptions noFonts = new() { FontCollection = new SixLabors.Fonts.FontCollection() };
         using Image<Rgba32> empty = SvgDocument.Parse(svg, noFonts).Render<Rgba32>();
@@ -81,8 +80,7 @@ public class SvgNestedImageTextTests
 
         static (bool First, bool Second) Drawn(string svg, int limit)
         {
-            SvgLoadOptions options = SvgSvg2RenderTests.TextOptions;
-            options.Limits = new SvgLimits { MaxTextCharacters = limit };
+            SvgLoadOptions options = new(SvgSvg2RenderTests.TextOptions) { Limits = new SvgLimits { MaxTextCharacters = limit } };
             using Image<Rgba32> image = SvgDocument.Parse(svg, options).Render<Rgba32>();
             Assert.True(CountInk(image, 180, 200) > 0);
             return (CountInk(image, 0, 100, 0, 100) > 0, CountInk(image, 0, 100, 100, 200) > 0);

@@ -203,9 +203,11 @@ public class SvgTextTests
     [Fact]
     public void FontMatching_FollowsTheDocumentedOrder()
     {
-        SvgLoadOptions options = SvgTextRenderTests.Options;
-        options.DefaultFontFamily = "serif";
-        options.GenericFontFamilies = new SvgGenericFontFamilies { Serif = ["Missing", "Open Sans"], SansSerif = ["Missing"] };
+        SvgLoadOptions options = new(SvgTextRenderTests.Options)
+        {
+            DefaultFontFamily = "serif",
+            GenericFontFamilies = new SvgGenericFontFamilies { Serif = ["Missing", "Open Sans"], SansSerif = ["Missing"] },
+        };
         SvgFontMatcher matcher = new(options);
 
         // A generic name takes its first family that the collection has.
@@ -215,8 +217,8 @@ public class SvgTextTests
         Assert.Equal("Open Sans", Chain(matcher, new SvgFontFamilyName("Nope"), new SvgFontFamilyName(SvgGenericFontFamily.SansSerif)).Primary!.Family.Name);
 
         // Without a matching default family, the first family of the collection by name is used.
-        options.DefaultFontFamily = "Nothing";
-        Assert.Equal("Open Sans", Chain(new SvgFontMatcher(options), new SvgFontFamilyName("Nope")).Primary!.Family.Name);
+        SvgLoadOptions noDefault = new(options) { DefaultFontFamily = "Nothing" };
+        Assert.Equal("Open Sans", Chain(new SvgFontMatcher(noDefault), new SvgFontFamilyName("Nope")).Primary!.Family.Name);
     }
 
     [Fact]
@@ -308,8 +310,7 @@ public class SvgTextTests
     [Fact]
     public void Limits_TextCharactersAreBoundedInTheDocument()
     {
-        SvgLoadOptions options = SvgTextRenderTests.Options;
-        options.Limits = new SvgLimits { MaxTextCharacters = 10 };
+        SvgLoadOptions options = new(SvgTextRenderTests.Options) { Limits = new SvgLimits { MaxTextCharacters = 10 } };
 
         Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(SvgOpen + "<text>0123456789A</text></svg>", options));
         _ = SvgDocument.Parse(SvgOpen + "<text>0123456789</text></svg>", options);
@@ -318,8 +319,7 @@ public class SvgTextTests
     [Fact]
     public void Limits_TextCharactersCountPerUseInstance()
     {
-        SvgLoadOptions options = SvgTextRenderTests.Options;
-        options.Limits = new SvgLimits { MaxTextCharacters = 100 };
+        SvgLoadOptions options = new(SvgTextRenderTests.Options) { Limits = new SvgLimits { MaxTextCharacters = 100 } };
         StringBuilder svg = new(SvgOpen);
         svg.Append("<defs><text id=\"t\">0123456789</text></defs>");
         for (int i = 0; i < 11; i++)
@@ -348,8 +348,7 @@ public class SvgTextTests
         }
 
         svg.Append("</defs><use href=\"#l6\"/></svg>");
-        SvgLoadOptions options = SvgTextRenderTests.Options;
-        options.Limits = new SvgLimits { MaxTextCharacters = 50_000 };
+        SvgLoadOptions options = new(SvgTextRenderTests.Options) { Limits = new SvgLimits { MaxTextCharacters = 50_000 } };
 
         Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(svg.ToString(), options));
     }

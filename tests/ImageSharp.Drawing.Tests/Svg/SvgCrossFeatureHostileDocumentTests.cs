@@ -4,15 +4,15 @@
 using System.Globalization;
 using System.Text;
 using SixLabors.ImageSharp.Drawing.Svg;
-using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Tests.Svg;
 
 /// <summary>
-/// Hostile documents that combine the CSS features, the SVG 2 features, and the decoder: <c>var()</c> expansion inside
+/// Hostile documents that combine the CSS features and the SVG 2 features: <c>var()</c> expansion inside
 /// <c>calc()</c> inside a basic shape, a document that reaches several limits at once, and every hostile document of
-/// the CSS, SVG 2, and style tests decoded through <see cref="SvgDecoder"/>. A decode either returns an image or throws
+/// the CSS, SVG 2, and style tests loaded through <see cref="SvgDocument.Load(Stream, SvgLoadOptions)"/> and rendered
+/// through <see cref="SvgDocument.Render{TPixel}()"/>. A render either returns an image or throws
 /// <see cref="InvalidImageContentException"/>. Each case compares the time of two input sizes (<see cref="SvgGrowth"/>),
 /// so the tests hold on a machine under load; the test output prints the measured times.
 /// </summary>
@@ -30,10 +30,9 @@ public class SvgCrossFeatureHostileDocumentTests
     public SvgCrossFeatureHostileDocumentTests(ITestOutputHelper output) => this.output = output;
 
     /// <summary>
-    /// Every hostile document of the CSS, SVG 2, and style tests, and the two documents of this class, decodes or
-    /// throws <see cref="InvalidImageContentException"/>, directly through the decoder and through the format detection
-    /// of a configuration with the SVG module, and the larger input costs at most the growth that the original test
-    /// allows.
+    /// Every hostile document of the CSS, SVG 2, and style tests, and the two documents of this class, loads and renders
+    /// or throws <see cref="InvalidImageContentException"/>, and the larger input costs at most the growth that the
+    /// original test allows.
     /// </summary>
     /// <param name="name">The name of the case, which <see cref="GetCase"/> resolves.</param>
     [Theory]
@@ -58,24 +57,14 @@ public class SvgCrossFeatureHostileDocumentTests
     [InlineData("long clip-path: path()")]
     [InlineData("var() inside calc() inside a basic shape")]
     [InlineData("several limits at once")]
-    public void HostileDocument_DecodesOrThrowsInvalidImageContent(string name)
+    public void HostileDocument_RendersOrThrowsInvalidImageContent(string name)
     {
         (string small, string large, double factor) = GetCase(name);
         byte[] smallData = Encoding.UTF8.GetBytes(small);
         byte[] largeData = Encoding.UTF8.GetBytes(large);
-        TimeSpan smallTime = SvgGrowth.MeasureWarm(this.output, "small", () => this.DecodeOrInvalid(smallData));
-        TimeSpan largeTime = SvgGrowth.Measure(this.output, "large", () => this.DecodeOrInvalid(largeData));
+        TimeSpan smallTime = SvgGrowth.MeasureWarm(this.output, "small", () => this.RenderOrInvalid(smallData));
+        TimeSpan largeTime = SvgGrowth.Measure(this.output, "large", () => this.RenderOrInvalid(largeData));
         SvgGrowth.AssertLinear(smallTime, largeTime, factor);
-
-        // Detection reads the same bytes, and a load through it ends the same way.
-        DecoderOptions options = new() { Configuration = SvgImageFormatDetectorTests.CreateConfiguration() };
-        try
-        {
-            using Image<Rgba32> image = Image.Load<Rgba32>(options, smallData);
-        }
-        catch (InvalidImageContentException)
-        {
-        }
     }
 
     /// <summary>
@@ -269,16 +258,15 @@ public class SvgCrossFeatureHostileDocumentTests
         // Loading succeeds: each hostile value is invalid on its own. Drawing needs about 300 layers of the whole image.
         byte[] data = Encoding.UTF8.GetBytes(svg);
         InvalidImageContentException exception = Assert.Throws<InvalidImageContentException>(
-            () => SvgDecoderTests.Decoder.Decode<Rgba32>(new SvgDecoderOptions(), new MemoryStream(data)).Dispose());
+            () => SvgDocument.Load(new MemoryStream(data)).Render<Rgba32>().Dispose());
         Assert.Contains("layer", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    private void DecodeOrInvalid(byte[] data)
+    private void RenderOrInvalid(byte[] data)
     {
-        SvgDecoderOptions options = new() { LoadOptions = SvgSvg2RenderTests.TextOptions };
         try
         {
-            using Image<Rgba32> image = SvgDecoderTests.Decoder.Decode<Rgba32>(options, new MemoryStream(data));
+            using Image<Rgba32> image = SvgDocument.Load(new MemoryStream(data), SvgSvg2RenderTests.TextOptions).Render<Rgba32>();
         }
         catch (InvalidImageContentException exception)
         {

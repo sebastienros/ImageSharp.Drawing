@@ -98,16 +98,13 @@ public class SvgDocumentTests
     [Fact]
     public void Options_RejectInvalidValues()
     {
-        SvgLoadOptions options = new();
-        SvgLimits limits = new();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Dpi = 0);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Dpi = float.NaN);
-        Assert.Throws<ArgumentNullException>(() => options.Limits = null!);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxElements = 0);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxNodes = -1);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxNestingDepth = 0);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxCharactersFromEntities = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLoadOptions { Dpi = 0 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLoadOptions { Dpi = float.NaN });
+        Assert.Throws<ArgumentNullException>(() => new SvgLoadOptions { Limits = null! });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxElements = 0 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxNodes = -1 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxNestingDepth = 0 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxCharactersFromEntities = 0 });
     }
 
     [Fact]
@@ -341,21 +338,14 @@ public class SvgDocumentTests
     [Fact]
     public void Options_RejectInvalidPhase2Values()
     {
-        SvgLoadOptions options = new();
-        SvgLimits limits = new();
-
-        Assert.Throws<ArgumentNullException>(() => options.Languages = null!);
-        Assert.Throws<ArgumentException>(() => options.Languages = ["en", null!]);
-        Assert.Throws<ArgumentException>(() => options.Languages = [string.Empty]);
-        Assert.Throws<ArgumentException>(() => options.ResourceBaseDirectory = string.Empty);
-        Assert.Throws<ArgumentException>(() => options.ResourceBaseDirectory = "  ");
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxImagePixels = 0);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxPatternTilePixels = -1);
-        Assert.Throws<ArgumentOutOfRangeException>(() => limits.MaxFilterPixels = 0);
-
-        // A failed set keeps the previous value.
-        Assert.Equal<string>(["en"], options.Languages);
-        Assert.Null(options.ResourceBaseDirectory);
+        Assert.Throws<ArgumentNullException>(() => new SvgLoadOptions { Languages = null! });
+        Assert.Throws<ArgumentException>(() => new SvgLoadOptions { Languages = ["en", null!] });
+        Assert.Throws<ArgumentException>(() => new SvgLoadOptions { Languages = [string.Empty] });
+        Assert.Throws<ArgumentException>(() => new SvgLoadOptions { ResourceBaseDirectory = string.Empty });
+        Assert.Throws<ArgumentException>(() => new SvgLoadOptions { ResourceBaseDirectory = "  " });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxImagePixels = 0 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxPatternTilePixels = -1 });
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SvgLimits { MaxFilterPixels = 0 });
     }
 
     [Fact]
@@ -376,11 +366,14 @@ public class SvgDocumentTests
         Assert.Equal<string>(["de-CH", "fr"], options.Languages);
         Assert.Equal("images", options.ResourceBaseDirectory);
 
-        options.Languages = [];
-        options.ResourceBaseDirectory = null;
-        options.UserStyleSheet = string.Empty;
-        Assert.Empty(options.Languages);
-        Assert.Null(options.ResourceBaseDirectory);
+        SvgLoadOptions empty = new()
+        {
+            Languages = [],
+            ResourceBaseDirectory = null,
+            UserStyleSheet = string.Empty,
+        };
+        Assert.Empty(empty.Languages);
+        Assert.Null(empty.ResourceBaseDirectory);
     }
 
     // Loading from a file must never enable reading other files.

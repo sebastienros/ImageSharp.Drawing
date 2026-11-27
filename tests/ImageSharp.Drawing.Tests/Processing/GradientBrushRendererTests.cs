@@ -16,17 +16,33 @@ public class GradientBrushRendererTests
     private const int Width = 211;
     private const int Height = 23;
 
-    public static TheoryData<string, GradientRepetitionMode, GradientAlphaInterpolation> Cases { get; } = CreateCases();
+    public static TheoryData<string, GradientRepetitionMode, PixelAlphaRepresentation> Cases { get; } = CreateCases();
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Apply_MatchesColorPerPixel_Rgba32(string brushName, GradientRepetitionMode mode, GradientAlphaInterpolation interpolation)
-        => AssertRowMatchesPixels<Rgba32, UnassociatedGradientPixelEncoder<Rgba32>>(CreateBrush(brushName, mode, interpolation));
+    public void Apply_MatchesColorPerPixel_Rgba32(string brushName, GradientRepetitionMode mode, PixelAlphaRepresentation representation)
+        => AssertRowMatchesPixels<Rgba32>(CreateBrush(brushName, mode, representation));
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Apply_MatchesColorPerPixel_Bgra32(string brushName, GradientRepetitionMode mode, GradientAlphaInterpolation interpolation)
-        => AssertRowMatchesPixels<Bgra32, UnassociatedGradientPixelEncoder<Bgra32>>(CreateBrush(brushName, mode, interpolation));
+    public void Apply_MatchesColorPerPixel_Bgra32(string brushName, GradientRepetitionMode mode, PixelAlphaRepresentation representation)
+        => AssertRowMatchesPixels<Bgra32>(CreateBrush(brushName, mode, representation));
+
+    /// <summary>
+    /// Selects the encoder that the alpha representation of the brush selects, and checks the rows.
+    /// </summary>
+    private static void AssertRowMatchesPixels<TPixel>(GradientBrush brush)
+        where TPixel : unmanaged, IPixel<TPixel>
+    {
+        if (brush.AlphaRepresentation == PixelAlphaRepresentation.Associated)
+        {
+            AssertRowMatchesPixels<TPixel, AssociatedGradientPixelEncoder<TPixel>>(brush);
+        }
+        else
+        {
+            AssertRowMatchesPixels<TPixel, UnassociatedGradientPixelEncoder<TPixel>>(brush);
+        }
+    }
 
     /// <summary>
     /// Renders every row through <see cref="BrushRenderer{TPixel}.Apply"/> with full coverage and source
@@ -61,7 +77,7 @@ public class GradientBrushRendererTests
         }
     }
 
-    private static GradientBrush CreateBrush(string name, GradientRepetitionMode mode, GradientAlphaInterpolation interpolation)
+    private static GradientBrush CreateBrush(string name, GradientRepetitionMode mode, PixelAlphaRepresentation representation)
     {
         ColorStop[] stops =
         [
@@ -74,28 +90,28 @@ public class GradientBrushRendererTests
         Matrix4x4 transform = Matrix4x4.CreateRotationZ(0.4F) * Matrix4x4.CreateScale(1.3F, 0.7F, 1F) * Matrix4x4.CreateTranslation(5F, -3F, 0F);
         return name switch
         {
-            "Linear" => new LinearGradientBrush(new PointF(13.3F, 2F), new PointF(97.6F, 19F), mode, Matrix4x4.Identity, interpolation, stops),
-            "LinearTransformed" => new LinearGradientBrush(new PointF(13.3F, 2F), new PointF(97.6F, 19F), mode, transform, interpolation, stops),
-            "Radial" => new RadialGradientBrush(new PointF(60.5F, 11F), 47F, mode, Matrix4x4.Identity, interpolation, stops),
-            "RadialTransformed" => new RadialGradientBrush(new PointF(60.5F, 11F), 47F, mode, transform, interpolation, stops),
-            "TwoCircle" => new RadialGradientBrush(new PointF(40F, 10F), 5F, new PointF(90F, 12F), 60F, mode, Matrix4x4.Identity, interpolation, stops),
-            "TwoCircleNarrow" => new RadialGradientBrush(new PointF(40F, 10F), 30F, new PointF(150F, 12F), 10F, mode, transform, interpolation, stops),
-            _ => new EllipticGradientBrush(new PointF(100F, 11F), new PointF(160F, 30F), 0.4F, mode, Matrix4x4.Identity, interpolation, stops),
+            "Linear" => new LinearGradientBrush(new PointF(13.3F, 2F), new PointF(97.6F, 19F), mode, Matrix4x4.Identity, representation, stops),
+            "LinearTransformed" => new LinearGradientBrush(new PointF(13.3F, 2F), new PointF(97.6F, 19F), mode, transform, representation, stops),
+            "Radial" => new RadialGradientBrush(new PointF(60.5F, 11F), 47F, mode, Matrix4x4.Identity, representation, stops),
+            "RadialTransformed" => new RadialGradientBrush(new PointF(60.5F, 11F), 47F, mode, transform, representation, stops),
+            "TwoCircle" => new RadialGradientBrush(new PointF(40F, 10F), 5F, new PointF(90F, 12F), 60F, mode, Matrix4x4.Identity, representation, stops),
+            "TwoCircleNarrow" => new RadialGradientBrush(new PointF(40F, 10F), 30F, new PointF(150F, 12F), 10F, mode, transform, representation, stops),
+            _ => new EllipticGradientBrush(new PointF(100F, 11F), new PointF(160F, 30F), 0.4F, mode, Matrix4x4.Identity, representation, stops),
         };
     }
 
-    private static TheoryData<string, GradientRepetitionMode, GradientAlphaInterpolation> CreateCases()
+    private static TheoryData<string, GradientRepetitionMode, PixelAlphaRepresentation> CreateCases()
     {
-        TheoryData<string, GradientRepetitionMode, GradientAlphaInterpolation> data = [];
+        TheoryData<string, GradientRepetitionMode, PixelAlphaRepresentation> data = [];
         string[] brushes = ["Linear", "LinearTransformed", "Radial", "RadialTransformed", "TwoCircle", "TwoCircleNarrow", "Elliptic"];
         foreach (string brush in brushes)
         {
             foreach (GradientRepetitionMode mode in Enum.GetValues<GradientRepetitionMode>())
             {
-                data.Add(brush, mode, GradientAlphaInterpolation.Premultiplied);
+                data.Add(brush, mode, PixelAlphaRepresentation.Associated);
             }
 
-            data.Add(brush, GradientRepetitionMode.Reflect, GradientAlphaInterpolation.Unpremultiplied);
+            data.Add(brush, GradientRepetitionMode.Reflect, PixelAlphaRepresentation.Unassociated);
         }
 
         return data;

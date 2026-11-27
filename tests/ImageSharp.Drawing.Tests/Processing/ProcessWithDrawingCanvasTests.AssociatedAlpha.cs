@@ -4,7 +4,6 @@
 using System.Numerics;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Drawing.Processing.Backends;
 using SixLabors.ImageSharp.Drawing.Tests.TestUtilities.ImageComparison;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -62,6 +61,126 @@ public partial class ProcessWithDrawingCanvasTests
         => AssertGradientAssociationSimilarity(GradientKind.Sweep, GradientRepetitionMode.None, false);
 
     /// <summary>
+    /// Verifies that each gradient brush interpolates its colors in the alpha representation of the brush.
+    /// </summary>
+    /// <param name="kind">The gradient family.</param>
+    /// <param name="alphaRepresentation">The alpha representation of the brush.</param>
+    [Theory]
+    [InlineData(GradientKind.Linear, PixelAlphaRepresentation.Associated)]
+    [InlineData(GradientKind.Linear, PixelAlphaRepresentation.Unassociated)]
+    [InlineData(GradientKind.Radial, PixelAlphaRepresentation.Associated)]
+    [InlineData(GradientKind.Radial, PixelAlphaRepresentation.Unassociated)]
+    [InlineData(GradientKind.Elliptic, PixelAlphaRepresentation.Associated)]
+    [InlineData(GradientKind.Elliptic, PixelAlphaRepresentation.Unassociated)]
+    [InlineData(GradientKind.Sweep, PixelAlphaRepresentation.Associated)]
+    [InlineData(GradientKind.Sweep, PixelAlphaRepresentation.Unassociated)]
+    [InlineData(GradientKind.Path, PixelAlphaRepresentation.Associated)]
+    [InlineData(GradientKind.Path, PixelAlphaRepresentation.Unassociated)]
+    public void GradientInterpolatesInBrushAlphaRepresentation(GradientKind kind, PixelAlphaRepresentation alphaRepresentation)
+    {
+        (Brush brush, Point sample) = CreateAlphaMidpointGradient(kind, alphaRepresentation);
+        DrawingOptions options = CreateBlendOptions(PixelColorBlendingMode.Normal, PixelAlphaCompositionMode.Src);
+
+        // Associated: CSS Color 4 premultiplies (254, 0, 0, 254) and (0, 0, 254, 0) before it interpolates.
+        // The midpoint is the start red with half its alpha. Rgba32P stores 254 * 127 / 255 = 126.502, which rounds to 127.
+        // Unassociated: SVG 2 interpolates each channel. The midpoint is (127, 0, 127, 127).
+        // Rgba32P stores 127 * 127 / 255 = 63.25, which rounds to 63.
+        // https://www.w3.org/TR/css-color-4/#interpolation-alpha
+        // https://www.w3.org/TR/SVG2/pservers.html#StopColorProperties
+        bool associated = alphaRepresentation == PixelAlphaRepresentation.Associated;
+        Rgba32 expected = associated ? new Rgba32(254, 0, 0, 127) : new Rgba32(127, 0, 127, 127);
+        Rgba32P expectedAssociated = associated ? new Rgba32P(127, 0, 0, 127) : new Rgba32P(63, 0, 63, 127);
+
+        using Image<Rgba32> image = new(AlphaMidpointImageSize, AlphaMidpointImageSize);
+        using Image<Rgba32P> associatedImage = new(AlphaMidpointImageSize, AlphaMidpointImageSize);
+        image.Mutate(context => context.Paint(options, canvas => canvas.Fill(brush)));
+        associatedImage.Mutate(context => context.Paint(options, canvas => canvas.Fill(brush)));
+
+        Assert.Equal(expected, image[sample.X, sample.Y]);
+        Assert.Equal(expectedAssociated, associatedImage[sample.X, sample.Y]);
+    }
+
+    /// <summary>
+    /// Verifies that an affine transform and a projective transform keep the alpha representation of each gradient brush.
+    /// </summary>
+    /// <param name="kind">The gradient family.</param>
+    [Theory]
+    [InlineData(GradientKind.Linear)]
+    [InlineData(GradientKind.Radial)]
+    [InlineData(GradientKind.Elliptic)]
+    [InlineData(GradientKind.Sweep)]
+    [InlineData(GradientKind.Path)]
+    public void GradientTransformKeepsAlphaRepresentation(GradientKind kind)
+    {
+        (Brush brush, _) = CreateAlphaMidpointGradient(kind, PixelAlphaRepresentation.Unassociated);
+        Rectangle interest = new(0, 0, AlphaMidpointImageSize, AlphaMidpointImageSize);
+        Matrix4x4 affine = Matrix4x4.CreateScale(2F, 3F, 1F);
+        Matrix4x4 projective = Matrix4x4.Identity;
+        projective.M14 = 0.001F;
+
+        Assert.Equal(PixelAlphaRepresentation.Unassociated, GetAlphaRepresentation(brush.Transform(affine, interest, interest)));
+        Assert.Equal(PixelAlphaRepresentation.Unassociated, GetAlphaRepresentation(brush.Transform(projective, interest, interest)));
+    }
+
+    /// <summary>
+    /// Gets the alpha representation of a gradient brush or a path gradient brush.
+    /// </summary>
+    /// <param name="brush">The brush.</param>
+    /// <returns>The alpha representation of the brush.</returns>
+    private static PixelAlphaRepresentation GetAlphaRepresentation(Brush brush)
+        => brush is PathGradientBrush pathBrush ? pathBrush.AlphaRepresentation : ((GradientBrush)brush).AlphaRepresentation;
+
+    /// <summary>
+    /// Gets the width and the height of the image that <see cref="CreateAlphaMidpointGradient"/> targets.
+    /// </summary>
+    private const int AlphaMidpointImageSize = 9;
+
+    /// <summary>
+    /// Creates a gradient from (254, 0, 0, 254) to (0, 0, 254, 0) with its midpoint at the center of one pixel.
+    /// </summary>
+    /// <remarks>
+    /// The stop bytes are even, so each unassociated channel of the midpoint is a whole byte. A small float
+    /// error in the gradient position cannot change the rounding of the midpoint.
+    /// </remarks>
+    /// <param name="kind">The gradient family.</param>
+    /// <param name="alphaRepresentation">The alpha representation of the brush.</param>
+    /// <returns>The brush, and the pixel that has the midpoint color.</returns>
+    private static (Brush Brush, Point Sample) CreateAlphaMidpointGradient(GradientKind kind, PixelAlphaRepresentation alphaRepresentation)
+    {
+        Color start = Color.FromPixel(new Rgba32(254, 0, 0, 254));
+        Color end = Color.FromPixel(new Rgba32(0, 0, 254, 0));
+        ColorStop[] stops = [new(0, start), new(1, end)];
+
+        // Pixel (4, 4) has its center at (4.5, 4.5). The linear axis, the radius and the reference axis
+        // are 8 pixels long and start 4 pixels from that center.
+        PointF axisStart = new(0.5F, 4.5F);
+        PointF axisEnd = new(8.5F, 4.5F);
+        Point middle = new(4, 4);
+
+        GradientRepetitionMode none = GradientRepetitionMode.None;
+        Matrix4x4 identity = Matrix4x4.Identity;
+
+        return kind switch
+        {
+            GradientKind.Linear => (new LinearGradientBrush(axisStart, axisEnd, none, identity, alphaRepresentation, stops), middle),
+            GradientKind.Radial => (new RadialGradientBrush(axisStart, 8F, none, identity, alphaRepresentation, stops), middle),
+            GradientKind.Elliptic => (new EllipticGradientBrush(axisStart, axisEnd, 0.5F, none, identity, alphaRepresentation, stops), middle),
+
+            // The sweep goes from 0 to 180 degrees. Pixel (4, 0) is straight above the center, at 90 degrees.
+            GradientKind.Sweep => (new SweepGradientBrush(new PointF(4.5F, 8.5F), 0F, 180F, none, identity, alphaRepresentation, stops), new Point(4, 0)),
+
+            // The default center color of a path gradient is the mean of its point colors. Two start colors
+            // and two end colors give the midpoint at the center and at the middle of the right edge.
+            // Pixel (6, 4) lies between them, so the renderer interpolates along the edge and toward the center.
+            GradientKind.Path => (new PathGradientBrush(
+                [new(0.5F, 0.5F), new(8.5F, 0.5F), new(8.5F, 8.5F), new(0.5F, 8.5F)],
+                [start, start, end, end],
+                alphaRepresentation), new Point(6, 4)),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
+
+    /// <summary>
     /// Verifies equal gradient stops use the same representation-independent result as the
     /// general interpolation path.
     /// </summary>
@@ -96,11 +215,11 @@ public partial class ProcessWithDrawingCanvasTests
     }
 
     /// <summary>
-    /// Verifies <see cref="GradientAlphaInterpolation.Unpremultiplied"/> at the exact midpoint of a linear gradient that
-    /// fades color and alpha together, on straight and associated destinations, and in the WebGPU gradient ramp.
+    /// Verifies <see cref="PixelAlphaRepresentation.Unassociated"/> interpolation at the exact midpoint of a linear gradient
+    /// that fades color and alpha together, on straight and associated destinations.
     /// </summary>
     [Fact]
-    public void LinearGradientMidpointWithUnpremultipliedInterpolation()
+    public void LinearGradientMidpointWithUnassociatedInterpolation()
     {
         ColorStop[] stops =
         [
@@ -112,7 +231,7 @@ public partial class ProcessWithDrawingCanvasTests
             new PointF(1, 0),
             GradientRepetitionMode.None,
             Matrix4x4.Identity,
-            GradientAlphaInterpolation.Unpremultiplied,
+            PixelAlphaRepresentation.Unassociated,
             stops);
 
         using Image<Rgba32> unassociated = new(1, 1);
@@ -125,19 +244,15 @@ public partial class ProcessWithDrawingCanvasTests
         // (0.25, 0, 0.25, 0.5).
         Assert.Equal(new Rgba32(128, 0, 128, 128), unassociated[0, 0]);
         Assert.Equal(new Rgba32P(64, 0, 64, 128), associated[0, 0]);
-
-        // The WebGPU backend bakes the same interpolation into its associated ramp texels.
-        Assert.Equal(new Vector4(0.25F, 0F, 0.25F, 0.5F), WebGPUSceneEncoder.EvaluateGradientColor(stops, GradientAlphaInterpolation.Unpremultiplied, 0.5F));
-        Assert.Equal(new Vector4(0.5F, 0F, 0F, 0.5F), WebGPUSceneEncoder.EvaluateGradientColor(stops, GradientAlphaInterpolation.Premultiplied, 0.5F));
     }
 
     /// <summary>
-    /// Verifies <see cref="GradientAlphaInterpolation"/> on every gradient brush type, directly and under a command
+    /// Verifies <see cref="GradientBrush.AlphaRepresentation"/> on every gradient brush type, directly and under a command
     /// transform, which replaces the brush through <see cref="Brush.Transform(Matrix4x4, Rectangle, Rectangle)"/>.
     /// </summary>
     /// <remarks>
-    /// The gradient fades opaque red to transparent blue. With premultiplied interpolation, the default, every pixel is red
-    /// with alpha <c>1 - t</c>, so the alpha of a pixel gives its gradient position <c>t</c>. With unpremultiplied
+    /// The gradient fades opaque red to transparent blue. With associated interpolation, the default, every pixel is red
+    /// with alpha <c>1 - t</c>, so the alpha of a pixel gives its gradient position <c>t</c>. With unassociated
     /// interpolation the same pixel must be <c>((1 - t) red + t blue)</c> with the same alpha.
     /// </remarks>
     /// <param name="kind">The brush type.</param>
@@ -155,7 +270,7 @@ public partial class ProcessWithDrawingCanvasTests
     [InlineData("elliptic", true)]
     [InlineData("sweep", true)]
     [InlineData("linear-three-point", true)]
-    public void GradientAlphaInterpolationAppliesToEveryGradientBrush(string kind, bool transformed)
+    public void GradientAlphaRepresentationAppliesToEveryGradientBrush(string kind, bool transformed)
     {
         ColorStop[] stops =
         [
@@ -163,9 +278,9 @@ public partial class ProcessWithDrawingCanvasTests
             new(1F, Color.FromPixel(new Rgba32(0, 0, 255, 0)))
         ];
 
-        GradientBrush Create(GradientAlphaInterpolation? mode)
+        GradientBrush Create(PixelAlphaRepresentation? mode)
         {
-            GradientAlphaInterpolation value = mode ?? GradientAlphaInterpolation.Premultiplied;
+            PixelAlphaRepresentation value = mode ?? PixelAlphaRepresentation.Associated;
             Matrix4x4 identity = Matrix4x4.Identity;
             PointF center = new(16, 16);
             return (kind, mode is null) switch
@@ -189,11 +304,11 @@ public partial class ProcessWithDrawingCanvasTests
         }
 
         GradientBrush byDefault = Create(null);
-        GradientBrush premultiplied = Create(GradientAlphaInterpolation.Premultiplied);
-        GradientBrush unpremultiplied = Create(GradientAlphaInterpolation.Unpremultiplied);
+        GradientBrush premultiplied = Create(PixelAlphaRepresentation.Associated);
+        GradientBrush unpremultiplied = Create(PixelAlphaRepresentation.Unassociated);
 
-        // The default is premultiplied, and the mode takes part in equality.
-        Assert.Equal(GradientAlphaInterpolation.Premultiplied, byDefault.AlphaInterpolation);
+        // The default is associated, and the representation takes part in equality.
+        Assert.Equal(PixelAlphaRepresentation.Associated, byDefault.AlphaRepresentation);
         Assert.Equal<Brush>(byDefault, premultiplied);
         Assert.Equal(byDefault.GetHashCode(), premultiplied.GetHashCode());
         Assert.NotEqual<Brush>(premultiplied, unpremultiplied);
@@ -209,7 +324,7 @@ public partial class ProcessWithDrawingCanvasTests
         {
             // The canvas replaces the brush through Brush.Transform; the replacement must keep the mode.
             Brush replaced = unpremultiplied.Transform(options.Transform, new Rectangle(0, 0, 32, 32), new Rectangle(0, 0, 32, 32));
-            Assert.Equal(GradientAlphaInterpolation.Unpremultiplied, Assert.IsType<GradientBrush>(replaced, exactMatch: false).AlphaInterpolation);
+            Assert.Equal(PixelAlphaRepresentation.Unassociated, Assert.IsType<GradientBrush>(replaced, exactMatch: false).AlphaRepresentation);
         }
 
         using Image<Rgba32> defaultImage = new(32, 32);
@@ -277,7 +392,7 @@ public partial class ProcessWithDrawingCanvasTests
         float scaledThreshold = threshold * 4F;
         float distance = Vector4.DistanceSquared(backgroundPixel.ToScaledVector4(), source.ToScaledVector4(PixelAlphaRepresentation.Associated));
         float amount = (scaledThreshold - distance) / scaledThreshold;
-        PixelBlender<Rgba32P> blender = PixelOperations<Rgba32P>.Instance.GetPixelBlender(options.GraphicsOptions);
+        PixelBlender<Rgba32P> blender = PixelBlenders<Rgba32P>.GetPixelBlender(options.GraphicsOptions);
         Rgba32P expected = blender.Blend(backgroundPixel, targetPixel, amount);
 
         // The straight RGB distance is two, but multiplying both colors by their low alpha
@@ -589,7 +704,8 @@ public partial class ProcessWithDrawingCanvasTests
             GradientKind.Linear => new LinearGradientBrush(new PointF(-4, 2), new PointF(12, 6), repetitionMode, colorStops),
             GradientKind.Radial => new RadialGradientBrush(new PointF(4, 4), 5F, repetitionMode, colorStops),
             GradientKind.Elliptic => new EllipticGradientBrush(new PointF(4, 4), new PointF(9, 4), 0.6F, repetitionMode, colorStops),
-            _ => new SweepGradientBrush(new PointF(4, 4), -45F, 315F, repetitionMode, colorStops)
+            GradientKind.Sweep => new SweepGradientBrush(new PointF(4, 4), -45F, 315F, repetitionMode, colorStops),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
 
     /// <summary>
@@ -729,7 +845,7 @@ public partial class ProcessWithDrawingCanvasTests
         using Image<TPixel> actual = RenderRecolor<TPixel>(source, brush, options);
         TPixel sourcePixel = Color.FromPixel(source).ToPixel<TPixel>();
         TPixel targetPixel = Color.FromPixel(target).ToPixel<TPixel>();
-        PixelBlender<TPixel> blender = PixelOperations<TPixel>.Instance.GetPixelBlender(options.GraphicsOptions);
+        PixelBlender<TPixel> blender = PixelBlenders<TPixel>.GetPixelBlender(options.GraphicsOptions);
 
         // An exact key match has replacement amount one. Full shape coverage then applies the
         // same configured blender a second time with the DrawingOptions blend percentage.
@@ -956,13 +1072,14 @@ public partial class ProcessWithDrawingCanvasTests
         });
 
     /// <summary>
-    /// Identifies the gradient family used by the shared representation test.
+    /// Identifies the gradient family used by the shared representation tests.
     /// </summary>
-    private enum GradientKind
+    public enum GradientKind
     {
         Linear,
         Radial,
         Elliptic,
-        Sweep
+        Sweep,
+        Path
     }
 }

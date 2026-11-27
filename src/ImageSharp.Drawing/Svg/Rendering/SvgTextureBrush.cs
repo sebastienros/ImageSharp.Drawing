@@ -87,14 +87,7 @@ internal sealed class SvgTextureBrush : Brush
         GraphicsOptions options,
         int canvasWidth,
         RectangleF region)
-    {
-        if (TPixel.GetPixelTypeInfo().AlphaRepresentation == PixelAlphaRepresentation.Associated)
-        {
-            return new Renderer<TPixel, AssociatedGradientPixelEncoder<TPixel>>(configuration, options, canvasWidth, this);
-        }
-
-        return new Renderer<TPixel, UnassociatedGradientPixelEncoder<TPixel>>(configuration, options, canvasWidth, this);
-    }
+        => new Renderer<TPixel>(configuration, options, canvasWidth, this);
 
     /// <inheritdoc/>
     public override bool Equals(Brush? other)
@@ -113,10 +106,8 @@ internal sealed class SvgTextureBrush : Brush
     /// Samples the texture for each pixel of a scanline and blends it with the coverage.
     /// </summary>
     /// <typeparam name="TPixel">The pixel format.</typeparam>
-    /// <typeparam name="TEncoder">The encoder that turns a premultiplied color into <typeparamref name="TPixel"/>.</typeparam>
-    private sealed class Renderer<TPixel, TEncoder> : BrushRenderer<TPixel>
+    private sealed class Renderer<TPixel> : BrushRenderer<TPixel>
         where TPixel : unmanaged, IPixel<TPixel>
-        where TEncoder : struct, IGradientPixelEncoder<TPixel>
     {
         private readonly Rgba32[] pixels;
         private readonly int width;
@@ -130,7 +121,7 @@ internal sealed class SvgTextureBrush : Brush
         private readonly Matrix3x2 inverse;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Renderer{TPixel, TEncoder}"/> class.
+        /// Initializes a new instance of the <see cref="Renderer{TPixel}"/> class.
         /// </summary>
         /// <param name="configuration">The configuration.</param>
         /// <param name="options">The graphics options.</param>
@@ -202,16 +193,39 @@ internal sealed class SvgTextureBrush : Brush
                 float v = (px * m.M12) + (py * m.M22) + m.M32;
                 float scale = this.opacity / 255F;
 
-                for (int i = 0; i < scanline.Length; i++, u += m.M11, v += m.M12)
+                if (typeof(TPixel) == typeof(Rgba32))
                 {
-                    if (scanline[i] <= 0F)
+                    // One bulk conversion instead of one per pixel. For Rgba32 the bulk associated conversion of
+                    // ImageSharp 5 applies the same lane-wise division by alpha and the same clamp, then the byte
+                    // conversion clamp(x, 0, 1) * 255 + 0.5 truncated, which gives the byte of the per-pixel
+                    // FromAssociatedScaledVector4 (scale, add one half, clamp to [0, 255], truncate) for every float.
+                    // The zero vector of an uncovered pixel converts to the pixel of zeros, as default gives. The first
+                    // blend scratch row is free until the blend below fills it.
+                    Span<Vector4> colors = workspace.GetBlendScratch(scanline.Length, 3)[..scanline.Length];
+                    for (int i = 0; i < scanline.Length; i++, u += m.M11, v += m.M12)
                     {
-                        overlays[i] = default;
-                        continue;
+                        colors[i] = scanline[i] <= 0F
+                            ? Vector4.Zero
+                            : (this.nearest ? this.SampleNearest(u, v) : this.SampleBilinear(u - 0.5F, v - 0.5F)) * scale;
                     }
 
-                    Vector4 color = this.nearest ? this.SampleNearest(u, v) : this.SampleBilinear(u - 0.5F, v - 0.5F);
-                    overlays[i] = TEncoder.Encode(color * scale);
+                    PixelOperations<TPixel>.Instance.FromAssociatedScaledVector4Destructive(this.Configuration, colors, overlays);
+                }
+                else
+                {
+                    for (int i = 0; i < scanline.Length; i++, u += m.M11, v += m.M12)
+                    {
+                        if (scanline[i] <= 0F)
+                        {
+                            overlays[i] = default;
+                            continue;
+                        }
+
+                        // The sample is premultiplied. The associated conversion divides by alpha for a format that
+                        // stores straight alpha and keeps the channels for a format that stores associated alpha.
+                        Vector4 color = this.nearest ? this.SampleNearest(u, v) : this.SampleBilinear(u - 0.5F, v - 0.5F);
+                        overlays[i] = TPixel.FromAssociatedScaledVector4(color * scale);
+                    }
                 }
             }
 

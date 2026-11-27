@@ -35,8 +35,7 @@ public class SvgTextHostileDocumentTests
     [Fact]
     public void TextAtTheCharacterLimit_LoadsAndOneMoreFails()
     {
-        SvgLoadOptions options = SvgTextDirectionRenderTests.Options;
-        options.Limits = new SvgLimits { MaxTextCharacters = 200_000 };
+        SvgLoadOptions options = new(SvgTextDirectionRenderTests.Options) { Limits = new SvgLimits { MaxTextCharacters = 200_000 } };
         string text = new('a', 200_000);
         TimeSpan small = this.MeasureWarm("20,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text[..20_000]}</text></svg>", options));
         TimeSpan large = this.Measure("200,000 characters", () => SvgDocument.Parse(SvgOpen + $"<text y=\"10\">{text}</text></svg>", options));
@@ -189,8 +188,19 @@ public class SvgTextHostileDocumentTests
 
         string thousand = FanOut(1_000);
         string tenThousand = FanOut(10_000);
-        TimeSpan small = this.MeasureWarm("1,000 tref of 100,000 characters", () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(thousand, options)));
-        TimeSpan large = this.Measure("10,000 tref of 100,000 characters", () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(tenThousand, options)));
+
+        // Each case takes the best of three runs: one run of about 50 ms can take several times as long when the machine
+        // is busy, which a single measurement of each case cannot tell from growth. The bound is unchanged.
+        TimeSpan small = SvgGrowth.MeasureBest(
+            this.output,
+            "1,000 tref of 100,000 characters",
+            3,
+            () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(thousand, options)));
+        TimeSpan large = SvgGrowth.MeasureBest(
+            this.output,
+            "10,000 tref of 100,000 characters",
+            3,
+            () => Assert.Throws<InvalidImageContentException>(() => SvgDocument.Parse(tenThousand, options)));
         SvgGrowth.AssertBounded(small, large);
 
         // A chain of tref references: only the character data of the referenced text counts, so the chain does not

@@ -57,14 +57,13 @@ public sealed class EllipticGradientBrush : GradientBrush
         GradientRepetitionMode repetitionMode,
         Matrix4x4 gradientTransform,
         params ColorStop[] colorStops)
-        : this(center, referenceAxisEnd, axisRatio, repetitionMode, gradientTransform, GradientAlphaInterpolation.Premultiplied, colorStops)
+        : this(center, referenceAxisEnd, axisRatio, repetitionMode, gradientTransform, PixelAlphaRepresentation.Associated, colorStops)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EllipticGradientBrush"/> class with the ellipse
     /// defined in the gradient's own coordinate space.
-    /// The stops interpolate alpha as <paramref name="alphaInterpolation"/> defines.
     /// </summary>
     /// <param name="center">The center of the elliptical gradient and 0 for the color stops.</param>
     /// <param name="referenceAxisEnd">The end point of the reference axis of the ellipse.</param>
@@ -75,7 +74,7 @@ public sealed class EllipticGradientBrush : GradientBrush
     /// </param>
     /// <param name="repetitionMode">Defines how the colors of the gradients are repeated.</param>
     /// <param name="gradientTransform">The transform from the gradient's coordinate space to the drawing.</param>
-    /// <param name="alphaInterpolation">Defines how alpha is interpolated between two color stops.</param>
+    /// <param name="alphaRepresentation">The alpha representation of the stop colors during interpolation.</param>
     /// <param name="colorStops">The color stops.</param>
     public EllipticGradientBrush(
         PointF center,
@@ -83,9 +82,9 @@ public sealed class EllipticGradientBrush : GradientBrush
         float axisRatio,
         GradientRepetitionMode repetitionMode,
         Matrix4x4 gradientTransform,
-        GradientAlphaInterpolation alphaInterpolation,
+        PixelAlphaRepresentation alphaRepresentation,
         params ColorStop[] colorStops)
-        : base(repetitionMode, gradientTransform, alphaInterpolation, colorStops)
+        : base(repetitionMode, gradientTransform, alphaRepresentation, colorStops)
     {
         this.Center = center;
         this.ReferenceAxisEnd = referenceAxisEnd;
@@ -132,14 +131,7 @@ public sealed class EllipticGradientBrush : GradientBrush
             float newRefLen = MathF.Sqrt(((tRef.X - tc.X) * (tRef.X - tc.X)) + ((tRef.Y - tc.Y) * (tRef.Y - tc.Y)));
             float newSecLen = MathF.Sqrt(((tSec.X - tc.X) * (tSec.X - tc.X)) + ((tSec.Y - tc.Y) * (tSec.Y - tc.Y)));
             float newRatio = newRefLen > 0f ? newSecLen / newRefLen : this.AxisRatio;
-            return new EllipticGradientBrush(
-                tc,
-                tRef,
-                newRatio,
-                this.RepetitionMode,
-                Matrix4x4.Identity,
-                this.AlphaInterpolation,
-                this.ColorStopsArray);
+            return new EllipticGradientBrush(tc, tRef, newRatio, this.RepetitionMode, Matrix4x4.Identity, this.AlphaRepresentation, this.ColorStopsArray);
         }
 
         return new EllipticGradientBrush(
@@ -148,7 +140,7 @@ public sealed class EllipticGradientBrush : GradientBrush
             this.AxisRatio,
             this.RepetitionMode,
             gradientTransform,
-            this.AlphaInterpolation,
+            this.AlphaRepresentation,
             this.ColorStopsArray);
     }
 
@@ -159,7 +151,7 @@ public sealed class EllipticGradientBrush : GradientBrush
         int canvasWidth,
         RectangleF region)
     {
-        if (TPixel.GetPixelTypeInfo().AlphaRepresentation == PixelAlphaRepresentation.Associated)
+        if (this.AlphaRepresentation == PixelAlphaRepresentation.Associated)
         {
             return new EllipticGradientBrushRenderer<TPixel, AssociatedGradientPixelEncoder<TPixel>>(configuration, options, canvasWidth, this);
         }

@@ -3,6 +3,7 @@
 
 using System.Numerics;
 using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
@@ -20,7 +21,7 @@ internal sealed class SvgPaintCache
     /// The alpha interpolation of SVG gradients: SVG 1.1 interpolates the color and the opacity of the stops separately,
     /// and browsers render SVG gradients that way.
     /// </summary>
-    private const GradientAlphaInterpolation Interpolation = GradientAlphaInterpolation.Unpremultiplied;
+    private const PixelAlphaRepresentation Interpolation = PixelAlphaRepresentation.Unassociated;
 
     private readonly SvgElementTree tree;
     private readonly SvgUnitBasis units;
@@ -163,7 +164,7 @@ internal sealed class SvgPaintCache
                     linear.EndPoint,
                     linear.RepetitionMode,
                     linear.GradientTransform,
-                    linear.AlphaInterpolation,
+                    linear.AlphaRepresentation,
                     MultiplyAlpha(linear.ColorStops, opacity));
             case RadialGradientBrush radial when radial.IsTwoCircle:
                 return new RadialGradientBrush(
@@ -173,7 +174,7 @@ internal sealed class SvgPaintCache
                     radial.Radius1!.Value,
                     radial.RepetitionMode,
                     radial.GradientTransform,
-                    radial.AlphaInterpolation,
+                    radial.AlphaRepresentation,
                     MultiplyAlpha(radial.ColorStops, opacity));
             case RadialGradientBrush radial:
                 return new RadialGradientBrush(
@@ -181,7 +182,7 @@ internal sealed class SvgPaintCache
                     radial.Radius0,
                     radial.RepetitionMode,
                     radial.GradientTransform,
-                    radial.AlphaInterpolation,
+                    radial.AlphaRepresentation,
                     MultiplyAlpha(radial.ColorStops, opacity));
             default:
                 return brush;

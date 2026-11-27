@@ -869,7 +869,7 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
             return;
         }
 
-        PixelBlender<TPixel> blender = PixelOperations<TPixel>.Instance.GetPixelBlender(graphicsOptions);
+        PixelBlender<TPixel> blender = PixelBlenders<TPixel>.GetPixelBlender(graphicsOptions);
         Span<float> amounts = brushWorkspace.GetAmounts(overlap.Width);
         amounts[..overlap.Width].Fill(graphicsOptions.BlendPercentage);
 
@@ -923,7 +923,7 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
             throw new NotSupportedException($"{nameof(DefaultDrawingBackend)} requires CPU-accessible destination frames.");
         }
 
-        PixelBlender<TPixel> blender = PixelOperations<TPixel>.Instance.GetPixelBlender(options);
+        PixelBlender<TPixel> blender = PixelBlenders<TPixel>.GetPixelBlender(options);
         float blendPercentage = options.BlendPercentage;
 
         int srcWidth = sourceRegion.Width;

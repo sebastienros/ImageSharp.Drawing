@@ -35,7 +35,7 @@ internal sealed class SvgFeBlend : SvgFilterPrimitive
     /// <param name="mode">The blend mode.</param>
     private SvgFeBlend(int input, int input2, SvgBlendMode mode)
         : base([input, input2])
-        => this.blender = PixelOperations<RgbaVector>.Instance.GetPixelBlender(
+        => this.blender = PixelBlenders<RgbaVector>.GetPixelBlender(
             mode == SvgBlendMode.Normal ? PixelColorBlendingMode.Normal : SvgEmitter.ToColorBlendingMode(mode),
             PixelAlphaCompositionMode.SrcOver);
 
@@ -75,17 +75,21 @@ internal sealed class SvgFeBlend : SvgFilterPrimitive
             Span<Rgba32> row = output.GetRow(y);
             inputs[0].CopyRow(y, area.Left, row);
             inputs[1].CopyRow(y, area.Left, backdropRow);
+
+            // The blend takes straight colors in the range 0 to 1. A straight channel can come out one unit in the last
+            // place above 1 (R * (1 / A) for R = A), so every channel is clamped, as RgbaVector.FromScaledVector4 of
+            // ImageSharp 4.1.2 did; ImageSharp 5 bounds only the alpha to [0, 1].
             for (int x = 0; x < width; x++)
             {
-                source[x] = RgbaVector.FromScaledVector4(SvgFilterColor.Unpremultiply(row[x]));
-                backdrop[x] = RgbaVector.FromScaledVector4(SvgFilterColor.Unpremultiply(backdropRow[x]));
+                source[x] = RgbaVector.FromUnassociatedScaledVector4(Vector4.Clamp(SvgFilterColor.Unpremultiply(row[x]), Vector4.Zero, Vector4.One));
+                backdrop[x] = RgbaVector.FromUnassociatedScaledVector4(Vector4.Clamp(SvgFilterColor.Unpremultiply(backdropRow[x]), Vector4.Zero, Vector4.One));
             }
 
             // The blend writes over the backdrop, which is the destination of the source-over composite.
             this.blender.Blend(context.Configuration, backdrop, backdrop, source, 1F);
             for (int x = 0; x < width; x++)
             {
-                Vector4 color = backdrop[x].ToScaledVector4();
+                Vector4 color = backdrop[x].ToUnassociatedScaledVector4();
                 row[x] = SvgFilterColor.Premultiply(color);
             }
         }

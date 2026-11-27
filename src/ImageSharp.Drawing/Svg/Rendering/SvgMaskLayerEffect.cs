@@ -54,15 +54,21 @@ internal sealed class SvgMaskLayerEffect : LayerEffect
     /// <summary>
     /// Gets the effect for luminance on sRGB values, the default of <c>mask-type: luminance</c>.
     /// </summary>
+    /// <remarks>
+    /// The rows convert with unassociated alpha, which <see cref="LuminanceToAlpha"/> needs. For a pixel format that stores
+    /// straight alpha this is its native representation, so the modifier changes nothing for such a format.
+    /// </remarks>
     public static SvgMaskLayerEffect Luminance { get; }
-        = new(static context => context.ProcessPixelRowsAsVector4(LuminanceToAlpha));
+        = new(static context => context.ProcessPixelRowsAsVector4(LuminanceToAlpha, PixelConversionModifiers.UnPremultiply));
 
     /// <summary>
     /// Gets the effect for luminance on linear-light values, for <c>color-interpolation: linearRGB</c> on the mask. The
     /// conversion expands the sRGB transfer function before the operation sees the values.
     /// </summary>
     public static SvgMaskLayerEffect LinearLuminance { get; }
-        = new(static context => context.ProcessPixelRowsAsVector4(LuminanceToAlpha, PixelConversionModifiers.SRgbCompand));
+        = new(static context => context.ProcessPixelRowsAsVector4(
+            LuminanceToAlpha,
+            PixelConversionModifiers.SRgbCompand | PixelConversionModifiers.UnPremultiply));
 
     /// <inheritdoc/>
     public override int Reach => 0;

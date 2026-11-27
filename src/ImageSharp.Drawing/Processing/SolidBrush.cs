@@ -206,9 +206,10 @@ public sealed class SolidBrush : Brush
         /// <returns><see langword="true"/> when the proof holds.</returns>
         /// <remarks>
         /// <para>
-        /// The blender is compared with the shared instances that <see cref="PixelOperations{TPixel}"/> returns for normal
-        /// source-over and normal source composition, which also excludes any pixel format whose operations would choose
-        /// another blender. Both compose the straight (unassociated) color <c>s</c> with alpha <c>sA</c> over the backdrop
+        /// The blender is compared with the shared instances that <see cref="PixelBlenders{TPixel}"/> returns for normal
+        /// source-over and normal source composition. For the admitted formats, which store straight alpha, these are the
+        /// straight-alpha blenders of ImageSharp 5.0.0-alpha.0.38 (<c>DefaultPixelBlenders</c>); a format with associated
+        /// alpha gets other instances and is not admitted. Both compose the straight (unassociated) color <c>s</c> with alpha <c>sA</c> over the backdrop
         /// <c>b</c> with alpha <c>bA</c>, then mix the result <c>r</c> with the backdrop by the coverage in associated form:
         /// <c>(rA * r - bA * b) * coverage + bA * b</c> for the color and <c>(rA - bA) * coverage + bA</c> for the alpha,
         /// and divide the color by the alpha unless the alpha is 0. With coverage exactly 1 the mix returns
@@ -248,17 +249,16 @@ public sealed class SolidBrush : Brush
                 return false;
             }
 
-            PixelOperations<TPixel> operations = PixelOperations<TPixel>.Instance;
-            PixelBlender<TPixel> blender = operations.GetPixelBlender(options);
+            PixelBlender<TPixel> blender = PixelBlenders<TPixel>.GetPixelBlender(options);
 
             // The blender converts the brush color with this call, so the alpha tests see its value.
             float alpha = color.ToUnassociatedScaledVector4().W;
-            if (ReferenceEquals(blender, operations.GetPixelBlender(PixelColorBlendingMode.Normal, PixelAlphaCompositionMode.SrcOver)))
+            if (ReferenceEquals(blender, PixelBlenders<TPixel>.NormalSrcOver))
             {
                 return alpha == 1F;
             }
 
-            if (!ReferenceEquals(blender, operations.GetPixelBlender(PixelColorBlendingMode.Normal, PixelAlphaCompositionMode.Src)))
+            if (!ReferenceEquals(blender, PixelBlenders<TPixel>.NormalSrc))
             {
                 return false;
             }
@@ -324,12 +324,14 @@ public sealed class SolidBrush : Brush
         /// </para>
         /// <para>
         /// Every other pixel goes through the same blender loop as in a blend of the whole row. The blender of
-        /// ImageSharp 4.1.2 runs its vector loop over the first <c>BlendGroup * floor(length / BlendGroup)</c>
+        /// ImageSharp 5.0.0-alpha.0.38 (as of 4.1.2) runs its vector loop over the first <c>BlendGroup * floor(length / BlendGroup)</c>
         /// pixels of each call (four pixels per 512-bit register, two per 256-bit register) and a scalar loop over
         /// the rest. The two loops can differ in the last bit, because only the vector loop fuses its
         /// multiply-adds, and a call of 2 or 3 pixels on a machine with 512-bit vectors takes the 256-bit loop.
         /// The conversions to and from <see cref="System.Numerics.Vector4"/> give the same value in their vector
-        /// and scalar parts. So every piece that this method blends starts at a multiple of <c>BlendGroup</c>,
+        /// and scalar parts, and in the per-pixel path that a short row of a three-channel format takes: an 8-bit
+        /// channel reads as <c>byte / 255</c> and writes as <c>(byte)clamp(255 * x + 0.5)</c>, and a 16-bit channel
+        /// writes with rounding half to even, in every path. So every piece that this method blends starts at a multiple of <c>BlendGroup</c>,
         /// each piece but the last has a length that is a multiple of it, and the last piece, which ends at the
         /// end of the row, is at least <c>BlendGroup</c> pixels long or exactly one pixel long.
         /// </para>

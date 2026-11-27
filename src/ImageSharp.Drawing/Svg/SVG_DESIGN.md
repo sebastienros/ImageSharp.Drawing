@@ -1,6 +1,6 @@
 # SVG Rendering: Design Proposal
 
-Status: accepted. Phases 0 to 5 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, section 16 the phase 4 (filters) results, and section 17 the phase 5 (decoder, CSS, and SVG 2) results, each with its known gaps. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md` to `SVG_IMPLEMENTATION_PHASE5.md`; phase 6 (performance) is planned in `SVG_IMPLEMENTATION_PHASE6.md` and in progress: section 18 holds its baseline (the comparison matrix, peak memory, the ranked targets, and their profiles).
+Status: accepted. Phases 0 to 5 are implemented; section 14 lists the phase 2 results, section 15 the phase 3 (text) results, section 16 the phase 4 (filters) results, and section 17 the phase 5 (decoder, CSS, and SVG 2) results, each with its known gaps. Section 20 holds Upstream Sync 1: the merge of upstream `main` (ImageSharp 5, the gradient alpha representation, `Fill(Pen, IPath)`), the removal of the decoder at the request of the upstream owner, and `init` accessors on the option classes. The implementation plans are in `SVG_IMPLEMENTATION.md` (phases 0 and 1), `SVG_IMPLEMENTATION_PHASE2.md` to `SVG_IMPLEMENTATION_PHASE5.md`; phase 6 (performance) is planned in `SVG_IMPLEMENTATION_PHASE6.md` and in progress: section 18 holds its baseline (the comparison matrix, peak memory, the ranked targets, and their profiles).
 
 This document proposes static SVG rendering on top of `DrawingCanvas`. It covers scope, architecture, public API, performance design, benchmarks, and conformance tests. It compares the target feature set with the two renderers .NET users reach for today: NetVips (librsvg) and Skia.
 
@@ -79,7 +79,7 @@ SixLabors.Fonts issues #568, #570, and #572 show that Fonts has its own SVG inte
 | Per-glyph `x`/`y`/`dx`/`dy`/`rotate` lists | Single values only | Yes | Yes | 3 | Yes |
 | Filters | 17 primitives and `feDropShadow` | 14 primitives | All primitives modelled, partial parity | 4 | Yes: all primitives of Filter Effects Level 1 (section 16); no `BackgroundImage`, `BackgroundAlpha`, `FillPaint`, `StrokePaint`, as in Chromium; CPU backend only |
 | CSS filter functions | Yes | — | Not stated | 4 | Yes (the ten functions and filter lists) |
-| Image decoder (`Image.Load`, `Image.Identify`, `svgz`) | Yes (libvips `svgload`) | — | — | 5 | Yes, opt-in through `SvgConfigurationModule`; renders the vector content at the target size (section 6) |
+| Image decoder (`Image.Load`, `Image.Identify`, `svgz`) | Yes (libvips `svgload`) | — | — | 5 | No: built in phase 5 (opt-in through `SvgConfigurationModule`), removed in Upstream Sync 1 at the request of the upstream owner (section 20); `SvgDocument.Render` and `DrawSvg` remain |
 | Layer memory limit | — | — | — | 5 | Yes (`SvgLimits.MaxLayerPixels`, section 10) |
 | Animation, scripting | — | — | Opt-in runtime | Never | — |
 | SVG fonts | — | — | Not stated | Never | — |
@@ -168,17 +168,18 @@ public sealed class SvgDocument
 
 public sealed class SvgLoadOptions
 {
-    public float Dpi { get; set; } = 96F;
-    public IReadOnlyFontCollection? Fonts { get; set; }
-    public string? DefaultFontFamily { get; set; }
-    public string? UserStylesheet { get; set; }
-    public Color CurrentColor { get; set; } = Color.Black;
+    // The properties are init accessors since Upstream Sync 1 (section 20); the sketch of phase 1 had setters.
+    public float Dpi { get; init; } = 96F;
+    public IReadOnlyFontCollection? Fonts { get; init; }
+    public string? DefaultFontFamily { get; init; }
+    public string? UserStylesheet { get; init; }
+    public Color CurrentColor { get; init; } = Color.Black;
 
     // Null means data URIs only. No file or network access.
-    public ISvgResourceResolver? ResourceResolver { get; set; }
+    public ISvgResourceResolver? ResourceResolver { get; init; }
 
     // Input limits. See section 10.
-    public SvgLimits Limits { get; set; }
+    public SvgLimits Limits { get; init; }
 }
 
 public abstract partial class DrawingCanvas
@@ -191,7 +192,7 @@ public abstract partial class DrawingCanvas
 }
 ```
 
-Phase 5 added rendering to a new image, an ImageSharp decoder, and a layer memory limit. This is the complete public API of the phase, all in `SixLabors.ImageSharp.Drawing.Svg` (`where TPixel : unmanaged, IPixel<TPixel>` on every generic method):
+Phase 5 added rendering to a new image, an ImageSharp decoder, and a layer memory limit. Upstream Sync 1 (section 20) removed the decoder at the request of the upstream owner: `Image.Load` of an SVG file would set expectations that SVG cannot meet, so a user creates an image of the size that is needed and calls `DrawSvg`, or calls `SvgDocument.Render`. The removed public types were `SvgDecoder`, `SvgDecoderOptions`, `SvgFormat`, `SvgImageFormatDetector`, and `SvgConfigurationModule`. Upstream Sync 1 also made every property of `SvgLoadOptions` and `SvgLimits` an `init` accessor, so the options of a loaded document cannot change. This is the public API that phase 5 added and that remains, all in `SixLabors.ImageSharp.Drawing.Svg` (`where TPixel : unmanaged, IPixel<TPixel>` on every generic method):
 
 ```csharp
 public sealed partial class SvgDocument
@@ -209,52 +210,27 @@ public sealed partial class SvgDocument
     public Image<TPixel> Render<TPixel>(Configuration configuration, Size size, Color backgroundColor);
 }
 
-public sealed class SvgFormat : IImageFormat
-{
-    public static SvgFormat Instance { get; }
-    public string Name { get; }                                       // "SVG"
-    public string DefaultMimeType { get; }                            // "image/svg+xml"
-    public IEnumerable<string> MimeTypes { get; }                     // image/svg+xml
-    public IEnumerable<string> FileExtensions { get; }                // svg, svgz
-}
-
-public sealed class SvgImageFormatDetector : IImageFormatDetector
-{
-    public int HeaderSize { get; }                                    // 512
-    public bool TryDetectFormat(ReadOnlySpan<byte> header, [NotNullWhen(true)] out IImageFormat? format);
-}
-
-public sealed class SvgDecoder : SpecializedImageDecoder<SvgDecoderOptions>
-{
-    public static SvgDecoder Instance { get; }
-    protected override ImageInfo Identify(DecoderOptions options, Stream stream, CancellationToken cancellationToken);
-    protected override Image<TPixel> Decode<TPixel>(SvgDecoderOptions options, Stream stream, CancellationToken cancellationToken);
-    protected override Image Decode(SvgDecoderOptions options, Stream stream, CancellationToken cancellationToken);   // Rgba32
-    protected override SvgDecoderOptions CreateDefaultSpecializedOptions(DecoderOptions options);
-}
-
-public sealed class SvgDecoderOptions : ISpecializedDecoderOptions
-{
-    public DecoderOptions GeneralOptions { get; init; }               // new DecoderOptions()
-    public SvgLoadOptions LoadOptions { get; init; }                  // new SvgLoadOptions(); null throws
-    public Color BackgroundColor { get; init; }                       // Color.Transparent
-}
-
-public sealed class SvgConfigurationModule : IImageFormatConfigurationModule
-{
-    public void Configure(Configuration configuration);               // format, both detectors, SvgDecoder.Instance
-}
-
 public sealed class SvgLimits
 {
     // The largest total of the pixels of the layers that one draw keeps open at the same time.
-    public long MaxLayerPixels { get; set; }                          // 268,435,456 (16 × 4096 × 4096); must be > 0
+    public long MaxLayerPixels { get; init; }                         // 268,435,456 (16 × 4096 × 4096); must be > 0
 }
 ```
 
-`Identify` receives the general options only (the ImageSharp decoder contract), so it loads with default `SvgLoadOptions`; it loads the whole document, as `SvgDocument.Load` does, and does not render. An internal second detector (`SvgShortDataFormatDetector`, header size 5) is not public API.
+The options are set with an object initializer; the accessors validate their values as before:
 
-The decoder is opt-in: `configuration.Configure(new SvgConfigurationModule())`. `Configuration.Default` does not change. `DecoderOptions.TargetSize` follows the rule of the ImageSharp decoders (resize only when both sides differ, `ResizeMode.Max`), and the document renders directly at that size. Sizes that the document determines are bounded by `SvgLimits.MaxImagePixels` and by 65,535 pixels on a side before any pixel memory is allocated; gzip input inflates up to 64 MiB. The detector reads 512 bytes (the root element or a `DOCTYPE svg` must start within them); the module also registers a detector for data shorter than 512 bytes, which ImageSharp would not pass to a detector with a larger header size.
+```csharp
+SvgLoadOptions options = new()
+{
+    Dpi = 144,
+    FontCollection = fonts,
+    Limits = new SvgLimits { MaxImagePixels = 16 * 1024 * 1024 },
+};
+
+SvgDocument document = SvgDocument.Load("drawing.svg", options);
+using Image<Rgba32> image = new(800, 600);
+image.Mutate(x => x.Paint(canvas => canvas.DrawSvg(document, new RectangleF(0, 0, 800, 600))));
+```
 
 ## 7. Mapping SVG to the Canvas
 
@@ -262,8 +238,8 @@ The decoder is opt-in: `configuration.Configure(new SvgConfigurationModule())`. 
 |---|---|---|
 | `transform`, viewport | `DrawingOptions.Transform` | Composed at resolve time into one matrix per node. |
 | `fill`, `fill-rule` | `Fill(brush, path)`, `DrawingOptions.IntersectionRule` | |
-| `stroke-*` | `Draw(pen, path)`, `SolidPen`, `PatternPen`, `StrokeOptions` | `miter-clip` and `arcs` joins have no match and fall back to `miter`. |
-| `linearGradient` | `LinearGradientBrush` | `gradientTransform` maps to `GradientTransform`. |
+| `stroke-*` | `Draw(pen, path)`, `SolidPen`, `PatternPen`, `StrokeOptions` | `miter-clip` and `arcs` joins have no match and fall back to `miter`. Under a non-uniform scale or a skew the stroke is the outline of the user space stroke: `Fill(pen, path)` (upstream, Upstream Sync 1) when the transform does not enlarge, an outline built at device precision by the emitter when it enlarges (section 20). `vector-effect: non-scaling-stroke` builds its outline in host space. |
+| `linearGradient` | `LinearGradientBrush` | `gradientTransform` maps to `GradientTransform`. SVG gradients interpolate unassociated colors: `AlphaRepresentation = PixelAlphaRepresentation.Unassociated` (the upstream form of the gradient option, Upstream Sync 1). |
 | `radialGradient` | `RadialGradientBrush` two-circle form | Covers `fx`, `fy`, and `fr`. |
 | `spreadMethod` | `GradientRepetitionMode.None`, `Repeat`, `Reflect` | |
 | `pattern` | Tile rendered to an image, then `ImageBrush` with `WrapMode.Repeat` | Tile resolution follows the output scale. |
@@ -388,7 +364,7 @@ SVG arrives from untrusted sources. Issue #385 showed crashes in the path parser
 - **Expansion.** Nested `use` can multiply nodes exponentially. Limits on instance count, element count, and nesting depth live in `SvgLimits`.
 - **Buffers.** Limits on layer, pattern tile, and filter region sizes. Blur radius is clamped. `SvgLimits` has `MaxElements`, `MaxNodes`, `MaxNestingDepth`, `MaxCharactersFromEntities`, `MaxImagePixels`, `MaxPatternTilePixels`, `MaxTextCharacters`, `MaxFilterPixels`, and, since phase 5, `MaxLayerPixels`: the largest total of the pixels of the layers that one draw keeps open at the same time (default 16 × 4096 × 4096). A pass over the render nodes with the transform of the draw computes the total before anything is recorded, and a draw over the limit throws `InvalidImageContentException` without changing the canvas. Nested SVG images are part of the draw that shows them. Filter content and pattern tiles draw on canvases of their own, which are checked when they draw; filter buffers count against `MaxFilterPixels`. At 4000 pixels on the long edge the largest total of the benchmark corpus is 2.2 million pixels (StyledLandscape) and of the resvg suite 41 million (`masking/mask/mask-on-child`, 2.6 canvases), a margin of 6.5 to the default.
 - **Numbers.** NaN, infinity, and overflow in lengths and transforms make the node invalid. They do not reach the rasterizer.
-- **Decoder.** `SvgDecoder` checks the size of the image before it allocates pixel memory: a size that the document determines (the intrinsic size, or the size that fits a target size) may have at most `SvgLimits.MaxImagePixels` pixels and at most 65,535 pixels on a side (an internal constant: the scratch rows of each rasterizer worker grow with the width of the canvas, about 128 bytes per pixel of width), and a document with a side that is zero, not finite, or larger than `int.MaxValue` pixels is refused; each throws `InvalidImageContentException`. `MaxImagePixels` is reused for the output size instead of a separate public limit (decided by the user), so one setting bounds both the decoded pixels of embedded `image` elements and the rendered output of the decoder and of `SvgDocument.Render` at the intrinsic size; `SvgDocument.Render(size)` with a caller's size is not limited. Gzip data (`svgz`) inflates into memory up to 64 MiB (67,108,864 bytes, the internal bound that `image` elements already used for `svgz` files), and more throws when the limit is reached. Detection reads 512 bytes: the root element, or a `DOCTYPE svg`, must start within them, so a document with a longer prolog is not detected and needs the decoder passed explicitly (the root element of every corpus and suite file starts within 277 bytes); ImageSharp reads every header into a stack buffer when no registered detector asks for more than 512 bytes, so a larger window would make the detection of every format allocate.
+- **Decoder (phase 5, removed in Upstream Sync 1).** The decoder was removed at the request of the upstream owner (section 20); `SvgDocument.Render` at the intrinsic size keeps the size checks below, and `image` elements keep the 64 MiB bound of `svgz` data. As built in phase 5: `SvgDecoder` checked the size of the image before it allocated pixel memory: a size that the document determines (the intrinsic size, or the size that fits a target size) may have at most `SvgLimits.MaxImagePixels` pixels and at most 65,535 pixels on a side (an internal constant: the scratch rows of each rasterizer worker grow with the width of the canvas, about 128 bytes per pixel of width), and a document with a side that is zero, not finite, or larger than `int.MaxValue` pixels is refused; each throws `InvalidImageContentException`. `MaxImagePixels` is reused for the output size instead of a separate public limit (decided by the user), so one setting bounds both the decoded pixels of embedded `image` elements and the rendered output of the decoder and of `SvgDocument.Render` at the intrinsic size; `SvgDocument.Render(size)` with a caller's size is not limited. Gzip data (`svgz`) inflates into memory up to 64 MiB (67,108,864 bytes, the internal bound that `image` elements already used for `svgz` files), and more throws when the limit is reached. Detection reads 512 bytes: the root element, or a `DOCTYPE svg`, must start within them, so a document with a longer prolog is not detected and needs the decoder passed explicitly (the root element of every corpus and suite file starts within 277 bytes); ImageSharp reads every header into a stack buffer when no registered detector asks for more than 512 bytes, so a larger window would make the detection of every format allocate.
 - **CSS values.** Internal limits, each of which makes the value invalid when exceeded: a `var()` substitution longer than 32,768 characters (a chain of custom properties that doubles at each step stops after about 12 steps), `var()` references and fallbacks nested deeper than 32, and 16 million characters produced by all substitutions of one document (`use` instances substitute again); math functions nested deeper than 32 or with more than 256 values and operators, and 65,536 math functions that mix units per document; color functions nested deeper than 16.
 - **Fuzzing.** A fuzz target for `SvgDocument.Load` belongs in the test plan.
 
@@ -403,7 +379,7 @@ Each phase ships with conformance results and benchmark numbers.
 | 2 | `clipPath`, `mask`, `pattern`, markers, `image`, `switch`, blend modes, `paint-order`, full selectors, user stylesheet. | Beyond `SkSVGDOM` in CSS, markers, and blending |
 | 3 | Text: `text`, `tspan`, `textPath`, anchors, font matching and fallback. | Text layout parity is the hardest area in every renderer |
 | 4 | Filters: the `filter` property, the `filter` element, every primitive of Filter Effects Level 1, and the CSS filter functions, in one off-screen engine (7.3). | librsvg static feature list |
-| 5 | Optional: ImageSharp decoder, more SVG 2 features. | — |
+| 5 | Optional: ImageSharp decoder, more SVG 2 features. The decoder was removed in Upstream Sync 1 at the request of the upstream owner (section 20). | — |
 
 ## 12. Conformance Tests
 
@@ -415,8 +391,8 @@ Each phase ships with conformance results and benchmark numbers.
 
 ## 13. Open Questions
 
-1. **Location.** Decided: the core package under `src/ImageSharp.Drawing/Svg/`, like `Barcodes/`. It adds no dependency and the assembly is trimmable.
-2. **Decoder integration.** Decided in phase 5: an SVG decoder in the core package, not registered by default. A caller opts in with `SvgConfigurationModule`, so referencing the package changes format detection for no one (section 6).
+1. **Location.** Decided: the core package under `src/ImageSharp.Drawing/Svg/`, like `Barcodes/`. It adds no dependency and the assembly is trimmable. The upstream owner confirmed it in his reply to the proposal (discussion 435 of `SixLabors/ImageSharp.Drawing`, 27 November 2026): the SVG code stays in the existing package.
+2. **Decoder integration.** Decided in phase 5: an SVG decoder in the core package, not registered by default. Answered by the upstream owner: no `.svg` decoder, because `Image.Load` of an SVG file would set expectations that SVG cannot meet; a user creates an image of the size that is needed and calls `DrawSvg`. Upstream Sync 1 removed the decoder (section 20). The owner also accepted the gradient option in the form that upstream merged (`AlphaRepresentation` of type `PixelAlphaRepresentation`), added `DrawingCanvas.Fill(Pen, IPath)`, and required `init` accessors on `SvgLoadOptions` and `SvgLimits`.
 3. **Shared parser with Fonts.** Should the OpenType SVG glyph interpreter in SixLabors.Fonts and this feature share code?
 4. **CSS depth for phase 1.** Simple selectors cover most design-tool exports. A full selector engine is a larger piece of work.
 5. **Text fonts.** Decided in phase 3: the caller gives the fonts (`SvgLoadOptions.FontCollection`, default the system fonts), the generic families, the default family (`serif`), and the fallback families, with a fixed, documented fallback order. A document never causes a font file to be read.
@@ -676,11 +652,13 @@ The lighting count is 21, not the 20 reported by the lighting work: 9 tests at 5
 
 ## 17. Phase 5 Results (Decoder and More SVG 2)
 
+The decoder of this phase (`SvgDecoder`, `SvgDecoderOptions`, `SvgFormat`, the two format detectors, and `SvgConfigurationModule`) was removed in Upstream Sync 1 at the request of the upstream owner (section 20). The descriptions and the measured numbers below stay as the history of the phase; `SvgDocument.Render`, the layer memory limit, and the CSS and SVG 2 features remain.
+
 ### 17.1 What renders
 
 | Area | Implemented |
 |---|---|
-| Decoder | `SvgFormat`, `SvgImageFormatDetector`, `SvgDecoder`, `SvgDecoderOptions`, `SvgConfigurationModule` (opt-in), and `SvgDocument.Render` (section 6): UTF-8, UTF-16, and gzip input; `Identify`; `Decode` at the intrinsic size or directly at the target size; the limits of section 10. |
+| Decoder (removed in Upstream Sync 1; `SvgDocument.Render` remains) | `SvgFormat`, `SvgImageFormatDetector`, `SvgDecoder`, `SvgDecoderOptions`, `SvgConfigurationModule` (opt-in), and `SvgDocument.Render` (section 6): UTF-8, UTF-16, and gzip input; `Identify`; `Decode` at the intrinsic size or directly at the target size; the limits of section 10. |
 | Layer memory | `SvgLimits.MaxLayerPixels`, checked before a draw changes the canvas. |
 | Custom properties | `var()` with fallbacks, inheritance, cycles, the guaranteed-invalid value, shorthands, and presentation attributes where Chromium accepts it, with bounded substitution (section 10). |
 | Geometry properties | `x`, `y`, `width`, `height`, `cx`, `cy`, `r`, `rx`, `ry`, `d: path()` and `none` from CSS, on `rect`, `circle`, `ellipse`, `path`, `use` (`x`, `y`), and `image`. |
@@ -691,7 +669,7 @@ The lighting count is 21, not the 20 reported by the lighting work: 9 tests at 5
 | Basic shapes in `clip-path` | `inset()`, `circle()`, `ellipse()`, `polygon()`, `path()`, `xywh()`, `rect()`, and boxes alone, with `fill-box`, `stroke-box`, `view-box` (and the CSS box names), as attribute and in CSS. |
 | SVG 2 items | `pathLength` on dashes and `textPath`; the font feature and font variant properties; `white-space-collapse` and the CSS Text 4 forms of `white-space`; `:lang()`; `image-rendering` `pixelated` and `crisp-edges`; `paint-order`, `vector-effect`, and `mix-blend-mode` on text and through `use`. |
 
-Where the features meet (the cross-feature tests of `SvgCrossFeatureRenderTests`, 15 documents compared with the Chromium oracle at the test size: total differences 0 to 0.95%, all of them antialiasing of edges and glyphs and the decisions of 17.4): `var()` and math functions inside basic shapes and inside `d: path()`, `ch` in basic shapes, a CSS `d` with `pathLength`, dashes, markers, and `textPath`, geometry from CSS with clip shapes and their boxes, markers, patterns and masks in `objectBoundingBox` units, filter regions, and `use`, the CSS transform with `transform-box` and clip shapes, `var()` in paint, geometry, filters, and the font feature properties, the new colors in gradient stops, `flood-color`, `lighting-color`, and `currentColor`, `:lang()` rules that set geometry and custom properties, clip shapes with masks, filters, opacity, blend modes, patterns, and `use`, text inside embedded SVG images, and the decoder with text, an image, filters, custom properties, and clip shapes in one document (`SvgDecoderTests.Decode_DocumentWithEveryFeatureKind_EqualsDrawSvg`: equal to `DrawSvg` at the intrinsic size and at a target size; 0.40% and 0.15% from the oracle).
+Where the features meet (the cross-feature tests of `SvgCrossFeatureRenderTests`, 15 documents compared with the Chromium oracle at the test size: total differences 0 to 0.95%, all of them antialiasing of edges and glyphs and the decisions of 17.4): `var()` and math functions inside basic shapes and inside `d: path()`, `ch` in basic shapes, a CSS `d` with `pathLength`, dashes, markers, and `textPath`, geometry from CSS with clip shapes and their boxes, markers, patterns and masks in `objectBoundingBox` units, filter regions, and `use`, the CSS transform with `transform-box` and clip shapes, `var()` in paint, geometry, filters, and the font feature properties, the new colors in gradient stops, `flood-color`, `lighting-color`, and `currentColor`, `:lang()` rules that set geometry and custom properties, clip shapes with masks, filters, opacity, blend modes, patterns, and `use`, text inside embedded SVG images, and the decoder with text, an image, filters, custom properties, and clip shapes in one document (`SvgDecoderTests.Decode_DocumentWithEveryFeatureKind_EqualsDrawSvg`, removed with the decoder in Upstream Sync 1; the document keeps its reference image in `SvgCrossFeatureRenderTests`: equal to `DrawSvg` at the intrinsic size and at a target size; 0.40% and 0.15% from the oracle).
 
 Defects that the cross-feature tests found, each fixed with a reference image: `round` with a math function in `inset()`, `xywh()`, and `rect()` was split at its spaces and dropped the shape; `ch` in basic shapes used half the font size; `textPath` on a path whose geometry comes from CSS `d` used the `d` attribute (and `pathLength` scaled `startOffset` by the length of the attribute path).
 
@@ -726,7 +704,7 @@ Outcome transitions of the phase:
 
 BenchmarkDotNet 0.15.8 on a shared 4-core Intel Xeon 2.30 GHz container, .NET 10.0.15, Ubuntu 24.04.5. Means with the error column (99.9% interval). The short job is 3 warmup and 3 measured iterations in one launch; where more iterations were run, it is stated. The machine is noisy: the same case varies by more than its error column between runs, so alternating rounds of two trees were used to compare them.
 
-Decoder (`DecodeSvg`, 5 warmup and 15 measured iterations, default threads, default load options): `Image.Load` with `SvgConfigurationModule` against `SvgDocument.Load` plus `DrawSvg` into a new image of the same size, and `Image.Identify` against `SvgDocument.Load`.
+Decoder (`DecodeSvg`, a benchmark removed with the decoder in Upstream Sync 1; 5 warmup and 15 measured iterations, default threads, default load options): `Image.Load` with `SvgConfigurationModule` against `SvgDocument.Load` plus `DrawSvg` into a new image of the same size, and `Image.Identify` against `SvgDocument.Load`.
 
 | Document | Long edge | `Image.Load` | Load and `DrawSvg` | `Image.Identify` | `SvgDocument.Load` | Allocated (`Image.Load`) |
 |---|---|---|---|---|---|---|
@@ -785,8 +763,8 @@ Regression check against the phase 4 merge (commit 68408c9, built from `git arch
 | `light-dark()` | CSS Color 5: by the color scheme | The light color (the oracle renders an SVG document as an image) | The first color | 0 | 0 |
 | Math functions in text position lists | CSS Values 4 does not cover SVG number lists | Accepts a function without spaces (`calc(10px)`), not `calc(100px + 10px)` or `max(5px, 10px)` | No math functions in these lists | 0 | 0 |
 | Default of `SvgLimits.MaxLayerPixels` (decided by the user) | — | — | 16 × 4096 × 4096 = 268,435,456 pixels, which allows about 1 GiB of layer pixels at the limit with `Rgba32` (4 bytes per pixel); a margin of 6.5 to the largest total of the suite at 4000 px (the tighter option, half of it, would keep a margin of 3.2) | 0 | 0 |
-| Output size limit of the decoder (decided by the user) | — | — | Reuses `SvgLimits.MaxImagePixels` (plus 65,535 pixels on a side) instead of a separate public limit: the one limit bounds the embedded images and the rendered output of the decoder and of `Render` at the intrinsic size | 0 | 0 |
-| `Identify` | — | — | Loads the whole document with default `SvgLoadOptions` (the decoder contract passes general options only) | 0 | 0 |
+| Output size limit of the decoder (decided by the user; the decoder was removed in Upstream Sync 1, the limit still bounds `SvgDocument.Render` at the intrinsic size) | — | — | Reuses `SvgLimits.MaxImagePixels` (plus 65,535 pixels on a side) instead of a separate public limit: the one limit bounds the embedded images and the rendered output of the decoder and of `Render` at the intrinsic size | 0 | 0 |
+| `Identify` (removed with the decoder in Upstream Sync 1) | — | — | Loads the whole document with default `SvgLoadOptions` (the decoder contract passes general options only) | 0 | 0 |
 | `font-feature-settings` with a value above 1, `"calt" 0` | CSS Fonts 4 | Applied | The first alternate; `calt` and the other default features stay on (17.6) | 0 | 0 |
 | `currentColor` inside a custom property that `color-mix()` uses | CSS Color 5 | Resolved at the element | The declaration is invalid (17.7) | 0 | 0 |
 | Text in an SVG document that an `image` element embeds (decided by the user) | SVG 2 does not restrict it | Draws it with the fonts of the page | Draws it with the font settings of the outer load options (`FontCollection`, generic families, default and fallback families); the nested document still reads no file, `@font-face` is skipped as in every document, and its characters count against the text limit of the outer document | 1 (`structure/image/embedded-svg-with-text`, whose reference draws no text, listed `fail reference:`) | +1 |
@@ -794,9 +772,9 @@ Regression check against the phase 4 merge (commit 68408c9, built from `git arch
 
 ### 17.5 Limits
 
-Section 10 lists them: `SvgLimits.MaxLayerPixels`, the decoder bounds (`MaxImagePixels` and 65,535 pixels on a side for sizes the document determines, 64 MiB of inflated gzip data, the 512-byte detection window), and the internal limits of CSS values (32,768 characters per substitution, nesting of 32 for `var()` and for math functions, 256 values and operators per math function, 16 million substituted characters and 65,536 mixed math functions per document, color nesting of 16). Each internal limit makes the value invalid; none throws.
+Section 10 lists them: `SvgLimits.MaxLayerPixels`, the decoder bounds (the decoder was removed in Upstream Sync 1; `SvgDocument.Render` keeps the size bounds and `image` elements the gzip bound) (`MaxImagePixels` and 65,535 pixels on a side for sizes the document determines, 64 MiB of inflated gzip data, the 512-byte detection window), and the internal limits of CSS values (32,768 characters per substitution, nesting of 32 for `var()` and for math functions, 256 values and operators per math function, 16 million substituted characters and 65,536 mixed math functions per document, color nesting of 16). Each internal limit makes the value invalid; none throws.
 
-Hostile documents that combine the features (`SvgCrossFeatureHostileDocumentTests`): a doubling chain of custom properties inside `calc()` inside a basic shape stops at the substitution limits, twice the steps cost no more, and the shape is dropped; a document that reaches the substitution budget, the math function limits, the color nesting limit, and the layer limit at once loads and then fails at the layer limit with `InvalidImageContentException` in linear time; and every hostile document of the CSS, SVG 2, and style tests decodes through `SvgDecoder` (and through detection) or throws `InvalidImageContentException`, with the growth that its original test allows.
+Hostile documents that combine the features (`SvgCrossFeatureHostileDocumentTests`): a doubling chain of custom properties inside `calc()` inside a basic shape stops at the substitution limits, twice the steps cost no more, and the shape is dropped; a document that reaches the substitution budget, the math function limits, the color nesting limit, and the layer limit at once loads and then fails at the layer limit with `InvalidImageContentException` in linear time; and every hostile document of the CSS, SVG 2, and style tests decodes through `SvgDecoder` (and through detection) or throws `InvalidImageContentException`, with the growth that its original test allows. Since Upstream Sync 1 the same documents load with `SvgDocument.Load` and render with `SvgDocument.Render`.
 
 ### 17.6 SixLabors.Fonts
 
@@ -809,7 +787,7 @@ Phase 5 adds two needs to section 15.4: a way to turn off the default features t
 - Math functions in text position lists (17.4).
 - `shape()` in `clip-path` is not parsed.
 - The new colors interpolate in sRGB in gradients (17.4).
-- `Identify` loads and resolves the whole document, text included, to read the root element; reading the root attributes alone would make it far cheaper, but percentages and font-relative units of the root size need the root style.
+- `Identify` loads and resolves the whole document, text included, to read the root element; reading the root attributes alone would make it far cheaper, but percentages and font-relative units of the root size need the root style. (Gone with the decoder in Upstream Sync 1.)
 - No synthesized small capitals, superscripts, or subscripts for a font without the feature (Chromium synthesizes them).
 
 ### 17.8 Features that stay out
@@ -1120,7 +1098,7 @@ Stage shares are from `--profile svg`; CPU shares from `perf` with one thread un
 
 **The load cost of custom properties.** The CSS features document (56 KB, 48 cards) loads in 13.4 ± 8.5 ms with 14.4 MB (short job; `DecodeSvg.DocumentLoad` with default options, 15 iterations: 16.8 ± 2.7 ms, 14.7 MB). A stage profile at 10 pixels (600 iterations, one thread, so the render is negligible) splits it into read and cascade 6.8 ms (1.5 MB) and resolve 12.5 ms (13.2 MB); every fifth iteration runs a generation 2 collection, 5.2 ms of GC pause per iteration. CPU (`perf`): resolve 50% of the samples, of which `SvgComputedStyle.SubstituteVariables` 30% inclusive, the boxes of the `clip-path` basic shapes 19% (`GetClipShapeBox` → `TryGetChildrenStrokeBoundingBox`, which strokes each child with `PolygonStroker` and `StrokedShapeGenerator` to find its stroke box, 6.4%), and object bounding boxes 13% (`Path.CalculateBounds` through `CubicBezierLineSegment.get_Bounds`, which flattens the curve); read 24%, nearly all in `SvgPropertyParser.TryParse` (21%: `SvgCalc` parsing 10%, color functions 5%); the runtime (`libcoreclr`, the collector) 12%. Allocation: `SvgCalc.Parser.TryParseValue` 17.6% (a `double[]` per parsed value) plus `Term` and `SvgCalcOperation[]` 7%; curve flattening for bounds 13% (`FlattenCurve` from `get_Bounds`); `SubstituteVariables` 10% (`StringBuilder`, `char[]`, `string`). Two thirds of the substitution allocation comes from the bounding box walks (`TryGetChildrenBoundingBox` 3.8%, `TryGetChildrenStrokeBoundingBox` 3.7%, against 2.9% from `ResolveElement`): the computed style of an element, with its `var()` substitution, is computed again for every box query of an ancestor. So the first things to try, in this order: compute the style of an element once per resolve and reuse it in the box walks (up to two thirds of the 30% substitution share); a parsed `calc()` expression without a heap array per value (25% of the allocation); bounds of curves from their control-point hull or their extrema instead of a flattening (13% of the allocation); a stroke box that does not build the stroke outline, where that gives the same box (19% of the CPU), and the stroke box cached per element once computed. The cache of substituted values per declaration that the plan names comes after these; the profile does not show the substitution itself (`SvgVariableSubstitution.Substitute` 1.1% of the allocation) as the main cost.
 
-**The cost of `Image.Identify`.** `Image.Identify` through `SvgDecoder` loads the whole document with default load options. `DecodeSvg` (5 warmup, 15 measured iterations, default options): Tiger 1.80 ± 0.19 ms against `SvgDocument.Load` 1.77 ± 0.19 ms, Icons (40 documents) 0.77 ± 0.15 against 0.63 ± 0.10 ms, TextHeavy 8.19 ± 1.02 against 8.16 ± 0.98 ms (11.9 MB; with the system fonts the text load costs twice as much as with the benchmark font, 4.34 ms and 4.8 MB), FilterShadows 1.83 ± 0.33 against 1.94 ± 0.35 ms, CssFeatures 18.0 ± 1.6 against 16.8 ± 2.7 ms (14.7 MB); every pair of intervals overlaps and the allocation is equal within 3.5% (the Icons metadata). The floor of a cheaper path is a document that keeps only the prolog and the root start tag (plus one pixel of content, so that the profile can render): its read and resolve take 0.025 ms (Tiger), 0.029 ms (CssFeatures), 0.021 ms (FilterShadows), and 0.037 ms (TextHeavy), with 9 to 11 KB (stage profile, 2,000 iterations, one thread). An `Identify` that reads the root element and its style only would therefore cost 70 to 600 times less for these documents. It must give the same size as the full load: the root size can use font-relative units (`em`, `ex`, `ch`) whose font size can come from a `<style>` rule anywhere in the document, and percentages, so the cheap path needs the root style (17.7); a root whose `width`, `height`, and `viewBox` are absolute lengths could take the attributes alone.
+**The cost of `Image.Identify`.** This item is gone: Upstream Sync 1 removed the decoder (section 20). As measured here: `Image.Identify` through `SvgDecoder` loads the whole document with default load options. `DecodeSvg` (5 warmup, 15 measured iterations, default options): Tiger 1.80 ± 0.19 ms against `SvgDocument.Load` 1.77 ± 0.19 ms, Icons (40 documents) 0.77 ± 0.15 against 0.63 ± 0.10 ms, TextHeavy 8.19 ± 1.02 against 8.16 ± 0.98 ms (11.9 MB; with the system fonts the text load costs twice as much as with the benchmark font, 4.34 ms and 4.8 MB), FilterShadows 1.83 ± 0.33 against 1.94 ± 0.35 ms, CssFeatures 18.0 ± 1.6 against 16.8 ± 2.7 ms (14.7 MB); every pair of intervals overlaps and the allocation is equal within 3.5% (the Icons metadata). The floor of a cheaper path is a document that keeps only the prolog and the root start tag (plus one pixel of content, so that the profile can render): its read and resolve take 0.025 ms (Tiger), 0.029 ms (CssFeatures), 0.021 ms (FilterShadows), and 0.037 ms (TextHeavy), with 9 to 11 KB (stage profile, 2,000 iterations, one thread). An `Identify` that reads the root element and its style only would therefore cost 70 to 600 times less for these documents. It must give the same size as the full load: the root size can use font-relative units (`em`, `ex`, `ch`) whose font size can come from a `<style>` rule anywhere in the document, and percentages, so the cheap path needs the root style (17.7); a root whose `width`, `height`, and `viewBox` are absolute lengths could take the attributes alone.
 
 **Drawing an embedded SVG image many times.** The document of `SvgNestedImageTextTests.NestingWithTextAtEveryLevel_IsBounded` (each level a 100 × 100 image with one text line and ten instances of the next level; the image nesting limit stops at the fifth level, so 11,110 nested documents draw, 10,000 of them at the deepest level) was profiled with Open Sans named on the text. A load and draw at 100 pixels allocates 129 MB and takes 87 to 397 ms on one thread (median 150 to 171 ms in three runs of 50 iterations) and 59 to 367 ms with the default threads; 10 levels cost the same as 5 (median 187 ms), as the test expects. The stages: resolve 34 to 43 ms (50 MB), emit 43 to 65 ms (47 MB), scene build 53 to 82 ms (32 MB), scene render 5 ms. The variation comes from the garbage collector: the 50 iterations run 41 to 43 generation 2 collections, and the GC pause averages 56 to 69 ms per iteration, which is the difference between the fastest iteration (87 ms) and the median. Server GC narrows the spread to 130 to 208 ms with the same median, and a large-object threshold of 16 MB narrows it to 101 to 207 ms, so the full collections are triggered by large-object allocations. Where the bytes come from: `SvgResolver.AddNestedDocument` 31% (the `SvgRenderNode[]` of the growing node list 16% and the dictionary of transforms 8%, both large arrays that grow by doubling), `CreateRasterizableGeometry` 20% (a linearizer, band arrays, and line blocks per glyph path), `SvgEmitter.EmitState.DrawNode` 15% (a `DrawingCanvasState` and a `DrawingOptions` per instance), `PrepareCompositionCore` 7.5%, `DrawingCanvas.Clip` 4% (one clip descriptor per instance). CPU: scene build 43%, emit 27%, resolve 21%; `libcoreclr` (the collector) 25% of the samples and page faults 6%. A draw of a nested document is a scope with a clip for each instance, and every instance repeats the canvas state, the options, and the geometry of its glyph paths although the 10,000 deepest instances share one nested document.
 
@@ -1359,6 +1337,99 @@ At 1000 and 4000 pixels the default threads are faster than one thread, before a
 **Gap that remains to Svg.Skia.** With the clear at full coverage the Icons render is as fast as Svg.Skia at 1000 pixels with the default threads (×1.01) and faster at 4000 pixels (×0.21; one thread ×0.68); one thread at 1000 pixels is still ×2.7. PatternChart is faster than Svg.Skia with the default threads, and FilterShadows at 4000 pixels. The largest gaps of comparable documents at 1000 pixels are the Dashboard (×2.2 default threads, ×3.3 one thread; before ×3.0 and ×5.4), Chart (×1.35, ×2.8), Tiger (×1.1, ×2.4), and FilterShadows (×1.5, ×1.7). Where the time goes now (`perf`, one thread, 1000 pixels): in the Icons render, the clear still costs up to a quarter of the samples, but no longer in the blender: the rasterizer writes a coverage of 1 into every pixel of the rectangle (`BufferSpan` 5.8%, `EmitRows` 5.2%), the renderer searches it for runs of 1 (`IndexOf` 6.5%) and writes the pixels (`ApplySplit` 10.8%), about 0.3 ms per megapixel by these shares (an estimate; Skia about 0.17 ms). A clear of a whole-pixel rectangle could skip the coverage altogether. The rest of Icons is the blend of edge pixels and the scalar remainders of the row conversions (`ConvertFloatToByteRemainder` 9.8%, blend 9.5%). In the Dashboard, the scene render is 32 ms of 37 ms per load and render (45 ms before the path clip bands): gradients 11.9%, the blends and row conversions about 20%, the write-back of the mask effects through `ImageBrush` with `Src` (`Apply` and `TryWrap` 4.3%, plus its share of the blend), and the path clip 1.3% self. Not done in this package, and the next steps for layers: a write-back of a mask effect that copies the processed pixels where the coverage is 1 (the same proof as the clear, per pixel: `Src` at coverage 1 gives the source pixel for every alpha above 0 in 8-bit formats and zeros for alpha 0), a mask effect that runs on the layer rows in place instead of a copy into a new `Image` and a processor, worker-local layer buffers instead of an `Allocate2D` per layer band, and a composite loop that blends with one amount instead of a span of equal amounts.
 
 **Test suite.** Release build of `src/`: 0 warnings. Full test suite: 6,568 passed, 153 skipped (6,508 before, plus the 60 new clear tests). Two of six full runs with the changes failed `SvgTextHostileDocumentTests.TrefFanOut_StopsAtTheCharacterLimit`, a timing test of the parser (47 ms grew to 226 ms, and 77 ms to 488 ms, against a limit of four times while the other test classes ran in parallel); the two full runs at the start commit passed it, and it passed in three runs of its class alone. The test only parses and does not draw, and no parser code changed; the cause is not verified (the 60 new tests add CPU load to the parallel run).
+
+## 20. Upstream Sync 1
+
+The upstream owner answered the proposal on 27 November 2026 (discussion 435 of `SixLabors/ImageSharp.Drawing`), and the user decided to follow every request. Package U1 (`SVG_IMPLEMENTATION_UPSTREAM.md`) merged upstream `main` at `a4e94b8` into the branch (merge base `6f792ac`), moved the library to SixLabors.ImageSharp `5.0.0-alpha.0.38` (source commit `c6d486d7beecec05a8bc73b36cf4179c94fab82d`), replaced the gradient option of the branch with the one that upstream merged, removed the SVG decoder, made the option classes `init`-only, and uses `DrawingCanvas.Fill(Pen, IPath)` in the emitter where the output allows it.
+
+### 20.1 What changed
+
+- **Merge.** Six files conflicted. `WebGPUSceneEncoder.cs`, `EllipticGradientBrush.cs`, and `SweepGradientBrush.cs` take the upstream version (the branch had changed them only for its gradient option). `LinearGradientBrush.cs` and `RadialGradientBrush.cs` take the upstream version plus the row position overrides of 19.1 (`PositionsOnGradient`). `GradientBrush.cs` takes the upstream public part (`AlphaRepresentation`) and the renderer of 19.1, adapted: the stops are stored in the representation of the brush and go to the encoder of that representation without the associate-then-divide of the branch.
+- **Gradient option.** `GradientAlphaInterpolation` and the `AlphaInterpolation` overloads are gone. SVG gradients use `PixelAlphaRepresentation.Unassociated`; the WebGPU encoder, the ramp code, the shader, and the pixel encoders are the upstream versions.
+- **ImageSharp 5.** API changes met, and what the branch does:
+  - `PixelOperations<TPixel>.GetPixelBlender` is `PixelBlenders<TPixel>.GetPixelBlender`; the solid brush compares the blender with the named instances `PixelBlenders<TPixel>.NormalSrcOver` and `NormalSrc`.
+  - The pixel encoders of the gradients now name the representation of their input, not of the destination: `AssociatedGradientPixelEncoder` calls `TPixel.FromAssociatedScaledVector4`, `UnassociatedGradientPixelEncoder` `TPixel.FromUnassociatedScaledVector4`, and the brush selects one by its own representation. The internal texture brush of the SVG code (filter results, `image`, pattern tiles) chose the encoder by the destination, as the old encoders were meant; with the new ones its premultiplied texels were stored as straight colors (63 failing tests, 89 conformance tests lost in the first run). It now always calls `TPixel.FromAssociatedScaledVector4`, which divides by alpha for a straight-alpha format and keeps the channels for an associated one: the bytes of the old path.
+  - The bulk conversion with `PixelConversionModifiers.Scale` of the gradient row is `FromAssociatedScaledVector4Destructive` or `FromUnassociatedScaledVector4Destructive`, after the encoder.
+  - `DecoderOptions` takes a `Configuration`; `image` elements pass `Configuration.Default`, as before. Its default `SegmentIntegrityHandling` changed from `IgnoreAncillary` to `IgnoreImageData`, which returns a partly decoded image for damaged data; `image` elements set `IgnoreAncillary`, so a broken raster image still draws nothing.
+  - `RgbaVector.FromScaledVector4` bounds only the alpha to [0, 1] (4.1.2 clamped every channel); `feBlend` clamps its unpremultiplied inputs itself.
+  - The mask luminance effect converts its rows with `PixelConversionModifiers.UnPremultiply` (no change for straight formats; explicit for the associated formats of ImageSharp 5).
+  - The PNG encoder writes other bytes for the same pixels.
+- **Decoder removed.** Deleted: `SvgDecoder`, `SvgDecoderOptions`, `SvgFormat`, `SvgImageFormatDetector`, `SvgConfigurationModule` (public), `SvgShortDataFormatDetector` (internal), the tests `SvgDecoderTests`, `SvgDecoderHostileInputTests`, `SvgImageFormatDetectorTests`, and the benchmark `DecodeSvg`. `SvgDocument.Render`, the `MaxImagePixels` bound of a render at the intrinsic size, and the 64 MiB bound of `svgz` data in `image` elements stay. Tests of document behaviour that only the decoder tests covered were rewritten on `SvgDocument.Load` and `Render` (`SvgDocumentRenderTests`, `SvgDocumentHostileInputTests`): the render size rules, the bounds before allocation, UTF-16 input, truncated, malformed, and garbage input, long prologs, the layer limit, and the gzip limit (now through an `image` element).
+- **Options.** Every property of `SvgLoadOptions` and `SvgLimits` is an `init` accessor with its validation. The same holds for `SvgGenericFontFamilies`, which the options refer to, so no value that a load reads can change after the options are created. Both classes have an explicit public parameterless constructor and an internal copy constructor; the options of an embedded SVG image are a copy of the outer options with the remaining limits and no resource directory.
+- **Stroke as a fill.** See 20.3.
+- **Texture brush.** The first measurement of the merged tree found FilterShadows slower on one thread (+6.4 ± 5.9%). A profile (`perf`, 300 iterations at 1000 pixels, one thread) put it in the texture brush that draws the filter results: scene render 29.2 → 37.7 ms, and the per-pixel `TPixel.FromAssociatedScaledVector4` of ImageSharp 5 runs `UnassociateOperator.Apply` and `Rgba32.Pack` as two calls that are not inlined (8.75% and 7.37% of the samples, against 8.84% for the inlined straight encoder of 4.1.2). For `Rgba32` the brush now samples the row into vectors and converts it with one `FromAssociatedScaledVector4Destructive`, which gives the same bytes (the proof of the gradient bulk encode in 20.2); the SVG outputs of the test suite are byte for byte equal. Three alternating rounds against the tree before this change: FilterShadows render on one thread −26.2 ± 7.8%; the render with the default threads (−14.2 ± 17.3%), load and render (−7.3%, −9.4%), and the Dashboard (−8% to +6%) are not separated.
+
+### 20.2 Fast paths on ImageSharp 5
+
+The fast paths of 19.1 and 19.2 that rest on how ImageSharp blends and converts were proven again on the source of `5.0.0-alpha.0.38`:
+
+- **Full-coverage solid renderer** (`SolidBrush.cs`, `TryGetFullCoveragePixel` and `ApplySplit`). `PixelBlenders<TPixel>.GetPixelBlender` returns shared instances (`PixelBlender<TPixel, TOperator>.Instance`); for a format with straight alpha, `NormalSrcOver` and `NormalSrc` are the straight-alpha operators of `DefaultPixelBlenders`, so the reference comparison still selects exactly those equations. The equations (`PorterDuffFunctions.Over`, `Src`, and `BlendWithCoverage`, with the fused multiply-add of the coverage mix in every width) and `Numerics.UnPremultiply` (a division; zero alpha keeps the channels) are the same as in 4.1.2, so the error bounds of 19.1 and 19.2 hold unchanged. `PixelBlenders.BlendWithCoverage<TOperator>` (constant source) keeps the loop structure: a 512-bit loop over the first multiple of 4 pixels when a call has at least 4, otherwise a 256-bit loop over the first multiple of 2 when it has at least 2, then a scalar loop; so the split rule (pieces start at multiples of the group; a last piece of 2 or 3 pixels is avoided) still applies. The conversions give the same value in their vector and scalar parts and in the per-pixel path that a short row of a three-channel format takes below `Vector4ConversionThreshold`: an 8-bit channel reads as `byte / 255` (the vector path restores the correctly rounded quotient) and writes as `(byte)clamp(255 x + 0.5)`; a 16-bit channel writes with rounding half to even (`MathF.Round` and the vector path). The tests that compare the renderer with a blend of each whole row (`SolidBrushRendererTests`, fill and clear, ten formats) pass unchanged.
+- **Gradient bulk encode** (`GradientBrush.cs`, `EncodesInBulk`). The per-pixel encoders call `TPixel.FromAssociatedScaledVector4` or `FromUnassociatedScaledVector4`. For `Rgba32` the second is `Pack` (scale by 255, add one half, clamp to [0, 255] with NaN to 0, truncate), and the first applies `UnassociateOperator` (alpha clamped to [0, MaxValue], a division by alpha, zero alpha keeps the channels, `ClampToPixelRange`) before `Pack`. The bulk forms are `FromUnassociatedScaledVector4Destructive` (the `Rgba32` override: `NormalizedFloatToByteSaturate`) and `FromAssociatedScaledVector4Destructive` (`Pack<UnassociateOperator>`: the same operator lane by lane in every width, then the same byte conversion). The byte conversion clamps to [0, 1] first (NaN to 0), scales, adds one half, truncates, and saturates, which gives the byte of `Pack` for every float. So the bulk path covers `Rgba32` with both representations (in 4.1.2 it covered the straight destination encoder, which every `Rgba32` gradient used). `GradientBrushRendererTests` passes unchanged in its expectations.
+
+ImageSharp 5 does not make them unnecessary. Three alternating rounds of the work tree against a copy without the fast path (`RenderSvg`, mean ratio and 95% interval):
+
+| Fast path | Document | Default threads | One thread |
+|---|---|---|---|
+| Full-coverage solid renderer | Icons 1000 | 53.1 → 16.4 ms (−69.2 ± 5.6%) | 168.3 → 40.8 ms (−75.7 ± 2.5%) |
+| | Icons 4000 | 733 → 91.5 ms (−87.5 ± 2.2%) | 2491 → 284 ms (−88.6 ± 1.2%) |
+| Gradient bulk encode | SoftIceCream 1000 | 7.87 → 5.85 ms (−25.5 ± 10.0%) | 16.8 → 14.3 ms (−14.7 ± 2.7%) |
+| | StyledLandscape 1000 | 4.63 → 3.53 ms (−23.6 ± 9.0%) | 10.4 → 7.97 ms (−23.4 ± 7.5%) |
+
+The other changes of 19.1 and 19.2 (rectangle clip interior, curve flattening, path clip bands, run search, parallel partitioning) work on coverage and geometry only and do not depend on ImageSharp.
+
+### 20.3 `Fill(Pen, IPath)`
+
+`DrawingCanvas.Fill(Pen, IPath)` fills `pen.GeneratePath(path)`, an outline built in local (user) space, under the drawing transform. That is the SVG stroke under a non-conformal transform, which the emitter built itself before. The emitter built its outline in a copy of user space scaled by the largest singular value of the transform, so that curves and round joins flatten at device precision. A probe document (a cubic path, a polyline, and a dashed circle with round caps and joins, and a miter path) under six non-conformal transforms compared the two methods pixel by pixel:
+
+| Transform | Image | Differing pixels | Largest channel difference |
+|---|---|---|---|
+| matrix(20 0 0 2 0 0) | 1200 x 120 | 4,165 | 245 |
+| matrix(2 0 0 20 0 0) | 120 x 1200 | 4,105 | 225 |
+| matrix(50 0 0 5 0 0) | 3000 x 300 | 11,611 | 255 |
+| matrix(8 0 6 8 0 0) | 900 x 480 | 3,543 | 236 |
+| matrix(14.1 14.1 -1.41 1.41 400 10) | 1000 x 1000 | 4,295 | 247 |
+| matrix(0.5 0 0 0.05 0 0) | 40 x 10 | 22 | 1 |
+
+Under an enlarging transform the outline of `Fill(Pen, IPath)` shows its flattening: round caps and joins become visibly polygonal. Used for every non-conformal stroke, it fails the reference image `DrawSvg_Feature root-stretch` (0.0301%, one alpha level along the round joins of a 3 x 1.2 stretch); the resvg results stay equal. A transform that does not enlarge flattens at least as finely as the device needs (one level in 22 pixels of the probe). So the emitter calls `canvas.Fill(stroke, path)` when the largest scale of the transform is at most 1 and keeps its own outline when the transform enlarges; no image of the test suite changes. A reproduction for the upstream owner (document, both outputs, the table above) is with the package report; a fix would be a flattening scale for `Pen.GeneratePath`, or an outline built at the largest scale of the drawing transform inside `Fill(Pen, IPath)`. No core code was changed.
+
+`vector-effect: non-scaling-stroke` keeps its outline in host space. A form with `Fill(pen, hostPath)` under a state with only the caller transform gave equal bytes for the test suite (whose non-scaling strokes are solid straight lines), but differed by one level in up to 117 pixels of the probe with curves, and the brush would need a copy transformed into host space (a rebuilt pen) to stay in user space.
+
+### 20.4 Output
+
+Every image that the test suite writes was compared with the images of the start commit `d7b70b3`: bytes first, then the decoded pixels of every PNG whose bytes differ. Of 2,242 images, 4 are byte-equal and 2,236 differ only in their PNG bytes, with equal pixels (the PNG encoder of ImageSharp 5); the other two belong to an upstream test whose image grew from 20 x 20 to 200 x 200 and was renamed. Four images of new upstream tests are new. No pixel of any existing image changed, so neither the gradient encoding of upstream nor the arithmetic of ImageSharp 5 changed an output of the test suite, and no reference image of the branch was made again. `results.tsv` of the resvg suite is equal line for line: 1179 of 1618.
+
+### 20.5 Measured
+
+The method of 18.9: alternating rounds of a tree built from the start commit `d7b70b3` (`git archive`, ImageSharp 4.1.2) and of the work tree (ImageSharp 5.0.0-alpha.0.38), each built in its own directory, 5 warmup and 15 measured iterations per case, 3 rounds; the value is the mean of the round means in ms, then the mean of the per-round ratios with its 95% t interval over the rounds; "(n.s.)" marks a ratio whose interval includes 0. Allocation is the managed allocation of ImageSharp.Drawing per operation, as an absolute value. The 1000-pixel render and the load and render cells ran against the final tree; the 4000-pixel cells and the non-SVG benchmarks ran against the tree before the texture brush change of 20.1, which they do not use.
+
+Render of a loaded document (`RenderSvg`):
+
+| Document | Long edge | Default threads (ms) | One thread (ms) | Allocated, one thread |
+|---|---|---|---|---|
+| Tiger | 1000 | 8.53 → 8.86 (+3.8 ± 9.7%) (n.s.) | 19.1 → 18.8 (−1.3 ± 15.4%) (n.s.) | 1.84 MB → 1.84 MB |
+| Icons | 1000 | 18.0 → 18.1 (+0.5 ± 6.4%) (n.s.) | 45.9 → 42.1 (−8.5 ± 11.0%) (n.s.) | 3.18 MB → 3.18 MB |
+| Moose | 1000 | 34.0 → 32.7 (−4.0 ± 25.3%) (n.s.) | 84.7 → 81.5 (−3.1 ± 20.1%) (n.s.) | 1.08 MB → 1.08 MB |
+| StyledLandscape | 1000 | 4.35 → 4.25 (−1.4 ± 32.6%) (n.s.) | 10.1 → 10.0 (−1.5 ± 46.9%) (n.s.) | 284 KB → 284 KB |
+| Dashboard | 1000 | 23.7 → 21.9 (−7.3 ± 15.2%) (n.s.) | 37.7 → 36.0 (−3.9 ± 33.0%) (n.s.) | 3.83 MB → 3.83 MB |
+| FilterShadows | 1000 | 58.2 → 54.2 (−6.3 ± 34.8%) (n.s.) | 56.9 → 53.7 (−5.7 ± 8.1%) (n.s.) | 4.70 MB → 4.70 MB |
+| TextHeavy | 1000 | 15.5 → 15.5 (−0.0 ± 15.9%) (n.s.) | 25.5 → 24.7 (−2.7 ± 29.6%) (n.s.) | 8.04 MB → 8.04 MB |
+| Tiger | 4000 | 26.6 → 28.3 (+6.2 ± 21.3%) (n.s.) | 78.9 → 77.4 (−1.9 ± 6.5%) (n.s.) | 4.82 MB → 4.82 MB |
+| Icons | 4000 | 88.5 → 85.7 (−3.1 ± 5.5%) (n.s.) | 285 → 273 (−4.2 ± 26.4%) (n.s.) | 12.22 MB → 12.22 MB |
+
+Load and render (`LoadAndRenderSvg`):
+
+| Document | Long edge | Default threads (ms) | One thread (ms) | Allocated, default threads | Allocated, one thread |
+|---|---|---|---|---|---|
+| Tiger | 1000 | 11.3 → 11.2 (−0.9 ± 5.2%) (n.s.) | 21.5 → 22.1 (+3.8 ± 34.6%) (n.s.) | 4.10 MB → 4.10 MB | 4.01 MB → 4.01 MB |
+| FilterShadows | 1000 | 63.0 → 58.8 (−6.5 ± 13.9%) (n.s.) | 65.6 → 59.8 (−8.8 ± 12.1%) (n.s.) | 6.94 MB → 6.95 MB | 6.28 MB → 6.28 MB |
+
+Non-SVG benchmarks of 19.1 (15 warmup and 15 measured iterations, 3 rounds): Draw Beziers −5.4 ± 2.8% (faster), ellipse stress −5.5 ± 9.7%, fill rectangle +16.1 ± 20.6% (0.165 → 0.192 ms), fill rectangle as polygon −8.9 ± 11.3%, fill with pattern −7.4 ± 7.7%; only Draw Beziers is separated. The fill rectangle case is the one cell with a large positive mean; it is not separated, it uses no SVG code, and its cost is the core fill and the blender of ImageSharp; it was not profiled.
+
+No cell is separated as slower. The sync costs nothing measurable in time or managed allocation, once the texture brush converts in bulk; without that change FilterShadows on one thread was 6.4 ± 5.9% slower (20.1).
+
+### 20.6 Tests
+
+Release build: 0 warnings in the four projects under `src/` (the library, the WebGPU backend, the shader generator, the font generator); the test and benchmark projects keep the warnings that they had before the sync and add none. Full test suite: 6,513 passed, 155 skipped, 0 failed (before: 6,568 passed, 153 skipped). The 74 test cases of the decoder and of format detection are gone (three of them rewritten under new names, nine moved with their names into the new classes); 18 test cases came from upstream (the gradient alpha representation for every brush and its transform, `Fill(Pen, IPath)` with a self-intersecting stroke, and two WebGPU tests that skip without an adapter, as the other WebGPU tests do in the test container); the gradient tests of the branch were ported to `AlphaRepresentation` with their expectations, and two assertions on `WebGPUSceneEncoder.EvaluateGradientColor` were removed, because upstream changed what it returns (the sample in the representation of the brush; the ramp associates it later) and the upstream WebGPU tests compare the ramp output with the CPU. Tests that set options after construction now use object initializers; two assertions that a failed setter keeps the previous value went, because an `init` accessor that throws leaves no object. The timing test `TrefFanOut_StopsAtTheCharacterLimit` (19.2) now takes the best of three runs of each case; alone it never failed in ten runs, and four busy processes on the four cores stretched one run of the large case from 59 ms to 147 ms, which a single measurement cannot tell from growth. The bound is unchanged. The double draw of a float region clip (19.2) still occurs on the merged tree.
 
 ## Sources
 

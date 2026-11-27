@@ -553,8 +553,7 @@ public class SvgFilterTests
     [Fact]
     public void MaxFilterPixels_LowersTheResolutionInsteadOfFailing()
     {
-        SvgLoadOptions options = new();
-        options.Limits.MaxFilterPixels = 64;
+        SvgLoadOptions options = new() { Limits = new SvgLimits { MaxFilterPixels = 64 } };
         SvgDocument document = SvgDocument.Parse(
             SvgOpen + "<filter id=\"f\" x=\"0\" y=\"0\" width=\"1\" height=\"1\"><feFlood flood-color=\"#00ff00\"/></filter>"
             + "<rect width=\"20\" height=\"20\" filter=\"url(#f)\"/></svg>",
