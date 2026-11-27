@@ -32,12 +32,23 @@ internal static class SvgFilterColor
     /// <summary>
     /// Converts the color channels of an image to another color space in place and tags the image with it.
     /// </summary>
+    /// <remarks>
+    /// The conversion leaves a pixel with zero color channels unchanged: both tables map 0 to 0, the straight value of
+    /// a zero channel is (0 + alpha / 2) / alpha = 0, and 0 premultiplies to (128 + 0) >> 8 = 0. So an image whose color
+    /// channels are all 0 (<see cref="SvgFilterImage.IsAlphaOnly"/>) is only tagged.
+    /// </remarks>
     /// <param name="image">The image.</param>
     /// <param name="target">The color space to convert to.</param>
     public static void Convert(SvgFilterImage image, SvgColorInterpolation target)
     {
         if (image.ColorSpace == target)
         {
+            return;
+        }
+
+        if (image.IsAlphaOnly)
+        {
+            image.ColorSpace = target;
             return;
         }
 

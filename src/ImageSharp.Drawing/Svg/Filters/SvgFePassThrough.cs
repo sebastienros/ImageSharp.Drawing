@@ -23,6 +23,10 @@ internal sealed class SvgFePassThrough : SvgFilterPrimitive
     public override bool PreservesColorSpace => true;
 
     /// <inheritdoc/>
+    /// <remarks>The output copies input pixels.</remarks>
+    public override bool PreservesAlphaOnly => true;
+
+    /// <inheritdoc/>
     public override void Render(in SvgFilterRenderContext context, ReadOnlySpan<SvgFilterImage> inputs, SvgFilterImage output)
     {
         Rectangle area = output.Area;

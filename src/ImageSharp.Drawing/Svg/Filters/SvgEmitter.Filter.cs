@@ -73,6 +73,17 @@ internal static partial class SvgEmitter
                 return;
             }
 
+            // The texture holds a pooled buffer that the brush samples when the canvas renders its commands, which can be
+            // after this draw returns or, through a retained scene, after the canvas is gone. The canvas takes it and
+            // disposes it at the right time. A canvas that cannot (a canvas implementation of another library) gets a
+            // managed copy, which the garbage collector frees with the last command that refers to it.
+            if (!this.canvas.TryTakeOwnership(texture!))
+            {
+                SvgTexture pooled = texture!;
+                texture = pooled.ToManaged();
+                pooled.Dispose();
+            }
+
             // For a projective caller transform, textureToDevice ends in the scaled space before the caller transform.
             Matrix4x4 textureTransform = projective
                 ? new Matrix4x4(textureToDevice * Matrix3x2.CreateScale(1F / callerAffine.M11)) * caller

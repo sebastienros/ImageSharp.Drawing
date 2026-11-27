@@ -42,11 +42,12 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
     private readonly DrawingCanvasBatcher<TPixel> batcher;
 
     /// <summary>
-    /// Temporary image resources that must stay alive until queued commands are flushed.
+    /// Temporary image resources, and the resources given through <see cref="TryTakeOwnership"/>,
+    /// that must stay alive until queued commands are flushed.
     /// Shared between the root canvas and its regions: only the root renders the timeline, so
     /// region-deferred images must survive region disposal and release with the root.
     /// </summary>
-    private readonly List<Image<TPixel>> pendingImageResources;
+    private readonly List<IDisposable> pendingImageResources;
 
     /// <summary>
     /// Indicates whether this canvas owns final disposal of the shared batcher.
@@ -265,7 +266,7 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
         bool ownsTextCache,
         DrawingCanvasState defaultState,
         bool ownsBatcher,
-        List<Image<TPixel>> pendingImageResources)
+        List<IDisposable> pendingImageResources)
     {
         Guard.NotNull(configuration, nameof(configuration));
         Guard.NotNull(backend, nameof(backend));
@@ -2048,6 +2049,17 @@ public sealed class DrawingCanvas<TPixel> : DrawingCanvas
 
     /// <inheritdoc />
     internal override Configuration GetConfiguration() => this.configuration;
+
+    /// <inheritdoc />
+    internal override bool TryTakeOwnership(IDisposable resource)
+    {
+        this.EnsureNotDisposed();
+
+        // The resource joins the deferred image resources: Dispose releases it after the timeline has rendered, and
+        // CreateScene moves it to the scene that holds the commands recorded so far.
+        this.pendingImageResources.Add(resource);
+        return true;
+    }
 
     /// <summary>
     /// Resolves the currently active drawing state.

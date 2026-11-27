@@ -38,6 +38,10 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
     /// <inheritdoc/>
     public override bool PreservesColorSpace => true;
 
+    /// <inheritdoc/>
+    /// <remarks>The output copies or mixes input pixels channel by channel.</remarks>
+    public override bool PreservesAlphaOnly => true;
+
     /// <summary>
     /// Creates the primitive of an <c>feOffset</c> element.
     /// </summary>
@@ -116,6 +120,12 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
             return;
         }
 
+        // The weights of Mix, for the alpha-only rows.
+        bool alphaOnly = input.IsAlphaOnly;
+        int wa = (256 - tx) * (256 - ty);
+        int wb = tx * (256 - ty);
+        int wc = (256 - tx) * ty;
+        int wd = tx * ty;
         int width = area.Width + 1;
         using IMemoryOwner<Rgba32> scratch = allocator.Allocate<Rgba32>(width * 2);
         Span<Rgba32> upper = scratch.Memory.Span[..width];
@@ -125,6 +135,19 @@ internal sealed class SvgFeOffset : SvgFilterPrimitive
             input.CopyRow(row + y0, area.Left + x0, upper);
             input.CopyRow(row + y0 + 1, area.Left + x0, lower);
             Span<Rgba32> destination = output.GetRow(row);
+            if (alphaOnly)
+            {
+                // The color channels of the input are all 0, so Mix gives 0 for them: (0 + 32768) >> 16 is 0. Only the
+                // alpha channel is mixed, with the expression of Mix.
+                for (int x = 0; x < destination.Length; x++)
+                {
+                    int alpha = (upper[x].A * wa) + (upper[x + 1].A * wb) + (lower[x].A * wc) + (lower[x + 1].A * wd) + 32768;
+                    destination[x] = new Rgba32(0, 0, 0, (byte)(alpha >> 16));
+                }
+
+                continue;
+            }
+
             for (int x = 0; x < destination.Length; x++)
             {
                 destination[x] = Mix(upper[x], upper[x + 1], lower[x], lower[x + 1], tx, ty);

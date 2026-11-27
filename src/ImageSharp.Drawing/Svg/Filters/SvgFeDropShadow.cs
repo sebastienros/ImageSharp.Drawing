@@ -114,7 +114,7 @@ internal sealed class SvgFeDropShadow : SvgFilterPrimitive
         // it for that; beyond the input area the alpha is transparent.
         Rectangle blurredArea = SvgFeOffset.GetInputArea(area, offset);
         Rectangle alphaArea = Rectangle.Intersect(Rectangle.Inflate(blurredArea, reach.Width, reach.Height), input.Area);
-        using SvgFilterImage alpha = new(allocator, alphaArea, space);
+        using SvgFilterImage alpha = new(allocator, alphaArea, space) { IsAlphaOnly = true };
         for (int y = alpha.Area.Top; y < alpha.Area.Bottom; y++)
         {
             Span<Rgba32> row = alpha.GetRow(y);
@@ -131,7 +131,8 @@ internal sealed class SvgFeDropShadow : SvgFilterPrimitive
         {
             if (deviation.X > 0F || deviation.Y > 0F)
             {
-                blurred = new SvgFilterImage(allocator, blurredArea, space);
+                // The blur of an alpha-only image is alpha-only, which lets the offset mix the alpha channel alone.
+                blurred = new SvgFilterImage(allocator, blurredArea, space) { IsAlphaOnly = true };
                 SvgFeGaussianBlur.Blur(alpha, blurred, deviation, context.Configuration);
             }
 

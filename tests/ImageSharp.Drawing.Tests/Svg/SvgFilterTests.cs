@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Drawing.Svg;
+using SixLabors.ImageSharp.Drawing.Tests.TestUtilities.ImageComparison;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -354,6 +355,27 @@ public class SvgFilterTests
             + "<rect x=\"10\" y=\"10\" width=\"5\" height=\"5\" filter=\"url(#f)\"/>");
 
         Assert.InRange(image[x, y].A, alpha - 1, alpha + 1);
+    }
+
+    /// <summary>
+    /// A fractional offset of <c>SourceAlpha</c> gives the same pixels as the same offset of black flood composited in
+    /// <c>SourceAlpha</c>, which holds the same pixels: the result of a primitive does not depend on which primitive
+    /// made its input.
+    /// </summary>
+    [Theory]
+    [InlineData("0.3", "0.7")]
+    [InlineData("-1.6", "0.25")]
+    public void Offset_OfSourceAlphaEqualsTheOffsetOfTheSamePixels(string dx, string dy)
+    {
+        const string shape = "<circle cx=\"10\" cy=\"10\" r=\"6.3\" fill=\"#3080c0\" fill-opacity=\"0.6\" filter=\"url(#f)\"/>";
+        const string region = "x=\"0\" y=\"0\" width=\"20\" height=\"20\" filterUnits=\"userSpaceOnUse\" color-interpolation-filters=\"sRGB\"";
+        using Image<Rgba32> direct = Render(
+            $"<filter id=\"f\" {region}><feOffset in=\"SourceAlpha\" dx=\"{dx}\" dy=\"{dy}\"/></filter>" + shape);
+        using Image<Rgba32> composited = Render(
+            $"<filter id=\"f\" {region}><feFlood flood-color=\"#000000\"/><feComposite in2=\"SourceAlpha\" operator=\"in\"/>"
+            + $"<feOffset dx=\"{dx}\" dy=\"{dy}\"/></filter>" + shape);
+
+        ImageComparer.Exact.VerifySimilarity(composited, direct);
     }
 
     [Fact]

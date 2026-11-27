@@ -529,6 +529,20 @@ public abstract partial class DrawingCanvas : IDisposable
     internal virtual Configuration GetConfiguration() => Configuration.Default;
 
     /// <summary>
+    /// Gives the canvas a resource that recorded commands use, such as the pooled pixels that a brush samples, so that
+    /// high-level drawing such as SVG filters can draw from pooled memory although the canvas defers its commands.
+    /// </summary>
+    /// <remarks>
+    /// On success the canvas owns the resource. It disposes the resource after the recorded commands have rendered, when
+    /// the canvas is disposed, or moves it to the retained scene that <see cref="CreateScene"/> returns, which disposes it
+    /// with the scene. A canvas implementation that does not track resources returns <see langword="false"/>, and the
+    /// caller keeps the resource.
+    /// </remarks>
+    /// <param name="resource">The resource.</param>
+    /// <returns><see langword="true"/> if the canvas took the resource; otherwise, <see langword="false"/>.</returns>
+    internal virtual bool TryTakeOwnership(IDisposable resource) => false;
+
+    /// <summary>
     /// Releases the canvas. Disposing the root canvas closes any open layers and clips and
     /// replays the recorded command timeline into the target frame; child region canvases
     /// share the root's command stream and do not flush on disposal.

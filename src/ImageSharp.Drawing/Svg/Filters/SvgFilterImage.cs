@@ -74,6 +74,14 @@ internal sealed class SvgFilterImage : IDisposable
     public SvgColorInterpolation ColorSpace { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether every color channel of every pixel is 0, so that only the alpha channel
+    /// carries data, as in <c>SourceAlpha</c> and the results that only move or blur it. Primitives that know this can
+    /// compute the alpha channel alone, and a color space conversion leaves such an image unchanged. The code that
+    /// creates the pixels sets it; <see langword="false"/> is always safe.
+    /// </summary>
+    public bool IsAlphaOnly { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the image is transparent everywhere because its area is empty.
     /// </summary>
     public bool IsEmpty => this.Area.IsEmpty;
@@ -148,6 +156,32 @@ internal sealed class SvgFilterImage : IDisposable
         this.GetRow(y).Slice(start - area.Left, end - start).CopyTo(destination[(start - left)..]);
         destination[(end - left)..].Clear();
     }
+
+    /// <summary>
+    /// Moves the pixels of this image into a texture without a copy. The texture owns the pooled buffer afterwards, and
+    /// this image is left without pixels: only <see cref="Dispose"/> may be called on it.
+    /// </summary>
+    /// <returns>The texture, which the caller disposes.</returns>
+    public SvgTexture MoveToTexture()
+    {
+        // Only an image that owns a buffer and has pixels can give them away; the engine calls this on the result of a
+        // run, which is never a band view or empty.
+        SvgTexture texture = new(this.buffer!, this.memory, this.Area.Width, this.Area.Height);
+        this.buffer = null;
+        this.memory = default;
+        return texture;
+    }
+
+    /// <summary>
+    /// Returns a view of the pixels of this image tagged with another color space, for an image whose color channels are
+    /// all 0 (<see cref="IsAlphaOnly"/>): a conversion would leave every pixel unchanged (see
+    /// <see cref="SvgFilterColor.Convert(SvgFilterImage, SvgColorInterpolation)"/>), so the view stands for the converted
+    /// copy. The view does not own the pixels: disposing it releases nothing.
+    /// </summary>
+    /// <param name="colorSpace">The color space of the view.</param>
+    /// <returns>The view.</returns>
+    public SvgFilterImage ViewAs(SvgColorInterpolation colorSpace)
+        => new(this.memory, this.Area, colorSpace) { IsAlphaOnly = true };
 
     /// <inheritdoc/>
     public void Dispose()

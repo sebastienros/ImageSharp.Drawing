@@ -79,6 +79,14 @@ internal abstract class SvgFilterPrimitive
     public virtual bool PreservesColorSpace => false;
 
     /// <summary>
+    /// Gets a value indicating whether the output has only zero color channels when every input has, so that the engine
+    /// can mark the output <see cref="SvgFilterImage.IsAlphaOnly"/>. This holds for a primitive whose color channels of
+    /// the output are sums, weighted means, or selections of color channels of its inputs (blur, offset, merge, tile,
+    /// morphology, a pass-through). The default, <see langword="false"/>, is always safe.
+    /// </summary>
+    public virtual bool PreservesAlphaOnly => false;
+
+    /// <summary>
     /// Gets a value indicating whether the primitive handles color spaces itself: the engine converts none of its
     /// inputs, the primitive reads each input in the color space that the input is tagged with, and it writes its output
     /// in <see cref="SvgFilterRenderContext.OutputColorSpace"/>, which the engine chooses: sRGB for the last primitive of

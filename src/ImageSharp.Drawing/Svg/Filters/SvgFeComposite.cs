@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
@@ -136,56 +137,105 @@ internal sealed class SvgFeComposite : SvgFilterPrimitive
     /// <summary>
     /// Applies a Porter-Duff operator to one row.
     /// </summary>
+    /// <remarks>
+    /// The weights of A and B in 8-bit units give result = A * wa / 255 + B * wb / 255, each product rounded with
+    /// <see cref="SvgFilterColor.Multiply"/> and the sum clamped to 255: over (255, 255 - A.a), in (B.a, 0), out
+    /// (255 - B.a, 0), atop (B.a, 255 - A.a), xor (255 - B.a, 255 - A.a). The operator is chosen once per row. For in and
+    /// out the product of B is Multiply(b, 0) = (128 + 0) >> 8 = 0, and a product of two bytes is at most 255
+    /// ((65025 + 128 + 254) >> 8), so the result is the product of A alone and the clamp does nothing: those rows skip
+    /// both.
+    /// </remarks>
     /// <param name="row">The pixels of A, which receive the result.</param>
     /// <param name="backdrop">The pixels of B.</param>
     private void PorterDuff(Span<Rgba32> row, ReadOnlySpan<Rgba32> backdrop)
     {
-        for (int x = 0; x < row.Length; x++)
+        switch (this.op)
         {
-            Rgba32 a = row[x];
-            Rgba32 b = backdrop[x];
+            case Operator.In:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    row[x] = Scale(row[x], backdrop[x].A);
+                }
 
-            // The weights of A and B in 8-bit units: result = A * wa / 255 + B * wb / 255.
-            int wa;
-            int wb;
-            switch (this.op)
-            {
-                case Operator.In:
-                    wa = b.A;
-                    wb = 0;
-                    break;
-                case Operator.Out:
-                    wa = 255 - b.A;
-                    wb = 0;
-                    break;
-                case Operator.Atop:
-                    wa = b.A;
-                    wb = 255 - a.A;
-                    break;
-                case Operator.Xor:
-                    wa = 255 - b.A;
-                    wb = 255 - a.A;
-                    break;
-                case Operator.Lighter:
+                break;
+            case Operator.Out:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    row[x] = Scale(row[x], 255 - backdrop[x].A);
+                }
+
+                break;
+            case Operator.Atop:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    Rgba32 a = row[x];
+                    Rgba32 b = backdrop[x];
+                    row[x] = Weigh(a, b.A, b, 255 - a.A);
+                }
+
+                break;
+            case Operator.Xor:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    Rgba32 a = row[x];
+                    Rgba32 b = backdrop[x];
+                    row[x] = Weigh(a, 255 - b.A, b, 255 - a.A);
+                }
+
+                break;
+            case Operator.Lighter:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    Rgba32 a = row[x];
+                    Rgba32 b = backdrop[x];
                     row[x] = new Rgba32(
                         (byte)Math.Min(255, a.R + b.R),
                         (byte)Math.Min(255, a.G + b.G),
                         (byte)Math.Min(255, a.B + b.B),
                         (byte)Math.Min(255, a.A + b.A));
-                    continue;
-                default:
-                    wa = 255;
-                    wb = 255 - a.A;
-                    break;
-            }
+                }
 
-            row[x] = new Rgba32(
-                (byte)Math.Min(255, SvgFilterColor.Multiply(a.R, wa) + SvgFilterColor.Multiply(b.R, wb)),
-                (byte)Math.Min(255, SvgFilterColor.Multiply(a.G, wa) + SvgFilterColor.Multiply(b.G, wb)),
-                (byte)Math.Min(255, SvgFilterColor.Multiply(a.B, wa) + SvgFilterColor.Multiply(b.B, wb)),
-                (byte)Math.Min(255, SvgFilterColor.Multiply(a.A, wa) + SvgFilterColor.Multiply(b.A, wb)));
+                break;
+            default:
+                for (int x = 0; x < row.Length; x++)
+                {
+                    Rgba32 a = row[x];
+                    row[x] = Weigh(a, 255, backdrop[x], 255 - a.A);
+                }
+
+                break;
         }
     }
+
+    /// <summary>
+    /// Returns A * wa / 255 + B * wb / 255 per channel, each product rounded, the sum clamped to 255.
+    /// </summary>
+    /// <param name="a">The pixel of A.</param>
+    /// <param name="wa">The weight of A in 8-bit units.</param>
+    /// <param name="b">The pixel of B.</param>
+    /// <param name="wb">The weight of B in 8-bit units.</param>
+    /// <returns>The result.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Rgba32 Weigh(Rgba32 a, int wa, Rgba32 b, int wb)
+        => new(
+            (byte)Math.Min(255, SvgFilterColor.Multiply(a.R, wa) + SvgFilterColor.Multiply(b.R, wb)),
+            (byte)Math.Min(255, SvgFilterColor.Multiply(a.G, wa) + SvgFilterColor.Multiply(b.G, wb)),
+            (byte)Math.Min(255, SvgFilterColor.Multiply(a.B, wa) + SvgFilterColor.Multiply(b.B, wb)),
+            (byte)Math.Min(255, SvgFilterColor.Multiply(a.A, wa) + SvgFilterColor.Multiply(b.A, wb)));
+
+    /// <summary>
+    /// Returns A * w / 255 per channel, each product rounded.
+    /// </summary>
+    /// <param name="a">The pixel.</param>
+    /// <param name="weight">The weight in 8-bit units.</param>
+    /// <returns>The result.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Rgba32 Scale(Rgba32 a, int weight)
+        => new(
+            SvgFilterColor.Multiply(a.R, weight),
+            SvgFilterColor.Multiply(a.G, weight),
+            SvgFilterColor.Multiply(a.B, weight),
+            SvgFilterColor.Multiply(a.A, weight));
 
     /// <summary>
     /// Applies the <c>arithmetic</c> operator to one row.

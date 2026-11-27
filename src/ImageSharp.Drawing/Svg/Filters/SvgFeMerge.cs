@@ -28,6 +28,10 @@ internal sealed class SvgFeMerge : SvgFilterPrimitive
     /// <inheritdoc/>
     public override bool PreservesColorSpace => true;
 
+    /// <inheritdoc/>
+    /// <remarks>Source-over of pixels with zero color channels gives zero color channels.</remarks>
+    public override bool PreservesAlphaOnly => true;
+
     /// <summary>
     /// Creates the primitive of an <c>feMerge</c> element.
     /// </summary>

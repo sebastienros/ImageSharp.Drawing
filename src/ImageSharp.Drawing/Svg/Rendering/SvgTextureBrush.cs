@@ -109,7 +109,15 @@ internal sealed class SvgTextureBrush : Brush
     private sealed class Renderer<TPixel> : BrushRenderer<TPixel>
         where TPixel : unmanaged, IPixel<TPixel>
     {
-        private readonly Rgba32[] pixels;
+        /// <summary>
+        /// The largest magnitude of a texel offset and of a pixel coordinate for which <see cref="ApplyTranslated"/> applies.
+        /// Every coordinate that the sampling arithmetic forms is then a multiple of one half below 2^23 in magnitude, so
+        /// each float sum is exact.
+        /// </summary>
+        private const int MaxExactCoordinate = 1 << 21;
+
+        // The sampled level. Its pixels are read through a span once per scanline.
+        private readonly SvgTexture texture;
         private readonly int width;
         private readonly int height;
         private readonly bool repeat;
@@ -119,6 +127,12 @@ internal sealed class SvgTextureBrush : Brush
 
         // Drawing space to texel space of the sampled level.
         private readonly Matrix3x2 inverse;
+
+        // Whether the inverse is a translation by whole texels (see ApplyTranslated), and its offsets: the texel of the
+        // pixel (x, y) is (x + offsetX, y + offsetY) before the wrap mode applies.
+        private readonly bool translated;
+        private readonly int offsetX;
+        private readonly int offsetY;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Renderer{TPixel}"/> class.
@@ -164,9 +178,22 @@ internal sealed class SvgTextureBrush : Brush
             }
 
             this.inverse = inverse;
-            this.pixels = texture.Pixels;
+            this.texture = texture;
             this.width = texture.Width;
             this.height = texture.Height;
+
+            // A filter result drawn at the device scale, or an image at its own size on whole pixels, places every texel
+            // on one device pixel: the inverse is a translation by whole texels.
+            this.translated = this.valid
+                && inverse.M11 == 1F && inverse.M22 == 1F && inverse.M12 == 0F && inverse.M21 == 0F
+                && MathF.Abs(inverse.M31) <= MaxExactCoordinate && MathF.Abs(inverse.M32) <= MaxExactCoordinate
+                && MathF.Floor(inverse.M31) == inverse.M31 && MathF.Floor(inverse.M32) == inverse.M32;
+
+            if (this.translated)
+            {
+                this.offsetX = (int)inverse.M31;
+                this.offsetY = (int)inverse.M32;
+            }
         }
 
         /// <inheritdoc/>
@@ -182,6 +209,12 @@ internal sealed class SvgTextureBrush : Brush
                 amounts.Clear();
                 overlays.Clear();
             }
+            else if (this.translated
+                && x >= -MaxExactCoordinate && x <= MaxExactCoordinate - scanline.Length
+                && y >= -MaxExactCoordinate && y <= MaxExactCoordinate)
+            {
+                this.ApplyTranslated(this.texture.Pixels, overlays, scanline, x, y, workspace);
+            }
             else
             {
                 // Map the first pixel center, then step one pixel along x for each sample. In texel space a sample
@@ -192,6 +225,7 @@ internal sealed class SvgTextureBrush : Brush
                 float u = (px * m.M11) + (py * m.M21) + m.M31;
                 float v = (px * m.M12) + (py * m.M22) + m.M32;
                 float scale = this.opacity / 255F;
+                ReadOnlySpan<Rgba32> pixels = this.texture.Pixels;
 
                 if (typeof(TPixel) == typeof(Rgba32))
                 {
@@ -206,7 +240,7 @@ internal sealed class SvgTextureBrush : Brush
                     {
                         colors[i] = scanline[i] <= 0F
                             ? Vector4.Zero
-                            : (this.nearest ? this.SampleNearest(u, v) : this.SampleBilinear(u - 0.5F, v - 0.5F)) * scale;
+                            : (this.nearest ? this.SampleNearest(pixels, u, v) : this.SampleBilinear(pixels, u - 0.5F, v - 0.5F)) * scale;
                     }
 
                     PixelOperations<TPixel>.Instance.FromAssociatedScaledVector4Destructive(this.Configuration, colors, overlays);
@@ -223,7 +257,7 @@ internal sealed class SvgTextureBrush : Brush
 
                         // The sample is premultiplied. The associated conversion divides by alpha for a format that
                         // stores straight alpha and keeps the channels for a format that stores associated alpha.
-                        Vector4 color = this.nearest ? this.SampleNearest(u, v) : this.SampleBilinear(u - 0.5F, v - 0.5F);
+                        Vector4 color = this.nearest ? this.SampleNearest(pixels, u, v) : this.SampleBilinear(pixels, u - 0.5F, v - 0.5F);
                         overlays[i] = TPixel.FromAssociatedScaledVector4(color * scale);
                     }
                 }
@@ -240,37 +274,152 @@ internal sealed class SvgTextureBrush : Brush
         }
 
         /// <summary>
+        /// Fills the overlays of a scanline when the inverse placement is a translation by whole texels, by reading the
+        /// texels of one row instead of sampling.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Why the bytes are the bytes of the sampling path. The inverse has M11 = M22 = 1, M12 = M21 = 0, and integer
+        /// offsets (M31, M32), and the caller checked that the offsets and the pixel coordinates are at most 2^21 in
+        /// magnitude. In the sampling path the first pixel center (x + 0.5, y + 0.5) maps to
+        /// u = ((x + 0.5) * 1 + (y + 0.5) * 0) + M31 and v = ((x + 0.5) * 0 + (y + 0.5) * 1) + M32. A product with 1 is
+        /// exact, a product with 0 is a signed zero that leaves the sum unchanged, and the sums of multiples of one half
+        /// below 2^23 are exact, so u = x + 0.5 + M31 and v = y + 0.5 + M32 exactly. The steps add M11 = 1 to u (exact)
+        /// and M12 = 0 to v (no change), so pixel i has u = x + i + 0.5 + M31 exactly.
+        /// </para>
+        /// <para>
+        /// Bilinear sampling subtracts one half: the coordinates are the integers k = x + i + M31 and m = y + M32, so the
+        /// floors are k and m and both weights are exactly 0. Every form of <see cref="Vector4.Lerp(Vector4, Vector4, float)"/>
+        /// returns its first argument for an amount of 0 with finite non-negative arguments: a * (1 - 0) + b * 0 is
+        /// a + 0, a + (b - a) * 0 is a plus a signed zero, and a fused multiply-add of either form is exact; a signed zero
+        /// added to a, which is +0 or positive, gives a. So the sample is the texel at (Index(k), Index(m)). Nearest
+        /// sampling floors u and v without the shift, which gives k and m too.
+        /// </para>
+        /// <para>
+        /// <see cref="Index(float, int)"/> of an integer k below 2^23 in magnitude is the clamp of k for
+        /// <see cref="WrapMode.Clamp"/>, and the true modulo for <see cref="WrapMode.Repeat"/>: k / size has a rounding
+        /// error below 1 / (2 size), less than its distance to the next integer when it is not an integer itself, so
+        /// its floor is exact, and the remaining products and differences are integers below 2^24. This method takes
+        /// those indexes and forms the same expression, texel times opacity / 255, then converts as the sampling path
+        /// does.
+        /// </para>
+        /// </remarks>
+        /// <param name="pixels">The texels of the sampled level.</param>
+        /// <param name="overlays">The overlays to fill.</param>
+        /// <param name="scanline">The coverage of the scanline.</param>
+        /// <param name="x">The first column of the scanline.</param>
+        /// <param name="y">The row of the scanline.</param>
+        /// <param name="workspace">The workspace whose first blend scratch row holds the colors.</param>
+        private void ApplyTranslated(
+            ReadOnlySpan<Rgba32> pixels,
+            Span<TPixel> overlays,
+            ReadOnlySpan<float> scanline,
+            int x,
+            int y,
+            BrushWorkspace<TPixel> workspace)
+        {
+            int width = this.width;
+            int row = this.repeat ? Modulo(y + this.offsetY, this.height) : Math.Clamp(y + this.offsetY, 0, this.height - 1);
+            ReadOnlySpan<Rgba32> texels = pixels.Slice(row * width, width);
+            float scale = this.opacity / 255F;
+
+            // The first blend scratch row is free until the blend fills it.
+            Span<Vector4> colors = workspace.GetBlendScratch(scanline.Length, 3)[..scanline.Length];
+            int first = x + this.offsetX;
+            if (this.repeat)
+            {
+                int column = Modulo(first, width);
+                for (int i = 0; i < colors.Length; i++)
+                {
+                    colors[i] = scanline[i] <= 0F ? Vector4.Zero : ToVector(texels[column]) * scale;
+                    column = column == width - 1 ? 0 : column + 1;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < colors.Length; i++)
+                {
+                    colors[i] = scanline[i] <= 0F ? Vector4.Zero : ToVector(texels[Math.Clamp(first + i, 0, width - 1)]) * scale;
+                }
+            }
+
+            if (typeof(TPixel) == typeof(Rgba32))
+            {
+                // The bulk conversion of the sampling path (see Apply).
+                PixelOperations<TPixel>.Instance.FromAssociatedScaledVector4Destructive(this.Configuration, colors, overlays);
+                return;
+            }
+
+            for (int i = 0; i < colors.Length; i++)
+            {
+                overlays[i] = scanline[i] <= 0F ? default : TPixel.FromAssociatedScaledVector4(colors[i]);
+            }
+        }
+
+        /// <summary>
+        /// Returns the non-negative remainder of an integer division.
+        /// </summary>
+        /// <param name="value">The dividend.</param>
+        /// <param name="size">The divisor, greater than zero.</param>
+        /// <returns>The remainder, in the range 0 to <paramref name="size"/> - 1.</returns>
+        private static int Modulo(int value, int size)
+        {
+            int remainder = value % size;
+            return remainder < 0 ? remainder + size : remainder;
+        }
+
+        /// <summary>
         /// Returns the texel that contains a point.
         /// </summary>
+        /// <param name="pixels">The texels of the sampled level.</param>
         /// <param name="u">The horizontal texel coordinate.</param>
         /// <param name="v">The vertical texel coordinate.</param>
         /// <returns>The premultiplied texel in 8-bit units.</returns>
-        private Vector4 SampleNearest(float u, float v)
+        private Vector4 SampleNearest(ReadOnlySpan<Rgba32> pixels, float u, float v)
         {
             int ix = this.Index(u, this.width);
             int iy = this.Index(v, this.height);
-            return ToVector(this.pixels[(iy * this.width) + ix]);
+            return ToVector(pixels[(iy * this.width) + ix]);
         }
 
         /// <summary>
         /// Interpolates the four texels around a point.
         /// </summary>
+        /// <param name="pixels">The texels of the sampled level.</param>
         /// <param name="u">The horizontal coordinate, already shifted by half a texel.</param>
         /// <param name="v">The vertical coordinate, already shifted by half a texel.</param>
         /// <returns>The premultiplied color in 8-bit units.</returns>
-        private Vector4 SampleBilinear(float u, float v)
+        private Vector4 SampleBilinear(ReadOnlySpan<Rgba32> pixels, float u, float v)
         {
             float fu = MathF.Floor(u);
             float fv = MathF.Floor(v);
             float tx = u - fu;
             float ty = v - fv;
-            int x0 = this.Index(fu, this.width);
-            int x1 = this.Index(fu + 1F, this.width);
-            int y0 = this.Index(fv, this.height) * this.width;
-            int y1 = this.Index(fv + 1F, this.height) * this.width;
+            int x0;
+            int x1;
+            int y0;
+            int y1;
+            if (this.repeat && MathF.Abs(fu) <= MaxExactCoordinate && MathF.Abs(fv) <= MaxExactCoordinate)
+            {
+                // Index of an integer below 2^23 in magnitude is its true modulo with WrapMode.Repeat (see
+                // ApplyTranslated), and fu + 1 is exact, so the modulo of the integer and its successor give the indexes
+                // of Index without its float divisions. NaN fails the range test and takes the general path.
+                x0 = Modulo((int)fu, this.width);
+                x1 = x0 == this.width - 1 ? 0 : x0 + 1;
+                int row = Modulo((int)fv, this.height);
+                y0 = row * this.width;
+                y1 = (row == this.height - 1 ? 0 : row + 1) * this.width;
+            }
+            else
+            {
+                x0 = this.Index(fu, this.width);
+                x1 = this.Index(fu + 1F, this.width);
+                y0 = this.Index(fv, this.height) * this.width;
+                y1 = this.Index(fv + 1F, this.height) * this.width;
+            }
 
-            Vector4 top = Vector4.Lerp(ToVector(this.pixels[y0 + x0]), ToVector(this.pixels[y0 + x1]), tx);
-            Vector4 bottom = Vector4.Lerp(ToVector(this.pixels[y1 + x0]), ToVector(this.pixels[y1 + x1]), tx);
+            Vector4 top = Vector4.Lerp(ToVector(pixels[y0 + x0]), ToVector(pixels[y0 + x1]), tx);
+            Vector4 bottom = Vector4.Lerp(ToVector(pixels[y1 + x0]), ToVector(pixels[y1 + x1]), tx);
             return Vector4.Lerp(top, bottom, ty);
         }
 

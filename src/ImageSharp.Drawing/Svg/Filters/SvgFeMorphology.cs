@@ -57,6 +57,10 @@ internal sealed class SvgFeMorphology : SvgFilterPrimitive
         this.dilate = dilate;
     }
 
+    /// <inheritdoc/>
+    /// <remarks>Each channel of the output is the minimum or maximum of the same channel of input pixels.</remarks>
+    public override bool PreservesAlphaOnly => true;
+
     /// <summary>
     /// Creates the primitive of an <c>feMorphology</c> element.
     /// </summary>
