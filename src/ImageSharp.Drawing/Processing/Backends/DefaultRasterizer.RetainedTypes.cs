@@ -203,70 +203,53 @@ internal static partial class DefaultRasterizer
     }
 
     /// <summary>
-    /// Collects retained line segments whose X coordinates require 32-bit storage.
+    /// Appends retained line segments whose X coordinates require 32-bit storage to the block chain of a row band.
     /// </summary>
-    internal sealed class LineArrayX32Y16
+    /// <remarks>
+    /// The chain of a band is its front block and the number of valid lines in it; the linearizer keeps both in the
+    /// arrays that the retained geometry takes over, so a band needs no collector object. An empty band has no front
+    /// block and a count of 0, and its first line allocates the front block.
+    /// </remarks>
+    internal static class LineArrayX32Y16
     {
-        private readonly bool retainTags;
-        private LineArrayX32Y16Block? current;
-
-        // Starting at full capacity forces the first AppendLine to allocate the front block,
-        // so empty rows never pay for a block allocation.
-        private int count = LineArrayX32Y16Block.LineCount;
-
         /// <summary>
-        /// Initializes a new instance of the <see cref="LineArrayX32Y16"/> class.
+        /// Appends one retained line to the chain of a band.
         /// </summary>
+        /// <param name="front">The front block of the chain, or <see langword="null"/> for an empty chain; replaced when a new block is needed.</param>
+        /// <param name="count">The number of valid lines in <paramref name="front"/>.</param>
         /// <param name="retainTags">
         /// Whether each line stores a profile tag. Only aliased fills need tags. Antialiased fills
-        /// and strokes therefore use the smaller base block and do not allocate tag storage.
+        /// and strokes therefore use the smaller base block and do not allocate tag storage. The value
+        /// must be the same for every line of a chain.
         /// </param>
-        public LineArrayX32Y16(bool retainTags) => this.retainTags = retainTags;
-
-        /// <summary>
-        /// Gets the front block in the retained line chain.
-        /// </summary>
-        /// <returns>The front retained block, or <see langword="null"/> when no lines were appended.</returns>
-        public LineArrayX32Y16Block? GetFrontBlock() => this.current;
-
-        /// <summary>
-        /// Gets the number of valid lines in the front retained block.
-        /// </summary>
-        /// <returns>The number of valid front-block lines.</returns>
-        public int GetFrontBlockLineCount() => this.current is null ? 0 : this.count;
-
-        /// <summary>
-        /// Appends one retained line to the chain.
-        /// </summary>
         /// <param name="x0">The starting X coordinate in 24.8 fixed-point.</param>
         /// <param name="y0">The starting Y coordinate in 24.8 fixed-point.</param>
         /// <param name="x1">The ending X coordinate in 24.8 fixed-point.</param>
         /// <param name="y1">The ending Y coordinate in 24.8 fixed-point.</param>
         /// <param name="tag">The segment profile tag.</param>
-        public void AppendLine(int x0, int y0, int x1, int y1, uint tag)
+        public static void AppendLine(ref LineArrayX32Y16Block? front, ref int count, bool retainTags, int x0, int y0, int x1, int y1, uint tag)
         {
             int packedY0Y1 = Pack(y0, y1);
-            LineArrayX32Y16Block? block = this.current;
-            int currentCount = this.count;
-            if (currentCount < LineArrayX32Y16Block.LineCount)
+            LineArrayX32Y16Block? block = front;
+            int currentCount = count;
+            if (block is not null && currentCount < LineArrayX32Y16Block.LineCount)
             {
-                // retainTags does not change during the collector's lifetime. When it is true,
-                // every block in this chain was created as the tagged derived type.
-                if (this.retainTags)
+                // When retainTags is true, every block in this chain was created as the tagged derived type.
+                if (retainTags)
                 {
-                    ((TaggedLineArrayX32Y16Block)block!).SetTagged(currentCount, packedY0Y1, x0, x1, tag);
+                    ((TaggedLineArrayX32Y16Block)block).SetTagged(currentCount, packedY0Y1, x0, x1, tag);
                 }
                 else
                 {
-                    block!.Set(currentCount, packedY0Y1, x0, x1);
+                    block.Set(currentCount, packedY0Y1, x0, x1);
                 }
 
-                this.count = currentCount + 1;
+                count = currentCount + 1;
             }
             else
             {
                 LineArrayX32Y16Block next;
-                if (this.retainTags)
+                if (retainTags)
                 {
                     TaggedLineArrayX32Y16Block tagged = new(block);
                     tagged.SetTagged(0, packedY0Y1, x0, x1, tag);
@@ -278,8 +261,8 @@ internal static partial class DefaultRasterizer
                     next.Set(0, packedY0Y1, x0, x1);
                 }
 
-                this.current = next;
-                this.count = 1;
+                front = next;
+                count = 1;
             }
         }
 
@@ -482,71 +465,53 @@ internal static partial class DefaultRasterizer
     }
 
     /// <summary>
-    /// Collects retained line segments whose X coordinates fit in packed 16-bit storage.
+    /// Appends retained line segments whose X coordinates fit in packed 16-bit storage to the block chain of a row band.
     /// </summary>
-    internal sealed class LineArrayX16Y16
+    /// <remarks>
+    /// The chain of a band is held as for <see cref="LineArrayX32Y16"/>: its front block and the number of valid lines
+    /// in it, in the arrays that the retained geometry takes over.
+    /// </remarks>
+    internal static class LineArrayX16Y16
     {
-        private readonly bool retainTags;
-        private LineArrayX16Y16Block? current;
-
-        // Starting at full capacity forces the first AppendLine to allocate the front block,
-        // so empty rows never pay for a block allocation.
-        private int count = LineArrayX16Y16Block.LineCount;
-
         /// <summary>
-        /// Initializes a new instance of the <see cref="LineArrayX16Y16"/> class.
+        /// Appends one retained line to the chain of a band.
         /// </summary>
+        /// <param name="front">The front block of the chain, or <see langword="null"/> for an empty chain; replaced when a new block is needed.</param>
+        /// <param name="count">The number of valid lines in <paramref name="front"/>.</param>
         /// <param name="retainTags">
         /// Whether each line stores a profile tag. Only aliased fills need tags. Antialiased fills
-        /// and strokes therefore use the smaller base block and do not allocate tag storage.
+        /// and strokes therefore use the smaller base block and do not allocate tag storage. The value
+        /// must be the same for every line of a chain.
         /// </param>
-        public LineArrayX16Y16(bool retainTags) => this.retainTags = retainTags;
-
-        /// <summary>
-        /// Gets the front block in the retained line chain.
-        /// </summary>
-        /// <returns>The front retained block, or <see langword="null"/> when no lines were appended.</returns>
-        public LineArrayX16Y16Block? GetFrontBlock() => this.current;
-
-        /// <summary>
-        /// Gets the number of valid lines in the front retained block.
-        /// </summary>
-        /// <returns>The number of valid front-block lines.</returns>
-        public int GetFrontBlockLineCount() => this.current is null ? 0 : this.count;
-
-        /// <summary>
-        /// Appends one retained line to the chain.
-        /// </summary>
         /// <param name="x0">The starting X coordinate in 24.8 fixed-point.</param>
         /// <param name="y0">The starting Y coordinate in 24.8 fixed-point.</param>
         /// <param name="x1">The ending X coordinate in 24.8 fixed-point.</param>
         /// <param name="y1">The ending Y coordinate in 24.8 fixed-point.</param>
         /// <param name="tag">The segment profile tag.</param>
-        public void AppendLine(int x0, int y0, int x1, int y1, uint tag)
+        public static void AppendLine(ref LineArrayX16Y16Block? front, ref int count, bool retainTags, int x0, int y0, int x1, int y1, uint tag)
         {
             int packedY0Y1 = Pack(y0, y1);
             int packedX0X1 = Pack(x0, x1);
-            LineArrayX16Y16Block? block = this.current;
-            int currentCount = this.count;
-            if (currentCount < LineArrayX16Y16Block.LineCount)
+            LineArrayX16Y16Block? block = front;
+            int currentCount = count;
+            if (block is not null && currentCount < LineArrayX16Y16Block.LineCount)
             {
-                // retainTags does not change during the collector's lifetime. When it is true,
-                // every block in this chain was created as the tagged derived type.
-                if (this.retainTags)
+                // When retainTags is true, every block in this chain was created as the tagged derived type.
+                if (retainTags)
                 {
-                    ((TaggedLineArrayX16Y16Block)block!).SetTagged(currentCount, packedY0Y1, packedX0X1, tag);
+                    ((TaggedLineArrayX16Y16Block)block).SetTagged(currentCount, packedY0Y1, packedX0X1, tag);
                 }
                 else
                 {
-                    block!.Set(currentCount, packedY0Y1, packedX0X1);
+                    block.Set(currentCount, packedY0Y1, packedX0X1);
                 }
 
-                this.count = currentCount + 1;
+                count = currentCount + 1;
             }
             else
             {
                 LineArrayX16Y16Block next;
-                if (this.retainTags)
+                if (retainTags)
                 {
                     TaggedLineArrayX16Y16Block tagged = new(block);
                     tagged.SetTagged(0, packedY0Y1, packedX0X1, tag);
@@ -558,8 +523,8 @@ internal static partial class DefaultRasterizer
                     next.Set(0, packedY0Y1, packedX0X1);
                 }
 
-                this.current = next;
-                this.count = 1;
+                front = next;
+                count = 1;
             }
         }
 

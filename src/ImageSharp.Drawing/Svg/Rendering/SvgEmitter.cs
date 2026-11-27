@@ -1,6 +1,7 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
 using System.Numerics;
 using SixLabors.ImageSharp.Drawing.Processing;
 
@@ -208,6 +209,7 @@ internal static partial class SvgEmitter
         }
 
         canvas.RestoreTo(restoreCount);
+        state.Release();
     }
 
     /// <summary>
@@ -313,8 +315,11 @@ internal static partial class SvgEmitter
         private readonly float textContrast;
 
         // One slot per key: ((transform * 2) + even-odd bit) * 2 + layer bit. Keys of aliased draws follow, offset by the
-        // length of this array; see GetAliasedKey.
+        // key count; see GetAliasedKey. The array is rented from the shared pool, because a document with many transforms
+        // (one per glyph of its text) would otherwise allocate a large array on every render; it can be longer than the
+        // key count, and only its first keyCount slots are used.
         private readonly DrawingOptions?[] options;
+        private readonly int keyCount;
         private DrawingOptions? layerContentOptions;
 
         // Created on first use in a render, so a document without masks or aliased draws allocates none of them. The C#
@@ -343,7 +348,11 @@ internal static partial class SvgEmitter
             this.innerGraphics.BlendPercentage = 1F;
             this.innerGraphics.ColorBlendingMode = PixelColorBlendingMode.Normal;
             this.innerGraphics.AlphaCompositionMode = PixelAlphaCompositionMode.SrcOver;
-            this.options = new DrawingOptions?[transforms.Length * 4];
+            this.keyCount = transforms.Length * 4;
+            this.options = ArrayPool<DrawingOptions?>.Shared.Rent(this.keyCount);
+
+            // A rented array can hold the references of an earlier render; every slot must start empty.
+            Array.Clear(this.options, 0, this.keyCount);
             this.layerContentOptions = null;
             this.maskGraphics = null;
             this.outerAliasedGraphics = null;
@@ -518,6 +527,16 @@ internal static partial class SvgEmitter
         }
 
         /// <summary>
+        /// Returns the rented options array to the shared pool, emptied so that the pool keeps no options of this render.
+        /// The state must not be used afterwards.
+        /// </summary>
+        public readonly void Release()
+        {
+            Array.Clear(this.options, 0, this.keyCount);
+            ArrayPool<DrawingOptions?>.Shared.Return(this.options);
+        }
+
+        /// <summary>
         /// Switches the canvas to the options of a key, unless it already holds them.
         /// </summary>
         /// <param name="key">The key.</param>
@@ -540,9 +559,9 @@ internal static partial class SvgEmitter
         /// <returns>The options.</returns>
         public DrawingOptions GetOptions(int key)
         {
-            if (key >= this.options.Length)
+            if (key >= this.keyCount)
             {
-                return this.GetAliasedOptions(key - this.options.Length);
+                return this.GetAliasedOptions(key - this.keyCount);
             }
 
             return this.options[key] ??= this.CreateOptions(key, this.outerGraphics, this.innerGraphics);

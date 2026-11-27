@@ -20,7 +20,7 @@ internal static partial class DefaultRasterizer
     /// ports of the corresponding members here, and <c>WebGPUSceneEncoder.EncodeStrokePath</c>
     /// ports the contour preprocessing. Any behavioral change here must be mirrored there.
     /// </remarks>
-    /// <typeparam name="TL">The mutable per-row retained line collector type.</typeparam>
+    /// <typeparam name="TL">The retained line block type of a row band.</typeparam>
     private abstract class StrokeLinearizer<TL> : Linearizer<TL>
         where TL : class
     {
@@ -102,13 +102,7 @@ internal static partial class DefaultRasterizer
                 this.ProcessContour(contourPoints, contour.IsClosed, contourInterest == ContourInterest.Contained);
             }
 
-            if (!this.HasAnyCoverage)
-            {
-                return false;
-            }
-
-            this.FinalizeLines();
-            return true;
+            return this.HasAnyCoverage;
         }
 
         /// <summary>
@@ -1090,7 +1084,7 @@ internal static partial class DefaultRasterizer
     /// <summary>
     /// Stroke linearizer that finalizes retained lines into the 32-bit-X encoding.
     /// </summary>
-    private sealed class StrokeLinearizerX32Y16 : StrokeLinearizer<LineArrayX32Y16>
+    private sealed class StrokeLinearizerX32Y16 : StrokeLinearizer<LineArrayX32Y16Block>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="StrokeLinearizerX32Y16"/> class.
@@ -1123,30 +1117,21 @@ internal static partial class DefaultRasterizer
             bool keepHorizontalLines,
             MemoryAllocator allocator)
             : base(geometry, residual, stroke, translateX, translateY, minX, minY, width, height, firstBandIndex, rowBandCount, keepHorizontalLines, allocator)
-            => this.FinalLines = new LineArrayX32Y16Block?[rowBandCount];
-
-        /// <summary>
-        /// Gets the finalized retained line blocks for each row band.
-        /// </summary>
-        public LineArrayX32Y16Block?[] FinalLines { get; }
-
-        /// <inheritdoc />
-        protected override LineArrayX32Y16 CreateLineArray() => new(false);
-
-        /// <inheritdoc />
-        protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
-            => this.GetOrCreateLineArray(rowIndex).AppendLine(x0, y0, x1, y1, tag);
-
-        /// <inheritdoc />
-        protected override void FinalizeLines()
         {
-            for (int i = 0; i < this.RowBandCount; i++)
-            {
-                LineArrayX32Y16? lineArray = this.LineArrays[i];
-                this.FinalLines[i] = lineArray?.GetFrontBlock();
-                this.FirstBlockLineCounts[i] = lineArray?.GetFrontBlockLineCount() ?? 0;
-            }
         }
+
+        /// <inheritdoc />
+        /// <remarks>Stroke outlines retain no profile tags, so the chains use the base block.</remarks>
+        protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
+            => LineArrayX32Y16.AppendLine(
+                ref this.FinalLines[rowIndex],
+                ref this.FirstBlockLineCounts[rowIndex],
+                false,
+                x0,
+                y0,
+                x1,
+                y1,
+                tag);
 
         /// <summary>
         /// Executes the retained stroke linearization pass and returns the finalized payload.
@@ -1178,7 +1163,7 @@ internal static partial class DefaultRasterizer
     /// <summary>
     /// Stroke linearizer that finalizes retained lines into the packed 16-bit-X encoding.
     /// </summary>
-    private sealed class StrokeLinearizerX16Y16 : StrokeLinearizer<LineArrayX16Y16>
+    private sealed class StrokeLinearizerX16Y16 : StrokeLinearizer<LineArrayX16Y16Block>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="StrokeLinearizerX16Y16"/> class.
@@ -1211,30 +1196,21 @@ internal static partial class DefaultRasterizer
             bool keepHorizontalLines,
             MemoryAllocator allocator)
             : base(geometry, residual, stroke, translateX, translateY, minX, minY, width, height, firstBandIndex, rowBandCount, keepHorizontalLines, allocator)
-            => this.FinalLines = new LineArrayX16Y16Block?[rowBandCount];
-
-        /// <summary>
-        /// Gets the finalized retained line blocks for each row band.
-        /// </summary>
-        public LineArrayX16Y16Block?[] FinalLines { get; }
-
-        /// <inheritdoc />
-        protected override LineArrayX16Y16 CreateLineArray() => new(false);
-
-        /// <inheritdoc />
-        protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
-            => this.GetOrCreateLineArray(rowIndex).AppendLine(x0, y0, x1, y1, tag);
-
-        /// <inheritdoc />
-        protected override void FinalizeLines()
         {
-            for (int i = 0; i < this.RowBandCount; i++)
-            {
-                LineArrayX16Y16? lineArray = this.LineArrays[i];
-                this.FinalLines[i] = lineArray?.GetFrontBlock();
-                this.FirstBlockLineCounts[i] = lineArray?.GetFrontBlockLineCount() ?? 0;
-            }
         }
+
+        /// <inheritdoc />
+        /// <remarks>Stroke outlines retain no profile tags, so the chains use the base block.</remarks>
+        protected override void AppendLine(int rowIndex, int x0, int y0, int x1, int y1, uint tag)
+            => LineArrayX16Y16.AppendLine(
+                ref this.FinalLines[rowIndex],
+                ref this.FirstBlockLineCounts[rowIndex],
+                false,
+                x0,
+                y0,
+                x1,
+                y1,
+                tag);
 
         /// <summary>
         /// Executes the retained stroke linearization pass and returns the finalized payload.

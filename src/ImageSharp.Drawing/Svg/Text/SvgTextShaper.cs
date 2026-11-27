@@ -44,8 +44,8 @@ internal sealed partial class SvgTextShaper
     private readonly SvgTextContent content;
     private readonly SvgFontMatcher matcher;
     private readonly TextShapingBuffer buffer = new();
-    private readonly List<SvgShapedGlyph> glyphs = [];
-    private readonly List<SvgTextCluster> clusters = [];
+    private readonly List<SvgShapedGlyph> glyphs;
+    private readonly List<SvgTextCluster> clusters;
     private readonly List<int> codePoints = [];
     private readonly List<Tag> features = [];
 
@@ -58,6 +58,12 @@ internal sealed partial class SvgTextShaper
     {
         this.content = content;
         this.matcher = matcher;
+
+        // Most characters make one cluster of one glyph, so the character count is the usual final size of both lists;
+        // starting there saves the growth copies, and the arrays that Shape returns are exact copies either way.
+        int length = content.Text.Length;
+        this.glyphs = new List<SvgShapedGlyph>(length);
+        this.clusters = new List<SvgTextCluster>(length);
     }
 
     /// <summary>
