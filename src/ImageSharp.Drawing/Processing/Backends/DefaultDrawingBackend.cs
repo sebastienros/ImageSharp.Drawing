@@ -359,23 +359,28 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
             {
                 case FlushScene.SceneOperationKind.BeginLayer:
                     GraphicsOptions? layerOptions = scene.Layers[operation.ItemIndex]?.Options;
-                    using (BandTarget<TPixel> layerTarget = new(
-                        configuration.MemoryAllocator.Allocate2D<TPixel>(operation.LayerBounds.Width, operation.LayerBounds.Height, AllocationOptions.Clean),
-                        operation.LayerBounds,
-                        layerOptions))
-                    {
-                        ExecuteSceneRowOperations(
-                            ref cursor,
-                            configuration,
-                            canvasWidth,
-                            scene,
-                            layerTarget,
-                            scratch,
-                            state);
 
-                        CompositeLayerBand(configuration, layerTarget, target, state.BrushWorkspace);
-                    }
+                    // The layer band renders into a cleared worker-local buffer of its nesting level, which stays with
+                    // the worker for the next layer band of that level (see WorkerState.BeginLayerBand). A row that
+                    // throws leaves the level open; returning the state to its pool resets it.
+                    Rectangle layerBounds = operation.LayerBounds;
+                    BandTarget<TPixel> layerTarget = new(
+                        state.BeginLayerBand(layerBounds.Width, layerBounds.Height),
+                        layerBounds.X,
+                        layerBounds.Y,
+                        layerOptions);
 
+                    ExecuteSceneRowOperations(
+                        ref cursor,
+                        configuration,
+                        canvasWidth,
+                        scene,
+                        layerTarget,
+                        scratch,
+                        state);
+
+                    CompositeLayerBand(configuration, layerTarget, target, state.BrushWorkspace);
+                    state.EndLayerBand();
                     break;
 
                 case FlushScene.SceneOperationKind.EndLayer:
@@ -869,9 +874,13 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
             return;
         }
 
+        // The whole layer blends with one amount, so the overload with a constant amount applies. It gives the same
+        // bytes as a span filled with that amount: both run the same vector loops over the same groups of pixels and
+        // the same scalar tail, and pass the operator the amount clamped to [0, 1] in every lane. The blend
+        // percentage of GraphicsOptions is validated to lie in [0, 1], and the clamp keeps an in-range value to the
+        // bit, so both forms pass the same value.
         PixelBlender<TPixel> blender = PixelBlenders<TPixel>.GetPixelBlender(graphicsOptions);
-        Span<float> amounts = brushWorkspace.GetAmounts(overlap.Width);
-        amounts[..overlap.Width].Fill(graphicsOptions.BlendPercentage);
+        float amount = graphicsOptions.BlendPercentage;
 
         int sourceOffsetX = overlap.X - source.AbsoluteLeft;
         int sourceOffsetY = overlap.Y - source.AbsoluteTop;
@@ -889,7 +898,7 @@ public sealed partial class DefaultDrawingBackend : IDrawingBackend
                 destinationRow,
                 destinationRow,
                 sourceRow,
-                amounts[..overlap.Width],
+                amount,
                 brushWorkspace.GetBlendScratch(overlap.Width, 3));
         }
     }

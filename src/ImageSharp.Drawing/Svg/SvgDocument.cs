@@ -135,7 +135,8 @@ public sealed partial class SvgDocument
         Guard.NotNull(options, nameof(options));
 
         SvgReaderOptions readerOptions = CreateReaderOptions(options);
-        return SvgResolver.Resolve(SvgReader.Read(stream, in readerOptions), options).WithLoadLimits(options);
+        using SvgElementTree tree = SvgReader.Read(stream, in readerOptions);
+        return SvgResolver.Resolve(tree, options).WithLoadLimits(options);
     }
 
     /// <summary>
@@ -185,7 +186,8 @@ public sealed partial class SvgDocument
         Guard.NotNull(options, nameof(options));
 
         SvgReaderOptions readerOptions = CreateReaderOptions(options);
-        return SvgResolver.Resolve(SvgReader.Read(svg, in readerOptions), options).WithLoadLimits(options);
+        using SvgElementTree tree = SvgReader.Read(svg, in readerOptions);
+        return SvgResolver.Resolve(tree, options).WithLoadLimits(options);
     }
 
     /// <summary>

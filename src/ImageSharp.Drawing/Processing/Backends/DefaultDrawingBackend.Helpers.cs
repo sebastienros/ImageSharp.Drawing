@@ -1280,6 +1280,8 @@ public sealed partial class DefaultDrawingBackend
         private IMemoryOwner<float>? pathClipCoverageOwner;
         private int pathClipCoverageLength;
         private PathClipBand?[] pathClipBands = [];
+        private Buffer2D<TPixel>?[] layerBands = [];
+        private int layerBandDepth;
 
         /// <summary>
         /// Initializes static members of the <see cref="WorkerState{TPixel}"/> class,
@@ -1370,6 +1372,9 @@ public sealed partial class DefaultDrawingBackend
             {
                 band?.Reset();
             }
+
+            // A row that threw inside a layer did not close it; the next renter starts with no open layer.
+            state.layerBandDepth = 0;
 
             lock (PoolSync)
             {
@@ -1491,11 +1496,74 @@ public sealed partial class DefaultDrawingBackend
         }
 
         /// <summary>
+        /// Returns a transparent region for the layer that begins in the current band, one nesting level below the
+        /// layer that is open now, if any. Pair every call with <see cref="EndLayerBand"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A layer of a scene row covers at most one band of the tile grid, and it lives only until it is composited
+        /// back into its parent at the end of the band. So every nesting level keeps one buffer of its own for the
+        /// worker: a nested layer renders while its parent stays open, and the layers of the following bands reuse the
+        /// buffer of their level. This replaces one allocation of a temporary buffer per layer band, whose managed
+        /// wrapper objects were most of what a render of a document with many layers allocated.
+        /// </para>
+        /// <para>
+        /// The region is cleared before it is handed out, as the temporary buffer was allocated clean. The pixels of a
+        /// layer depend only on that clear start and on what is drawn into it, so a reused buffer gives the same layer.
+        /// </para>
+        /// </remarks>
+        /// <param name="width">The width of the layer band.</param>
+        /// <param name="height">The height of the layer band, at most the tile height.</param>
+        /// <returns>The cleared region, valid until the matching <see cref="EndLayerBand"/>.</returns>
+        public Buffer2DRegion<TPixel> BeginLayerBand(int width, int height)
+        {
+            int depth = this.layerBandDepth;
+            if (depth == this.layerBands.Length)
+            {
+                Array.Resize(ref this.layerBands, depth + 1);
+            }
+
+            Buffer2D<TPixel>? buffer = this.layerBands[depth];
+            if (buffer is null || buffer.Width < width || buffer.Height < height)
+            {
+                // Null before allocating; see GetOrCreateScratch. The buffer keeps at least the width of the state, the
+                // widest band the worker serves, and the tile height, so it grows only for an unusual band.
+                int bufferWidth = Math.Max(Math.Max(width, this.DestinationWidth), buffer?.Width ?? 0);
+                int bufferHeight = Math.Max(height, DefaultRasterizer.DefaultTileHeight);
+                buffer?.Dispose();
+                this.layerBands[depth] = null;
+                buffer = this.allocator.Allocate2D<TPixel>(bufferWidth, bufferHeight);
+                this.layerBands[depth] = buffer;
+            }
+
+            Buffer2DRegion<TPixel> region = buffer.GetRegion(0, 0, width, height);
+            for (int y = 0; y < height; y++)
+            {
+                region.DangerousGetRowSpan(y).Clear();
+            }
+
+            this.layerBandDepth = depth + 1;
+            return region;
+        }
+
+        /// <summary>
+        /// Closes the layer band that the last <see cref="BeginLayerBand"/> opened, after it was composited.
+        /// </summary>
+        public void EndLayerBand() => this.layerBandDepth--;
+
+        /// <summary>
         /// Releases the worker-local scratch and brush workspace. The scratch fields are nulled
         /// so a disposed state can never hand out spans over returned pool memory.
         /// </summary>
         public void Dispose()
         {
+            foreach (Buffer2D<TPixel>? buffer in this.layerBands)
+            {
+                buffer?.Dispose();
+            }
+
+            this.layerBands = [];
+            this.layerBandDepth = 0;
             this.scratch?.Dispose();
             this.scratch = null;
             this.pathClipScratch?.Dispose();

@@ -31,17 +31,18 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// references inherits from the <c>use</c> element, not from its parent in this tree; the resolve stage applies it.
 /// </para>
 /// <para>
-/// The tree is not changed after the reader returns it, so concurrent reads are safe.
+/// The tree is not changed after the reader returns it, so concurrent reads are safe. The style table uses pooled storage:
+/// the owner disposes the tree once the resolve stage has finished with it, and no style may be read after that.
 /// </para>
 /// </remarks>
-internal sealed class SvgElementTree
+internal sealed class SvgElementTree : IDisposable
 {
     private static readonly SvgSpecifiedStyle EmptyStyle;
 
     private readonly List<SvgElement> elements;
     private readonly List<string> classNames;
     private readonly List<Matrix3x2> transforms;
-    private readonly List<SvgSpecifiedStyle> styles;
+    private readonly SvgPooledList<SvgSpecifiedStyle> styles;
     private readonly List<SvgLength> dashLengths;
     private readonly List<SvgViewportAttributes> viewports;
     private readonly List<SvgRectAttributes> rects;
@@ -131,6 +132,11 @@ internal sealed class SvgElementTree
     /// <param name="index">The element index.</param>
     /// <returns>The element.</returns>
     public ref readonly SvgElement this[int index] => ref CollectionsMarshal.AsSpan(this.elements)[index];
+
+    /// <summary>
+    /// Returns the pooled storage of the style table. The tree is not used afterwards.
+    /// </summary>
+    public void Dispose() => this.styles.Dispose();
 
     /// <summary>
     /// Returns the first child of an element.
@@ -249,7 +255,7 @@ internal sealed class SvgElementTree
     public ref readonly SvgSpecifiedStyle GetStyle(int index)
     {
         int styleIndex = this[index].StyleIndex;
-        return ref styleIndex < 0 ? ref EmptyStyle : ref CollectionsMarshal.AsSpan(this.styles)[styleIndex];
+        return ref styleIndex < 0 ? ref EmptyStyle : ref this.styles[styleIndex];
     }
 
     /// <summary>
