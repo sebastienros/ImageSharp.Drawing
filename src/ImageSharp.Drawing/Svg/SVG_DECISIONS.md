@@ -480,6 +480,28 @@ The rows of 17.4 that the user decided are in Part B. Of the other rows, these a
 
 Internal limits that are not options (constants in the code; `SVG_DESIGN.md` 10, 16.5, 17.5): a filter list of 32 entries (D8), a kernel of 256 entries (D9), `numOctaves` 9, a filter buffer side of 16,384 pixels and a standard deviation of 8,192 filter pixels, a specular exponent of 1 to 128, pattern and filter nesting with the full budget for 3 levels (half per further level), image nesting of 4 levels, 64 MiB of inflated `svgz` data, a side of 65,535 pixels for a size that the document sets (D32), a `var()` substitution of 32,768 characters and 16,777,216 substituted characters per document, `var()` nesting of 32, math function nesting of 32 with 256 terms and 65,536 math functions that mix units per document, color function nesting of 16.
 
+### Phase 7
+
+#### D43. Policy, bounds, and default of the scene cache
+
+- **Question**: when does a document keep the retained scene of a draw, how much may it keep, and is the cache on by default?
+- **Choice**: on by default (`SvgLoadOptions.CacheScenes` is `true`). The first draw with a state only notes the state; the second records a scene and keeps it; later draws replay it. A document keeps at most 4 scenes and 64 MB, and drops the least recently used scene first. A scene above the bound is not kept, and its state is noted so that it is not recorded again. A kept scene holds managed memory only and is never disposed; the garbage collector frees it with the document. A draw inside a clip, a layer, or a region, on a backend other than the CPU backend, or with an allocator that has an accumulative limit or that ImageSharp does not provide, does not use the cache.
+- **Reason**: the user named an option to turn the cache off, so the default is on (Part B, 28 November 2026). The other values are the assistant's: "the second draw" so that a document drawn once pays nothing (measured: a draw without the cache and a single load and render are not separated from before); 4 scenes so that a document drawn at a few sizes keeps one for each; 64 MB because the largest measured scene of the documents that the cache is for holds 9 MB at 4000 pixels, and the filter documents 36 to 47 MB (`SVG_DESIGN.md` 22.1).
+- **Alternative**: off by default; other bounds; a bound for all documents of a process together instead of one per document (many loaded documents, each drawn twice or more, keep up to 64 MB each); public members for the bound and for emptying the cache (proposed in 22.1, not built).
+- **Where**: `src/ImageSharp.Drawing/Svg/Rendering/SvgSceneCache.cs` (`MaxScenes`, `MaxBytes`, `TryDraw`), `SvgSceneAllocator.cs`, `src/ImageSharp.Drawing/Svg/SvgLoadOptions.cs` (`CacheScenes`), `src/ImageSharp.Drawing/Processing/DrawingCanvas{TPixel}.cs` (`TryGetSceneTarget`, `RecordScene`); `tests/ImageSharp.Drawing.Tests/Svg/SvgSceneCacheTests.cs`; `SVG_DESIGN.md` 22.1.
+- **To revisit**: change the constants or the default of the option; `SvgSceneCacheTests` covers the bounds and the option. Known weakness: the bytes of a scene are counted as the managed bytes that the whole process allocated while the scene was recorded, less the working buffers that the recording released. Allocations of other threads during a recording make the count larger, so under heavy concurrent load a scene can be refused or dropped although it would fit. The count is never too small. A count from the recording alone was not built.
+- **Status**: chosen by the assistant, not confirmed by the user, except the default, which follows the user's words; 28 November 2026.
+
+#### D44. The CPU backend renders retained scenes and other work of a batch as one scene
+
+- **Question**: may the core change how a canvas renders a batch that mixes retained scenes (`RenderScene`) with other commands?
+- **Choice**: yes, on the CPU backend. Such a batch renders as one backend scene; before, every retained scene outside a layer and every run of commands between two of them rendered as its own pass over the target. A batch whose only work is one retained scene renders it directly, as before. Other backends keep the separate passes.
+- **Reason**: with one pass per scene, the 40 icon documents of the benchmark replayed in 43 ms where a direct draw takes 23 ms at 1000 pixels; in one scene they take 20 ms (22.1). Every pixel receives the same operations in the same order, and the images of the test suite are equal.
+- **Alternative**: keep the separate passes; then the scene cache makes a canvas with many small documents slower, and the cache would have to be off for such draws.
+- **Where**: `src/ImageSharp.Drawing/Processing/DrawingCanvas{TPixel}.cs` (`RenderCommandBatch`), `src/ImageSharp.Drawing/Processing/Backends/DrawingCommandBatch.cs` (`HasOnlyOneRootScene`); `src/ImageSharp.Drawing/Processing/DRAWING_CANVAS.md`.
+- **To revisit**: this changes core behaviour for every user of `RenderScene`, not only for SVG. The WebGPU backend was not run (no GPU in the build environment) and keeps the old path. Not analysed further.
+- **Status**: chosen by the assistant, not confirmed by the user; 28 November 2026.
+
 ## Part B: Decisions the User Made
 
 Only text that the user typed counts. The words are quoted where they are recorded.
