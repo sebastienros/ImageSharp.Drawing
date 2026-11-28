@@ -36,7 +36,9 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// </para>
 /// <para>
 /// Svg.Skia loads a new picture in every operation, so no draw reuses a filter result that Skia cached for an earlier
-/// picture. <see cref="Setup"/> runs the Svg.Skia and ImageSharp.Drawing methods until the runtime has compiled their
+/// picture. ImageSharp.Drawing loads a new document in every operation and draws it once, so the scene cache of the
+/// document (<see cref="SvgLoadOptions.CacheScenes"/>) only notes the draw and never keeps or replays a scene: this is
+/// the cost of a single draw with the cache on. <see cref="Setup"/> runs the Svg.Skia and ImageSharp.Drawing methods until the runtime has compiled their
 /// code at the final tier (<see cref="SvgBenchmarkWarmup"/>); the loading code of Svg.Skia is managed code too.
 /// </para>
 /// </remarks>

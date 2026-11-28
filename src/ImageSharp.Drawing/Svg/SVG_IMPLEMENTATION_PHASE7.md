@@ -45,6 +45,8 @@ The packages run one after the other, because each needs the machine alone for i
 - **Option.** One `init` property on `SvgLoadOptions` turns the cache off. The package proposes the default with its measurements; the user named an option to disable, so the expected default is on.
 - **Tests.** Cached and fresh draws give equal bytes for every feature document, pixel format, and placement that the existing retained scene test covers, and for draws inside a clip, a transform, a layer, and a recorded scene; concurrent draws; the bound and the eviction; the option; a document with filters and with patterns and images.
 
+**Result (R1, 28 November 2026): kept** (`SVG_DESIGN.md` 22.1). The second draw of a document with the same state records a scene with managed memory only and keeps it (at most 4 scenes and 64 MB per document); later draws replay it. `SvgLoadOptions.CacheScenes` (default on) turns it off. Draws in a clip, a layer, or a region, on another backend, or with an allocator that has an accumulative limit or that ImageSharp does not provide, draw directly. Two core changes: internal recording hooks on `DrawingCanvas`, and one pass for a range with retained scenes and other work on the CPU backend. No pixel changed; the repeated draw at 1000 pixels is 24% (Tiger) to 91% (FilterShadows) faster with separated intervals, TextHeavy −41%, TextDecorations −39%; Icons is not separated (−4.8 ± 19.6%); the first draw, the single draw, and the non-SVG benchmarks show no separated change.
+
 ### 3.2 R2: Layers, Masks, and Filters
 
 - **Mask effects in place.** Each mask band creates a new `Image` and a processor for its luminance effect (`ExecuteApplyItem`, 19.2, 19.5). Run the effect on the layer rows directly.

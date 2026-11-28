@@ -34,6 +34,14 @@ public sealed partial class SvgDocument
     internal long MaxRenderPixels { get; private set; } = long.MaxValue;
 
     /// <summary>
+    /// Gets or sets the retained scenes of repeated draws (<see cref="SvgLoadOptions.CacheScenes"/>), or
+    /// <see langword="null"/> when the load options turn them off. Documents that are not loaded through a public entry
+    /// point, such as the content of a pattern tile or of a filter, have none. Only the load and the tests of the bounds
+    /// set it.
+    /// </summary>
+    internal SvgSceneCache? SceneCache { get; set; }
+
+    /// <summary>
     /// Renders the document into a new image at its intrinsic size, over a transparent background, with
     /// <see cref="Configuration.Default"/>.
     /// </summary>
@@ -174,13 +182,14 @@ public sealed partial class SvgDocument
     }
 
     /// <summary>
-    /// Sets the render limit of a document that a public entry point loaded.
+    /// Sets the render limit and the scene cache of a document that a public entry point loaded.
     /// </summary>
     /// <param name="options">The load options.</param>
     /// <returns>This document.</returns>
     private SvgDocument WithLoadLimits(SvgLoadOptions options)
     {
         this.MaxRenderPixels = options.Limits.MaxImagePixels;
+        this.SceneCache = options.CacheScenes ? new SvgSceneCache() : null;
         return this;
     }
 
