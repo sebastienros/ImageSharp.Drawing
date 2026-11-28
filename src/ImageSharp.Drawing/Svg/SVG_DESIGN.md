@@ -398,6 +398,8 @@ Each phase ships with conformance results and benchmark numbers.
 5. **Text fonts.** Decided in phase 3: the caller gives the fonts (`SvgLoadOptions.FontCollection`, default the system fonts), the generic families, the default family (`serif`), and the fallback families, with a fixed, documented fallback order. A document never causes a font file to be read.
 6. **Phase 1 cut.** Decided: the phase 1 list in section 11 is the first release.
 
+`SVG_DECISIONS.md` lists the choices that the implementation made without an answer from the user, each with what to check to revisit it, next to the decisions that the user made, the proposals that were not built, and the upstream defects tracked as issues in the fork.
+
 ## 14. Phase 2 Results
 
 ### 14.1 Conformance
