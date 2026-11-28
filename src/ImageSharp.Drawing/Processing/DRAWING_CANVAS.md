@@ -248,6 +248,8 @@ This is the architectural center of gravity: normalization that must be identica
 
 After preparation, disposal replay walks the canvas timeline in order. Command-range entries become short-lived retained scenes through `backend.CreateScene(...)`, and those scenes are then rendered through `backend.RenderScene(...)`.
 
+A retained scene that the caller passed to `RenderScene(...)` is a command inside a range. When it is the only work of its range, the backend renders it directly. On the CPU backend a range that holds such scenes and other work becomes one short-lived scene, which runs the rows of each retained scene inside its own row bands, so every band receives all its work in one pass over the target. Other backends render each retained scene outside every layer as its own pass, between the runs of commands around it.
+
 From that point the CPU and GPU paths diverge.
 
 The CPU backend lowers each command batch into a row-oriented retained representation through `FlushScene` during `CreateScene(...)` and then composites into memory during `RenderScene(...)`.

@@ -543,6 +543,43 @@ public abstract partial class DrawingCanvas : IDisposable
     internal virtual bool TryTakeOwnership(IDisposable resource) => false;
 
     /// <summary>
+    /// Returns whether a retained scene that <see cref="RecordScene"/> records now renders through <see cref="RenderScene"/>
+    /// with the pixels that the same commands give when they are drawn here directly, so that high-level drawing such as
+    /// SVG rendering can keep the scene and replay it for a later draw with the same state.
+    /// </summary>
+    /// <remarks>
+    /// That holds for a root canvas on the CPU backend with no open clip and no open layer. A region canvas shares the
+    /// command stream of its root canvas, whose scenes need the bounds of the root target. The clips of a canvas do not
+    /// apply to a retained scene. Inside a layer a retained scene renders under other rules than the commands drawn there.
+    /// A canvas implementation that cannot record scenes returns <see langword="false"/>.
+    /// </remarks>
+    /// <param name="targetBounds">Receives the bounds of the target frame, which a scene recorded for this canvas has.</param>
+    /// <returns><see langword="true"/> if a recorded scene can stand in for the commands; otherwise, <see langword="false"/>.</returns>
+    internal virtual bool TryGetSceneTarget(out Rectangle targetBounds)
+    {
+        targetBounds = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Records what <paramref name="draw"/> draws into a new canvas over the target frame of this canvas, and seals it into
+    /// a retained scene without rendering anything into the target.
+    /// </summary>
+    /// <remarks>
+    /// Call it only when <see cref="TryGetSceneTarget"/> returns <see langword="true"/>. The new canvas has the same pixel
+    /// format, backend, and target frame as this canvas, <paramref name="options"/> as its state, and no clip. It records
+    /// with <paramref name="configuration"/>, which also builds the scene and allocates its memory and the resources that
+    /// the scene owns. The canvas is released when this method returns. When <paramref name="draw"/> throws, the recorded
+    /// commands are discarded and their resources are disposed.
+    /// </remarks>
+    /// <param name="configuration">The configuration of the recording canvas.</param>
+    /// <param name="options">The drawing options of the recording canvas.</param>
+    /// <param name="draw">Draws into the recording canvas.</param>
+    /// <returns>The scene, or <see langword="null"/> when <paramref name="draw"/> recorded nothing.</returns>
+    internal virtual DrawingBackendScene? RecordScene(Configuration configuration, DrawingOptions options, Action<DrawingCanvas> draw)
+        => throw new NotSupportedException();
+
+    /// <summary>
     /// Releases the canvas. Disposing the root canvas closes any open layers and clips and
     /// replays the recorded command timeline into the target frame; child region canvases
     /// share the root's command stream and do not flush on disposal.

@@ -169,6 +169,38 @@ public readonly struct DrawingCommandBatch
     }
 
     /// <summary>
+    /// Returns whether the batch holds one retained scene command outside every layer and no other work: every other
+    /// command is a clip control, which draws nothing.
+    /// </summary>
+    /// <returns><see langword="true"/> if the only work of the batch is one retained scene outside every layer.</returns>
+    internal bool HasOnlyOneRootScene()
+    {
+        IReadOnlyList<CompositionSceneCommand> commands = this.Commands;
+        int rootScenes = 0;
+        for (int i = 0; i < commands.Count; i++)
+        {
+            switch (commands[i])
+            {
+                case RetainedSceneCompositionSceneCommand { IsInsideLayer: false }:
+                    if (++rootScenes > 1)
+                    {
+                        return false;
+                    }
+
+                    break;
+
+                case PathCompositionSceneCommand { Command.Kind: CompositionCommandKind.BeginClip or CompositionCommandKind.EndClip }:
+                    break;
+
+                default:
+                    return false;
+            }
+        }
+
+        return rootScenes == 1;
+    }
+
+    /// <summary>
     /// Finds the retained scenes that hold ordered work, and the layers that must render as scoped
     /// layers around them.
     /// </summary>

@@ -29,10 +29,20 @@ internal static class SvgImageSharpRenderer
     /// </summary>
     /// <param name="document">The SVG bytes.</param>
     /// <returns>The loaded document.</returns>
-    public static SvgDocument Load(byte[] document)
+    public static SvgDocument Load(byte[] document) => Load(document, cacheScenes: true);
+
+    /// <summary>
+    /// Loads a document from its bytes through a stream, as <see cref="Load(byte[])"/> does, with or without the scene
+    /// cache of the document (<see cref="SvgLoadOptions.CacheScenes"/>).
+    /// </summary>
+    /// <param name="document">The SVG bytes.</param>
+    /// <param name="cacheScenes">Whether the document keeps the scene of a repeated draw.</param>
+    /// <returns>The loaded document.</returns>
+    public static SvgDocument Load(byte[] document, bool cacheScenes)
     {
         using MemoryStream stream = new(document, writable: false);
-        return SvgDocument.Load(stream, SvgBenchmarkFonts.CreateLoadOptions());
+        SvgLoadOptions options = SvgBenchmarkFonts.CreateLoadOptions();
+        return SvgDocument.Load(stream, cacheScenes ? options : new SvgLoadOptions(options) { CacheScenes = false });
     }
 
     /// <summary>

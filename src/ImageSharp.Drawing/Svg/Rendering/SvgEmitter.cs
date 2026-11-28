@@ -56,7 +56,8 @@ internal static partial class SvgEmitter
     private const float ConformalTolerance = 1E-3F;
 
     /// <summary>
-    /// Draws a document into a destination rectangle.
+    /// Draws a document into a destination rectangle. A repeated draw with the same state replays the scene that the
+    /// document keeps for it (<see cref="SvgSceneCache"/>).
     /// </summary>
     /// <param name="canvas">The canvas to record into.</param>
     /// <param name="document">The document.</param>
@@ -68,7 +69,13 @@ internal static partial class SvgEmitter
             return;
         }
 
-        Draw(canvas, document, document.CreateViewportTransform(destination), destination);
+        Matrix3x2 viewport = document.CreateViewportTransform(destination);
+        if (document.SceneCache?.TryDraw(canvas, document, viewport, destination) == true)
+        {
+            return;
+        }
+
+        Draw(canvas, document, viewport, destination);
     }
 
     /// <summary>

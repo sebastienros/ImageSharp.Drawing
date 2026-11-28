@@ -49,6 +49,7 @@ public sealed class SvgLoadOptions
         this.genericFontFamilies = source.genericFontFamilies;
         this.defaultFontFamily = source.defaultFontFamily;
         this.fallbackFontFamilies = source.fallbackFontFamilies;
+        this.CacheScenes = source.CacheScenes;
     }
 
     /// <summary>
@@ -221,6 +222,28 @@ public sealed class SvgLoadOptions
         get => this.fallbackFontFamilies;
         init => this.fallbackFontFamilies = SvgGenericFontFamilies.Copy(value, nameof(this.FallbackFontFamilies));
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the document keeps the prepared drawing of a repeated draw. The default is
+    /// <see langword="true"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When the document is drawn a second time with the same destination onto a canvas of the same pixel format, target
+    /// size, configuration, transform, and graphics options, it keeps the drawing that the canvas prepared for that draw,
+    /// and later draws with the same state replay it instead of preparing it again. The pixels are the same as without it.
+    /// The first draw with a given state keeps nothing. Draws into a region of a canvas, inside a clip or a layer of the
+    /// canvas, on a backend other than the CPU backend, or with a memory allocator that has an accumulative allocation limit
+    /// or that ImageSharp does not provide, never keep a drawing.
+    /// </para>
+    /// <para>
+    /// A document keeps at most 4 drawings and at most 64 MB for them together; when a new drawing does not fit, the least
+    /// recently used ones are dropped, and a drawing larger than the limit is not kept. The kept memory is managed memory
+    /// that is freed when the document is no longer referenced. Set this to <see langword="false"/> to keep nothing, for
+    /// example when many documents stay loaded and each is drawn repeatedly at a different state.
+    /// </para>
+    /// </remarks>
+    public bool CacheScenes { get; init; } = true;
 
     /// <summary>
     /// Gets the generic family map without creating one: the shared default when the caller set none.

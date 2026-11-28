@@ -44,11 +44,17 @@ namespace SixLabors.ImageSharp.Drawing.Benchmarks.Svg;
 /// ImageSharp.Drawing draws into one <see cref="Image{TPixel}"/> target. Both targets are allocated in
 /// <see cref="Setup"/>, outside the measured time. <see cref="ImageSharp"/> opens a new canvas per operation, records
 /// the clears and the <see cref="DrawingCanvas.DrawSvg(SvgDocument, RectangleF)"/> commands, and renders them when the
-/// canvas closes: this is the emit, the command preparation, and the rasterization. <see cref="ImageSharpRetainedScene"/>
-/// replays a scene that <see cref="Setup"/> recorded from the same commands, so it measures the rasterization of a
-/// prepared scene only. The default variants use the default configuration, which rasterizes on every processor; the
-/// <c>_SingleThreaded</c> variants use a configuration with <see cref="Configuration.MaxDegreeOfParallelism"/> 1, which
-/// is the per-core cost to compare with Svg.Skia.
+/// canvas closes. It draws the same loaded documents in every operation, so since the scene cache of package R1 of the
+/// SVG phase 7 (<see cref="SvgLoadOptions.CacheScenes"/>, on by default) each document replays the scene that it kept
+/// at its second draw: <see cref="ImageSharp"/> measures the repeated draw of a loaded document, and its counterpart is
+/// <see cref="SvgSkia"/>. Before the cache it measured the first draw. <see cref="ImageSharp_NoSceneCache"/> draws
+/// documents loaded with the cache turned off, so every operation runs the emit, the command preparation, and the
+/// rasterization: it measures the first draw of a loaded document, what <see cref="ImageSharp"/> measured before the
+/// cache, and its counterpart is <see cref="SvgSkia_ColdCaches"/>. <see cref="ImageSharpRetainedScene"/> replays one
+/// scene that <see cref="Setup"/> recorded from the commands of a whole operation, so it measures the rasterization of
+/// a prepared scene only, the reference of what a replay can reach. The default variants use the default configuration,
+/// which rasterizes on every processor; the <c>_SingleThreaded</c> variants use a configuration with
+/// <see cref="Configuration.MaxDegreeOfParallelism"/> 1, which is the per-core cost to compare with Svg.Skia.
 /// </para>
 /// <para>
 /// No WebGPU method exists: the development container has no GPU, and the WebGPU tests of the test project skip there.
@@ -64,6 +70,7 @@ public class RenderSvg
     private SKSurface skSurface;
 
     private SvgDocument[] isDocuments;
+    private SvgDocument[] isDocumentsNoSceneCache;
     private RectangleF[] isDestinations;
     private Rectangle[] isTargets;
     private Image<Rgba32> image;
@@ -121,6 +128,7 @@ public class RenderSvg
         SvgImageSharpRenderer.WarmThreadPool();
         this.singleThreadedConfiguration = SvgImageSharpRenderer.CreateSingleThreadedConfiguration();
         this.isDocuments = new SvgDocument[documents.Length];
+        this.isDocumentsNoSceneCache = new SvgDocument[documents.Length];
         this.isDestinations = new RectangleF[documents.Length];
         this.isTargets = new Rectangle[documents.Length];
 
@@ -129,6 +137,7 @@ public class RenderSvg
         for (int i = 0; i < documents.Length; i++)
         {
             this.isDocuments[i] = SvgImageSharpRenderer.Load(documents[i]);
+            this.isDocumentsNoSceneCache[i] = SvgImageSharpRenderer.Load(documents[i], cacheScenes: false);
             Size size = SvgImageSharpRenderer.GetOutputSize(this.isDocuments[i], this.LongEdge, out this.isDestinations[i]);
             this.isTargets[i] = new Rectangle(0, 0, size.Width, size.Height);
             width = Math.Max(width, size.Width);
@@ -139,13 +148,15 @@ public class RenderSvg
 
         // The retained scene holds the same commands as one operation of the ImageSharp method.
         using DrawingCanvas canvas = this.image.Frames.RootFrame.CreateCanvas(this.image.Configuration, new DrawingOptions());
-        this.DrawImageSharp(canvas);
+        this.DrawImageSharp(canvas, this.isDocumentsNoSceneCache);
         this.imageSharpRetainedScene = canvas.CreateScene();
 
         SvgBenchmarkWarmup.Run(
             this.SvgSkia,
             this.ImageSharp,
             this.ImageSharp_SingleThreaded,
+            this.ImageSharp_NoSceneCache,
+            this.ImageSharp_SingleThreaded_NoSceneCache,
             this.ImageSharpRetainedScene,
             this.ImageSharpRetainedScene_SingleThreaded);
     }
@@ -202,18 +213,36 @@ public class RenderSvg
     }
 
     /// <summary>
-    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, with the default configuration.
+    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, with the default configuration. The
+    /// documents keep their scenes, so this is the repeated draw (see the remarks of the class).
     /// </summary>
     [Benchmark]
     public void ImageSharp()
-        => this.image.Mutate(c => c.Paint(this.DrawImageSharp));
+        => this.image.Mutate(c => c.Paint(canvas => this.DrawImageSharp(canvas, this.isDocuments)));
 
     /// <summary>
-    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, on one thread.
+    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, on one thread. The documents keep their
+    /// scenes, so this is the repeated draw.
     /// </summary>
     [Benchmark]
     public void ImageSharp_SingleThreaded()
-        => this.image.Mutate(this.singleThreadedConfiguration, c => c.Paint(this.DrawImageSharp));
+        => this.image.Mutate(this.singleThreadedConfiguration, c => c.Paint(canvas => this.DrawImageSharp(canvas, this.isDocuments)));
+
+    /// <summary>
+    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, with the default configuration, from
+    /// documents loaded with the scene cache turned off: the first draw of a loaded document.
+    /// </summary>
+    [Benchmark]
+    public void ImageSharp_NoSceneCache()
+        => this.image.Mutate(c => c.Paint(canvas => this.DrawImageSharp(canvas, this.isDocumentsNoSceneCache)));
+
+    /// <summary>
+    /// Draws every document of the entry with ImageSharp.Drawing on a new canvas, on one thread, from documents loaded with
+    /// the scene cache turned off: the first draw of a loaded document.
+    /// </summary>
+    [Benchmark]
+    public void ImageSharp_SingleThreaded_NoSceneCache()
+        => this.image.Mutate(this.singleThreadedConfiguration, c => c.Paint(canvas => this.DrawImageSharp(canvas, this.isDocumentsNoSceneCache)));
 
     /// <summary>
     /// Replays the scene recorded in <see cref="Setup"/>, with the default configuration.
@@ -234,12 +263,13 @@ public class RenderSvg
     /// <see cref="SvgSkia"/> does.
     /// </summary>
     /// <param name="canvas">The canvas to record into.</param>
-    private void DrawImageSharp(DrawingCanvas canvas)
+    /// <param name="documents">The loaded documents of the entry, with or without their scene cache.</param>
+    private void DrawImageSharp(DrawingCanvas canvas, SvgDocument[] documents)
     {
-        for (int i = 0; i < this.isDocuments.Length; i++)
+        for (int i = 0; i < documents.Length; i++)
         {
             canvas.Clear(SvgImageSharpRenderer.ClearBrush, this.isTargets[i]);
-            canvas.DrawSvg(this.isDocuments[i], this.isDestinations[i]);
+            canvas.DrawSvg(documents[i], this.isDestinations[i]);
         }
     }
 }
