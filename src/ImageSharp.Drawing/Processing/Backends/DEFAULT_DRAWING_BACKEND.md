@@ -142,6 +142,7 @@ It owns worker-local scratch such as:
 - a second scratch reserved for path clip rasterization
 - a reusable path clip coverage buffer
 - one `PathClipBand` per clip descriptor index, which holds the rows of the last rasterized band of a path clip
+- one layer band buffer per nesting level of inline layers (`BeginLayerBand`), at least the width of the state and the tile height
 - the brush workspace
 
 This is how the backend avoids allocating fresh buffers for every row item during the hot parallel pass. Each `Parallel.For` worker gets one instance through `localInit` and returns it to a pool in `localFinally`. The loops plan their tasks as `ParallelRowIterator` of ImageSharp does: at most one task per band and per 4,096 pixels (`ParallelExecutionSettings.DefaultMinimumPixelsProcessedPerTask`), and at most the configured degree of parallelism. When that gives one task (one band, at most 4,096 pixels, or a degree of 1), the loop runs on the calling thread with one rented state instead of a `Parallel.For`. This applies to the scene rows of each segment, to the write-back of an apply item, and to the composite of a scoped layer.
@@ -273,7 +274,7 @@ sequenceDiagram
     Render->>Worker: Dispose (localFinally)
 ```
 
-Each row replays its operation stream through a `SceneOperationCursor`. The operations are `FillItem`, `StrokeItem`, `BeginLayer`, and `EndLayer`. Layer execution is recursive rather than stack-backed: `BeginLayer` allocates a clean temporary `BandTarget<TPixel>`, the nested call renders into it from the same cursor, and the band is blended back with the layer's graphics options when the scope ends.
+Each row replays its operation stream through a `SceneOperationCursor`. The operations are `FillItem`, `StrokeItem`, `BeginLayer`, and `EndLayer`. Layer execution is recursive rather than stack-backed: `BeginLayer` takes the layer band buffer of its nesting level from the worker state (`WorkerState<TPixel>.BeginLayerBand`), clears the region of the band, and wraps it in a `BandTarget<TPixel>`; the nested call renders into it from the same cursor, and the band is blended back with the layer's graphics options when the scope ends (`EndLayerBand`). An inline layer covers at most one band and lives only until it is blended back, so one buffer per level serves every inline layer that the worker renders; a nested layer uses the buffer of the next level while its parent stays open. Before phase 6 of the SVG work each inline layer band allocated its own clean `Buffer2D<TPixel>`, whose managed wrapper objects were most of what a render of a document with many layers allocated during the scene render.
 
 There are two important ownership patterns in that pass:
 
@@ -340,7 +341,7 @@ Write-back uses Src semantics: the item's graphics options were cloned via `Clon
 
 CPU layer composition is a separate concern from path rasterization.
 
-Inline layers composite band-by-band during row execution (`CompositeLayerBand`), and scoped layers composite as a whole after their segments finish (`CompositeLayerTarget`), both using `PixelBlender<TPixel>` with the layer's graphics options. Scoped composition partitions the overlap on the same absolute tile grid used for rendering so the parallel blend never shares a destination row between workers.
+Inline layers composite band-by-band during row execution (`CompositeLayerBand`), and scoped layers composite as a whole after their segments finish (`CompositeLayerTarget`), both using `PixelBlender<TPixel>` with the layer's graphics options. A layer blends with one amount, its blend percentage, so the composite calls the overload of `Blend` with a constant amount and caller scratch. It gives the same bytes as a row of equal amounts: both overloads run the same vector loops over the same groups of pixels and the same scalar tail, and pass the operator the amount clamped to [0, 1] in every lane; `GraphicsOptions.BlendPercentage` is validated to lie in [0, 1], where the clamp keeps the value to the bit. Scoped composition partitions the overlap on the same absolute tile grid used for rendering so the parallel blend never shares a destination row between workers.
 
 `ComposeLayer<TPixel>()` additionally exposes frame-to-frame composition using `PixelBlender<TPixel>` for callers outside scene execution. That path exists because compositing an already-rasterized layer is a different problem from scanning geometry into coverage.
 
@@ -367,6 +368,7 @@ Owned by `WorkerState<TPixel>` during execution:
 
 - raster scratch and path-clip scratch
 - path-clip coverage buffer and the path clip bands
+- the layer band buffers of inline layers, one per nesting level
 - brush workspace
 
 Returned to the worker pool when the worker completes (`localFinally`); the path clip bands forget their geometry then, so a pooled state keeps no reference to a finished scene. The pool releases its states on a generation 2 collection when nothing rented one since the previous collection.
@@ -375,7 +377,7 @@ Returned to the worker pool when the worker completes (`localFinally`); the path
 
 Created during execution and released with it:
 
-- temporary layer `BandTarget<TPixel>` buffers
+- the buffers of scoped layers (`ExecuteSceneSegments`), one per layer, from the memory allocator of the configuration
 - the temporary apply source image
 
 That ownership model keeps allocation and disposal aligned with real work lifetime.

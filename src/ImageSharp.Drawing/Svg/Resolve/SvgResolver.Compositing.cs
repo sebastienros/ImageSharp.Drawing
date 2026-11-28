@@ -3,7 +3,6 @@
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
 
@@ -218,7 +217,7 @@ internal sealed partial class SvgResolver
     /// <returns><see langword="true"/> if the layer has area; <see langword="false"/> if the element renders nothing.</returns>
     private bool EndCompositeLayer(in SvgCompositeScope scope, int contentStart)
     {
-        Span<SvgRenderNode> nodes = CollectionsMarshal.AsSpan(this.nodes);
+        Span<SvgRenderNode> nodes = this.nodes.AsSpan();
         RectangleF bounds = default;
         bool found = false;
         bool blends = false;
@@ -365,7 +364,7 @@ internal sealed partial class SvgResolver
     /// <returns>The union, or an empty rectangle when no draw node follows.</returns>
     private RectangleF GetDrawBounds(int start)
     {
-        ReadOnlySpan<SvgRenderNode> nodes = CollectionsMarshal.AsSpan(this.nodes);
+        ReadOnlySpan<SvgRenderNode> nodes = this.nodes.AsSpan();
         RectangleF bounds = default;
         bool found = false;
         for (int i = start; i < nodes.Length; i++)

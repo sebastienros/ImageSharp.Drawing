@@ -1,8 +1,8 @@
 // Copyright (c) Six Labors.
 // Licensed under the Six Labors Split License.
 
+using System.Buffers;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using SixLabors.ImageSharp.Drawing.Processing;
 
 namespace SixLabors.ImageSharp.Drawing.Svg;
@@ -37,7 +37,7 @@ namespace SixLabors.ImageSharp.Drawing.Svg;
 /// <see cref="TakeNodes(int, out int)"/> takes resolved nodes out of the main paint order.
 /// </para>
 /// </remarks>
-internal sealed partial class SvgResolver
+internal sealed partial class SvgResolver : IDisposable
 {
     /// <summary>
     /// The control point distance of a cubic Bézier quarter circle, as a fraction of the radius.
@@ -54,9 +54,12 @@ internal sealed partial class SvgResolver
     private readonly RectangleF? rootViewBox;
     private readonly bool viewBoxDisablesRendering;
     private readonly SvgPaintCache paints;
-    private readonly List<SvgRenderNode> nodes = [];
-    private readonly List<Matrix3x2> transforms = [];
-    private readonly Dictionary<Matrix3x2, int> transformIndexes = [];
+
+    // The node list and the transform table live for one load and grow to sizes that are not known in advance (a
+    // nested SVG image or a text run adds thousands of entries), so their storage is pooled and returns to the pool
+    // when Resolve ends (see SvgPooledList<T>).
+    private readonly SvgPooledList<SvgRenderNode> nodes = new();
+    private readonly SvgTransformTable transforms = new();
     private readonly List<int> referenceChain = [];
     private readonly IPath?[] shapes;
     private readonly Vector3[] shapeContexts;
@@ -143,7 +146,21 @@ internal sealed partial class SvgResolver
     /// The expansion of <c>use</c> references exceeds <see cref="SvgLimits.MaxNodes"/> or <see cref="SvgLimits.MaxNestingDepth"/>.
     /// </exception>
     public static SvgDocument Resolve(SvgElementTree tree, SvgLoadOptions options)
-        => new SvgResolver(tree, options).ResolveDocument();
+    {
+        // The document holds copies of the nodes and the transforms, so the pooled storage goes back when the resolve
+        // ends, also when a limit stops the load.
+        using SvgResolver resolver = new(tree, options);
+        return resolver.ResolveDocument();
+    }
+
+    /// <summary>
+    /// Returns the pooled storage of the node list and the transform table. The resolver is not used afterwards.
+    /// </summary>
+    public void Dispose()
+    {
+        this.nodes.Dispose();
+        this.transforms.Dispose();
+    }
 
     /// <summary>
     /// Resolves the root element and its content, then builds the document.
@@ -191,7 +208,7 @@ internal sealed partial class SvgResolver
         SvgRenderNode[] nodes = this.TakeNodes(0, out int maxScopeDepth);
         return new SvgDocument(
             nodes,
-            [.. this.transforms],
+            this.transforms.ToArray(),
             new SizeF(width, height),
             viewBox,
             mappedBox,
@@ -1338,7 +1355,7 @@ internal sealed partial class SvgResolver
             return;
         }
 
-        Span<SvgRenderNode> nodes = CollectionsMarshal.AsSpan(this.nodes);
+        Span<SvgRenderNode> nodes = this.nodes.AsSpan();
         int drawCount = 0;
         int drawIndex = -1;
         bool hasLayer = false;
@@ -1430,13 +1447,7 @@ internal sealed partial class SvgResolver
             return this.lastTransformIndex;
         }
 
-        if (!this.transformIndexes.TryGetValue(transform, out int index))
-        {
-            index = this.transforms.Count;
-            this.transforms.Add(transform);
-            this.transformIndexes.Add(transform, index);
-        }
-
+        int index = this.transforms.GetOrAdd(transform);
         this.lastTransform = transform;
         this.lastTransformIndex = index;
         return index;
@@ -1457,7 +1468,7 @@ internal sealed partial class SvgResolver
     /// <returns>The nodes.</returns>
     internal SvgRenderNode[] TakeNodes(int start, out int maxScopeDepth)
     {
-        SvgRenderNode[] result = this.BuildNodes(CollectionsMarshal.AsSpan(this.nodes)[start..], out maxScopeDepth);
+        SvgRenderNode[] result = this.BuildNodes(this.nodes.AsSpan()[start..], out maxScopeDepth);
         this.nodes.RemoveRange(start, this.nodes.Count - start);
         return result;
     }
@@ -1484,7 +1495,9 @@ internal sealed partial class SvgResolver
         }
 
         SvgRenderNode[] result = new SvgRenderNode[count];
-        int[] open = new int[Math.Max(count, 1)];
+
+        // The stack of open scopes is written before it is read, so a pooled array of any content serves.
+        int[] open = ArrayPool<int>.Shared.Rent(Math.Max(count, 1));
         int depth = 0;
         int written = 0;
         maxScopeDepth = 0;
@@ -1511,6 +1524,7 @@ internal sealed partial class SvgResolver
             result[written++] = node;
         }
 
+        ArrayPool<int>.Shared.Return(open);
         return result;
     }
 

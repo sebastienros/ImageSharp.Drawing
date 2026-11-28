@@ -44,7 +44,7 @@ internal static class SvgCascade
     public static void Apply(
         Span<SvgElement> elements,
         ReadOnlySpan<SvgStyleSources> sources,
-        List<SvgSpecifiedStyle> styles,
+        SvgPooledList<SvgSpecifiedStyle> styles,
         SvgStyleSheet? sheet,
         SvgCssMatcher? matcher)
     {
@@ -79,7 +79,7 @@ internal static class SvgCascade
                     styles.Add(default);
                 }
 
-                ref SvgSpecifiedStyle style = ref CollectionsMarshal.AsSpan(styles)[target];
+                ref SvgSpecifiedStyle style = ref styles.AsSpan()[target];
                 ReadOnlySpan<int> matched = matches.AsSpan()[..matchCount];
 
                 // Matched ranks are ascending and user rules have the lowest ranks, so the user rules come first.
@@ -117,7 +117,7 @@ internal static class SvgCascade
 
                 if (source.Inline >= 0)
                 {
-                    style.Apply(in CollectionsMarshal.AsSpan(styles)[source.Inline]);
+                    style.Apply(in styles.AsSpan()[source.Inline]);
                 }
 
                 foreach (int rule in author)
@@ -130,7 +130,7 @@ internal static class SvgCascade
 
                 if (source.InlineImportant >= 0)
                 {
-                    style.Apply(in CollectionsMarshal.AsSpan(styles)[source.InlineImportant]);
+                    style.Apply(in styles.AsSpan()[source.InlineImportant]);
                 }
 
                 foreach (int rule in matched[..userMatches])
@@ -156,9 +156,9 @@ internal static class SvgCascade
     /// <param name="source">The declarations of the element.</param>
     /// <param name="styles">The style table.</param>
     /// <returns>The index of the merged style, or -1 when the element has none.</returns>
-    private static int MergeOwn(SvgStyleSources source, List<SvgSpecifiedStyle> styles)
+    private static int MergeOwn(SvgStyleSources source, SvgPooledList<SvgSpecifiedStyle> styles)
     {
-        Span<SvgSpecifiedStyle> table = CollectionsMarshal.AsSpan(styles);
+        Span<SvgSpecifiedStyle> table = styles.AsSpan();
         int target = source.Presentation;
         if (target >= 0)
         {

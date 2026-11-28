@@ -426,7 +426,7 @@ internal sealed class SvgReader
     private void ApplyTransformProperty()
     {
         Span<SvgElement> elements = CollectionsMarshal.AsSpan(this.tables.Elements);
-        ReadOnlySpan<SvgSpecifiedStyle> styles = CollectionsMarshal.AsSpan(this.tables.Styles);
+        ReadOnlySpan<SvgSpecifiedStyle> styles = this.tables.Styles.AsSpan();
         for (int i = 0; i < elements.Length; i++)
         {
             ref SvgElement element = ref elements[i];
@@ -1134,9 +1134,11 @@ internal sealed class SvgReader
         public List<Matrix3x2> Transforms { get; } = [];
 
         /// <summary>
-        /// Gets the styles that elements index into.
+        /// Gets the styles that elements index into. The table is the largest of the reader (a style is several hundred
+        /// bytes and most elements have one), so its storage is pooled; the tree that takes it returns the storage when it
+        /// is disposed after the resolve.
         /// </summary>
-        public List<SvgSpecifiedStyle> Styles { get; } = [];
+        public SvgPooledList<SvgSpecifiedStyle> Styles { get; } = new();
 
         /// <summary>
         /// Gets the dash lengths that <see cref="SvgDashArray"/> values index into.

@@ -381,8 +381,8 @@ internal sealed partial class SvgResolver
                 nestedLimits.MaxCharactersFromEntities,
                 options.UserStyleSheet,
                 nestedLimits.MaxTextCharacters);
-            SvgElementTree tree = SvgReader.Read(stream, in readerOptions);
-            SvgResolver resolver = new(tree, options) { imageDepth = this.imageDepth + 1 };
+            using SvgElementTree tree = SvgReader.Read(stream, in readerOptions);
+            using SvgResolver resolver = new(tree, options) { imageDepth = this.imageDepth + 1 };
             SvgDocument document = resolver.ResolveDocument();
             this.nestedElements += tree.Count + resolver.nestedElements;
             this.decodedImagePixels += resolver.decodedImagePixels;

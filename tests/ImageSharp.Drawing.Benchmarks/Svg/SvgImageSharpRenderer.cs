@@ -134,8 +134,10 @@ internal static class SvgImageSharpRenderer
 
                 End(0);
 
+                // The tree returns its pooled style table after the resolve, as SvgDocument.Load does.
                 Begin();
                 SvgDocument document = SvgResolver.Resolve(tree, loadOptions);
+                tree.Dispose();
                 End(1);
 
                 // The image comes from the pools of the memory allocator; it is not part of any stage.
